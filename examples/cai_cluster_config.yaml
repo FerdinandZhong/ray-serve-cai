@@ -1,0 +1,77 @@
+# CAI-based Ray Cluster Configuration
+#
+# This configuration file sets up a Ray cluster using Cloudera Machine Learning (CML)
+# Applications as cluster nodes.
+#
+# Architecture:
+#   - 1 CAI application as Ray head node
+#   - N CAI applications as Ray worker nodes
+#
+# Usage:
+#   python -m ray_serve_cai.launch_cluster --config examples/cai_cluster_config.yaml start-cai
+
+# CAI/CML Configuration
+cai:
+  # CML instance URL
+  host: https://ml-instance.cloudera.site
+
+  # API key for authentication
+  # Can also be set via CML_API_KEY environment variable for security
+  api_key: your-api-key-here  # or use env var: export CML_API_KEY=xxx
+
+  # Project ID where applications will be created
+  project_id: your-project-id
+
+  # Number of worker nodes (in addition to 1 head node)
+  num_workers: 2
+
+  # Resource configuration for each node (head and workers)
+  resources:
+    cpu: 16          # CPU cores per node
+    memory: 64       # Memory in GB per node
+    num_gpus: 1      # GPUs per node (set to 0 if not using GPUs)
+
+  # Optional: Docker runtime identifier
+  # Uncomment and set if you need a specific runtime
+  # runtime_identifier: docker.repository.cloudera.com/cloudera/cdsw/ml-runtime-workbench-python3.9-standard:2023.12.1
+
+# Ray Configuration (optional)
+# These settings are used when starting Ray on each node
+ray:
+  port: 6379              # Ray GCS server port
+  dashboard_port: 8265    # Ray dashboard port
+
+# Example configurations for different use cases:
+
+# Small development cluster (1 head + 1 worker)
+# cai:
+#   host: https://ml-dev.example.com
+#   api_key: dev-api-key
+#   project_id: dev-project-123
+#   num_workers: 1
+#   resources:
+#     cpu: 8
+#     memory: 32
+#     num_gpus: 0
+
+# Medium production cluster (1 head + 3 workers with GPUs)
+# cai:
+#   host: https://ml-prod.example.com
+#   api_key: prod-api-key
+#   project_id: prod-project-456
+#   num_workers: 3
+#   resources:
+#     cpu: 16
+#     memory: 64
+#     num_gpus: 2
+
+# Large cluster for distributed training (1 head + 8 workers)
+# cai:
+#   host: https://ml-train.example.com
+#   api_key: train-api-key
+#   project_id: train-project-789
+#   num_workers: 8
+#   resources:
+#     cpu: 32
+#     memory: 128
+#     num_gpus: 4

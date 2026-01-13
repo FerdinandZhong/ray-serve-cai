@@ -1,0 +1,32 @@
+# Local Ray Cluster Configuration for CPU-Only Workloads
+# For development and testing without GPU
+
+cluster:
+  # Ray head node port
+  port: 6379
+
+  # Dashboard configuration
+  dashboard:
+    enabled: true
+    port: 8265
+
+  # Resource configuration for CPU-only workloads
+  resources:
+    # Number of CPUs
+    num_cpus: 8
+
+    # Explicitly set no GPUs
+    num_gpus: 0
+
+    # Object store memory for CPU mode
+    # Can be smaller for CPU inference
+    object_store_memory: 1073741824 # 4294967296  # 4 GB
+
+  # Keep terminal open
+  block: false
+
+# Usage Notes:
+# - This config is for CPU-only inference
+# - Useful for testing and development
+# - Small models like TinyLlama work well with CPU
+# - Increase num_cpus for better parallelism

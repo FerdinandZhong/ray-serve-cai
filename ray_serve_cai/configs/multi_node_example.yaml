@@ -1,0 +1,92 @@
+# Multi-Node Ray Cluster Configuration Example
+# This is a template for ray up command with autoscaler
+# Requires cloud provider credentials (AWS, GCP, Azure)
+
+# Cluster name
+cluster_name: vllm-cluster
+
+# Cloud provider configuration
+provider:
+    type: aws
+    region: us-west-2
+    # Availability zone (optional)
+    # availability_zone: us-west-2a
+
+# Authentication
+auth:
+    ssh_user: ubuntu
+
+# Minimum and maximum workers
+min_workers: 0
+max_workers: 2
+
+# Upscaling speed
+upscaling_speed: 1.0
+
+# Idle timeout (minutes)
+idle_timeout_minutes: 5
+
+# Head node configuration
+head_node:
+    InstanceType: p3.2xlarge  # 1x V100 GPU
+    ImageId: ami-0c55b159cbfafe1f0  # Deep Learning AMI
+
+    # Disk size
+    BlockDeviceMappings:
+        - DeviceName: /dev/sda1
+          Ebs:
+              VolumeSize: 100
+              VolumeType: gp3
+
+# Worker node configuration
+worker_nodes:
+    InstanceType: p3.8xlarge  # 4x V100 GPUs
+    ImageId: ami-0c55b159cbfafe1f0
+
+    # Disk size
+    BlockDeviceMappings:
+        - DeviceName: /dev/sda1
+          Ebs:
+              VolumeSize: 200
+              VolumeType: gp3
+
+    # Min and max workers
+    MinWorkers: 0
+    MaxWorkers: 2
+
+# Setup commands (run on all nodes)
+setup_commands:
+    - pip install -U ray[serve]==2.9.0
+    - pip install vllm==0.6.0
+    - pip install aiohttp
+
+# Head node setup (additional)
+head_setup_commands:
+    - pip install ray[default]==2.9.0
+
+# Head node start command
+head_start_ray_commands:
+    - ray stop
+    - ray start --head --port=6379 --object-manager-port=8076 --autoscaling-config=~/ray_bootstrap_config.yaml --dashboard-host=0.0.0.0
+
+# Worker node start command
+worker_start_ray_commands:
+    - ray stop
+    - ray start --address=$RAY_HEAD_IP:6379 --object-manager-port=8076
+
+# Files to sync to cluster
+file_mounts: {}
+
+# Initialization commands
+initialization_commands: []
+
+# NOTE: This is an example configuration for AWS
+# For other cloud providers (GCP, Azure), adjust the provider section
+# and instance types accordingly.
+
+# Usage:
+# 1. Configure your AWS credentials
+# 2. Adjust instance types and regions
+# 3. Run: ray up multi_node_example.yaml
+# 4. Get cluster address: ray attach vllm-cluster "ray status"
+# 5. Use address with vllm-playground

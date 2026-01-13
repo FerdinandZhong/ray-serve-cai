@@ -1,0 +1,25 @@
+# Basic Local Ray Cluster Configuration
+# For simple single-node deployments with default resources
+
+cluster:
+  # Ray head node port
+  port: 6379
+
+  # Dashboard configuration
+  dashboard:
+    enabled: true
+    port: 8265
+
+  # Resource limits (optional - Ray will auto-detect if not specified)
+  # resources:
+  #   num_cpus: 8
+  #   num_gpus: 1
+
+  # Block the terminal (keep running in foreground)
+  block: false
+
+# Notes:
+# - This config starts a basic local cluster
+# - Resources are auto-detected from the system
+# - Dashboard is available at http://localhost:8265
+# - Use this for quick testing and development

@@ -1,0 +1,39 @@
+# Local Ray Cluster Configuration for GPU Workloads
+# Optimized for vLLM deployments with GPU acceleration
+
+cluster:
+  # Ray head node port
+  port: 6379
+
+  # Dashboard configuration
+  dashboard:
+    enabled: true
+    port: 8265
+
+  # Resource configuration for GPU workloads
+  resources:
+    # Number of CPUs (set based on your system)
+    num_cpus: 16
+
+    # Number of GPUs (set based on your system)
+    # For multi-GPU tensor parallelism, set this to the number of GPUs
+    num_gpus: 2
+
+    # Object store memory (for storing model weights and KV cache)
+    # Set to ~30% of system RAM for large models
+    # Example: 32GB RAM -> 10GB for object store
+    object_store_memory: 10737418240  # 10 GB
+
+  # Keep terminal open
+  block: false
+
+# Usage Notes:
+# - This config explicitly sets GPU resources for Ray
+# - num_gpus should match the number of GPUs available
+# - object_store_memory is critical for large model inference
+# - Adjust based on your hardware capabilities
+
+# Example for different GPU setups:
+# - Single GPU: num_gpus: 1, num_cpus: 8
+# - 4x GPU: num_gpus: 4, num_cpus: 32
+# - 8x GPU: num_gpus: 8, num_cpus: 64
