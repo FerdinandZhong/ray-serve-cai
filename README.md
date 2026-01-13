@@ -115,7 +115,8 @@ print(response.choices[0].message.content)
 
 ### CAI-Based Distributed Clusters
 
-Launch Ray clusters using CML Applications as nodes (1 head + N workers):
+Launch Ray clusters using CML Applications as nodes (1 head + N workers).
+Head node has NO GPUs (coordination only), workers get GPUs (computation).
 
 ```bash
 # Create configuration file
@@ -125,10 +126,13 @@ cai:
   api_key: your-api-key
   project_id: your-project-id
   num_workers: 2
-  resources:
+  resources:  # Worker node resources
     cpu: 16
     memory: 64
-    num_gpus: 1
+    num_gpus: 1  # GPUs only for workers
+  head_resources:  # Optional: head node resources (no GPUs)
+    cpu: 8
+    memory: 32
 EOF
 
 # Start CAI cluster

@@ -7,36 +7,42 @@ This guide explains how to use Cloudera Machine Learning (CML) Applications to c
 The CAI cluster feature allows you to:
 - **Create distributed Ray clusters** using CML Applications as nodes
 - **Scale horizontally** by adding worker nodes
+- **Efficient GPU allocation** - Head node has NO GPUs, only workers get GPUs
 - **Leverage CML resources** including GPUs, CPUs, and memory
 - **Manage clusters** through simple CLI commands
 
 ### Architecture
 
 ```
-┌─────────────────────────────────────────────────┐
-│                 CML Project                      │
-│                                                  │
-│  ┌──────────────┐         ┌──────────────┐     │
-│  │  CAI App 1   │         │  CAI App 2   │     │
-│  │              │         │              │     │
-│  │  Ray Head    │◄────────┤ Ray Worker   │     │
-│  │  Node        │         │  Node        │     │
-│  │              │         │              │     │
-│  │  Port: 6379  │         │              │     │
-│  │  Dashboard:  │         │              │     │
-│  │    8265      │         │              │     │
-│  └──────────────┘         └──────────────┘     │
-│         │                        │              │
-│         │                        │              │
-│  ┌──────▼────────┐        ┌─────▼────────┐    │
-│  │  CAI App 3    │        │  CAI App 4   │    │
-│  │               │        │              │    │
-│  │ Ray Worker    │        │ Ray Worker   │    │
-│  │  Node         │        │  Node        │    │
-│  │               │        │              │    │
-│  └───────────────┘        └──────────────┘    │
-│                                                 │
-└─────────────────────────────────────────────────┘
+┌─────────────────────────────────────────────────────┐
+│                    CML Project                       │
+│                                                      │
+│  ┌──────────────────┐         ┌─────────────────┐  │
+│  │   CAI App 1      │         │   CAI App 2     │  │
+│  │                  │         │                 │  │
+│  │   Ray Head       │◄────────┤  Ray Worker     │  │
+│  │   Node           │         │   Node          │  │
+│  │                  │         │                 │  │
+│  │  Port: 6379      │         │  GPUs: YES ✓    │  │
+│  │  Dashboard: 8265 │         │                 │  │
+│  │  GPUs: NO ✗      │         │                 │  │
+│  └──────────────────┘         └─────────────────┘  │
+│          │                           │              │
+│          │                           │              │
+│  ┌───────▼──────────┐        ┌──────▼──────────┐  │
+│  │   CAI App 3      │        │   CAI App 4     │  │
+│  │                  │        │                 │  │
+│  │  Ray Worker      │        │  Ray Worker     │  │
+│  │   Node           │        │   Node          │  │
+│  │                  │        │                 │  │
+│  │  GPUs: YES ✓     │        │  GPUs: YES ✓    │  │
+│  └──────────────────┘        └─────────────────┘  │
+│                                                     │
+└─────────────────────────────────────────────────────┘
+
+Key Design:
+- Head node: Cluster coordination, no GPUs needed
+- Worker nodes: Actual computation, allocated GPUs
 ```
 
 ## Prerequisites
@@ -83,14 +89,22 @@ cai:
   # Number of worker nodes
   num_workers: 2
 
-  # Resources per node
+  # Worker node resources (GPUs allocated here)
   resources:
     cpu: 16
     memory: 64
-    num_gpus: 1
+    num_gpus: 1  # GPUs for worker nodes only
+
+  # Optional: Head node resources (no GPUs)
+  # Defaults to same as workers if not specified
+  head_resources:
+    cpu: 8
+    memory: 32
 ```
 
 See `examples/cai_cluster_config.yaml` for more options.
+
+**Important:** Head node always gets 0 GPUs, regardless of configuration. GPUs are only allocated to worker nodes for computation.
 
 ### 2. Start the Cluster
 
@@ -104,7 +118,7 @@ python -m ray_serve_cai.launch_cluster --config my_cluster.yaml start-cai
 ```
 
 The command will:
-1. Create a CAI application as Ray head node
+1. Create a CAI application as Ray head node (0 GPUs - coordination only)
 2. Wait for the head node to start
 3. Create CAI applications as Ray worker nodes
 4. Connect workers to the head node
@@ -113,7 +127,8 @@ The command will:
 Output:
 ```
 🚀 Starting Ray cluster on CAI...
-   Configuration: 2 workers, 16CPU, 64GB RAM, 1GPU
+   Head node: 8CPU, 32GB RAM, 0GPU
+   Workers: 2 nodes, 16CPU, 64GB RAM, 1GPU each
 📝 Creating head node script...
 ✅ Uploaded script: ray_head_launcher.py
 🎯 Creating head node application...
@@ -131,7 +146,9 @@ Output:
 ============================================================
 ✅ Ray cluster started successfully!
    Head address: ray-cluster-head.ml.example.com:6379
-   Workers: 2
+   Head resources: 8CPU, 32GB RAM, 0GPU
+   Workers: 2 nodes
+   Worker resources: 16CPU, 64GB RAM, 1GPU each
    Total nodes: 3
 ============================================================
 ```
@@ -198,10 +215,18 @@ This will stop and delete all CAI applications (head and workers).
 | `api_key` | string | Yes* | CML API key (* or use `CML_API_KEY` env var) |
 | `project_id` | string | Yes | CML project ID where apps will be created |
 | `num_workers` | integer | No | Number of worker nodes (default: 1) |
-| `resources.cpu` | integer | No | CPU cores per node (default: 16) |
-| `resources.memory` | integer | No | Memory in GB per node (default: 64) |
-| `resources.num_gpus` | integer | No | GPUs per node (default: 0) |
+| `resources.cpu` | integer | No | CPU cores per **worker** node (default: 16) |
+| `resources.memory` | integer | No | Memory in GB per **worker** node (default: 64) |
+| `resources.num_gpus` | integer | No | GPUs per **worker** node (default: 0). **Head node always has 0 GPUs** |
+| `head_resources.cpu` | integer | No | CPU cores for **head** node (defaults to resources.cpu) |
+| `head_resources.memory` | integer | No | Memory in GB for **head** node (defaults to resources.memory) |
 | `runtime_identifier` | string | No | Docker runtime identifier (uses project default if not set) |
+
+**Key Points:**
+- `resources.*` parameters apply to **worker nodes only**
+- `head_resources.*` are optional - head node defaults to same CPU/memory as workers
+- **Head node ALWAYS gets 0 GPUs**, regardless of any configuration
+- GPUs are only allocated to worker nodes for actual computation
 
 ### Ray Section (Optional)
 
@@ -219,10 +244,13 @@ cai:
   host: https://ml-dev.example.com
   project_id: dev-project-123
   num_workers: 1
-  resources:
+  resources:  # Worker resources
     cpu: 8
     memory: 32
     num_gpus: 0
+  head_resources:  # Smaller head node for dev
+    cpu: 4
+    memory: 16
 ```
 
 ### Production Cluster (With GPUs)
@@ -232,10 +260,13 @@ cai:
   host: https://ml-prod.example.com
   project_id: prod-project-456
   num_workers: 4
-  resources:
+  resources:  # Worker resources (with GPUs)
     cpu: 16
     memory: 64
     num_gpus: 2
+  head_resources:  # Head node (no GPUs needed)
+    cpu: 8
+    memory: 32
 ```
 
 ### Large Training Cluster
@@ -245,10 +276,13 @@ cai:
   host: https://ml-train.example.com
   project_id: train-project-789
   num_workers: 8
-  resources:
+  resources:  # Worker resources (with GPUs for training)
     cpu: 32
     memory: 128
     num_gpus: 4
+  head_resources:  # Head node (coordination only)
+    cpu: 16
+    memory: 64
 ```
 
 ## Deploying vLLM on CAI Cluster

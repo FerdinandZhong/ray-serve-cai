@@ -4,8 +4,8 @@
 # Applications as cluster nodes.
 #
 # Architecture:
-#   - 1 CAI application as Ray head node
-#   - N CAI applications as Ray worker nodes
+#   - 1 CAI application as Ray head node (NO GPUs - for coordination only)
+#   - N CAI applications as Ray worker nodes (WITH GPUs - for computation)
 #
 # Usage:
 #   python -m ray_serve_cai.launch_cluster --config examples/cai_cluster_config.yaml start-cai
@@ -25,11 +25,19 @@ cai:
   # Number of worker nodes (in addition to 1 head node)
   num_workers: 2
 
-  # Resource configuration for each node (head and workers)
+  # Resource configuration for WORKER nodes
+  # Note: Head node gets 0 GPUs automatically (used for cluster coordination)
   resources:
-    cpu: 16          # CPU cores per node
-    memory: 64       # Memory in GB per node
-    num_gpus: 1      # GPUs per node (set to 0 if not using GPUs)
+    cpu: 16          # CPU cores per worker node
+    memory: 64       # Memory in GB per worker node
+    num_gpus: 1      # GPUs per worker node (head node always has 0 GPUs)
+
+  # Optional: Separate resource configuration for HEAD node
+  # If not specified, head node uses same CPU/memory as workers (but always 0 GPUs)
+  # Uncomment to customize head node resources:
+  # head_resources:
+  #   cpu: 8         # Head node typically needs less CPU
+  #   memory: 32     # Head node typically needs less memory
 
   # Optional: Docker runtime identifier
   # Uncomment and set if you need a specific runtime
@@ -43,16 +51,19 @@ ray:
 
 # Example configurations for different use cases:
 
-# Small development cluster (1 head + 1 worker)
+# Small development cluster (1 head + 1 worker, no GPUs)
 # cai:
 #   host: https://ml-dev.example.com
 #   api_key: dev-api-key
 #   project_id: dev-project-123
 #   num_workers: 1
-#   resources:
+#   resources:  # Worker resources
 #     cpu: 8
 #     memory: 32
-#     num_gpus: 0
+#     num_gpus: 0  # No GPUs for dev
+#   head_resources:  # Smaller head node
+#     cpu: 4
+#     memory: 16
 
 # Medium production cluster (1 head + 3 workers with GPUs)
 # cai:
@@ -60,10 +71,13 @@ ray:
 #   api_key: prod-api-key
 #   project_id: prod-project-456
 #   num_workers: 3
-#   resources:
+#   resources:  # Worker resources (with GPUs)
 #     cpu: 16
 #     memory: 64
 #     num_gpus: 2
+#   head_resources:  # Head node (no GPUs)
+#     cpu: 8
+#     memory: 32
 
 # Large cluster for distributed training (1 head + 8 workers)
 # cai:
@@ -71,7 +85,10 @@ ray:
 #   api_key: train-api-key
 #   project_id: train-project-789
 #   num_workers: 8
-#   resources:
+#   resources:  # Worker resources (with GPUs for training)
 #     cpu: 32
 #     memory: 128
 #     num_gpus: 4
+#   head_resources:  # Head node (no GPUs, less resources)
+#     cpu: 16
+#     memory: 64

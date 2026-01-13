@@ -71,14 +71,17 @@ async def main():
         # Start cluster
         print("🎯 Starting Ray cluster on CAI...")
         print("   This will create 1 head + 2 workers")
-        print("   Each node: 8 CPU, 32GB RAM, 0 GPU")
+        print("   Head node: 4 CPU, 16GB RAM, 0 GPU (coordination only)")
+        print("   Worker nodes: 8 CPU, 32GB RAM, 0 GPU each (computation)")
         print()
 
         cluster_info = manager.start_cluster(
             num_workers=2,
-            cpu=8,
-            memory=32,
-            num_gpus=0,
+            cpu=8,           # Worker node CPU
+            memory=32,       # Worker node memory
+            num_gpus=0,      # Worker node GPUs (0 for this example)
+            head_cpu=4,      # Head node needs less CPU
+            head_memory=16,  # Head node needs less memory
             wait_ready=True,
             timeout=300
         )

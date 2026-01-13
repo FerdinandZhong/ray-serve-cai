@@ -354,6 +354,8 @@ if __name__ == "__main__":
         cpu: int = 16,
         memory: int = 64,
         num_gpus: int = 0,
+        head_cpu: Optional[int] = None,
+        head_memory: Optional[int] = None,
         ray_port: int = 6379,
         dashboard_port: int = 8265,
         runtime_identifier: Optional[str] = None,
@@ -363,11 +365,16 @@ if __name__ == "__main__":
         """
         Start Ray cluster using CAI applications.
 
+        The head node is created WITHOUT GPUs (GPUs are only for workers).
+        This is the recommended Ray cluster architecture.
+
         Args:
             num_workers: Number of worker nodes to create
-            cpu: CPU cores per application
-            memory: Memory in GB per application
-            num_gpus: GPUs per application
+            cpu: CPU cores per worker node
+            memory: Memory in GB per worker node
+            num_gpus: GPUs per worker node (head node always has 0 GPUs)
+            head_cpu: CPU cores for head node (defaults to same as workers)
+            head_memory: Memory in GB for head node (defaults to same as workers)
             ray_port: Ray GCS server port
             dashboard_port: Ray dashboard port
             runtime_identifier: Docker runtime identifier
@@ -377,17 +384,23 @@ if __name__ == "__main__":
         Returns:
             Dictionary with cluster information
         """
+        # Set head node resources (default to worker resources if not specified)
+        head_cpu = head_cpu or cpu
+        head_memory = head_memory or memory
+
         logger.info("🚀 Starting Ray cluster on CAI...")
-        logger.info(f"   Configuration: {num_workers} workers, {cpu}CPU, {memory}GB RAM, {num_gpus}GPU")
+        logger.info(f"   Head node: {head_cpu}CPU, {head_memory}GB RAM, 0GPU")
+        logger.info(f"   Workers: {num_workers} nodes, {cpu}CPU, {memory}GB RAM, {num_gpus}GPU each")
 
         try:
             # Step 1: Create and upload head node script
+            # Head node always gets 0 GPUs - it's for cluster coordination only
             logger.info("📝 Creating head node script...")
             head_script_content = self._get_head_script_content(
                 port=ray_port,
                 dashboard_port=dashboard_port,
-                num_cpus=cpu,
-                num_gpus=num_gpus if num_gpus > 0 else None
+                num_cpus=head_cpu,
+                num_gpus=0  # Head node never needs GPUs
             )
             head_script_path = self._upload_script_to_project(
                 head_script_content,
@@ -400,8 +413,8 @@ if __name__ == "__main__":
                 project_id=self.project_id,
                 name="ray-cluster-head",
                 script=head_script_path,
-                cpu=cpu,
-                memory=memory,
+                cpu=head_cpu,
+                memory=head_memory,
                 runtime_identifier=runtime_identifier,
                 bypass_authentication=True
             )
@@ -492,9 +505,16 @@ if __name__ == "__main__":
                 'worker_app_ids': self.worker_app_ids,
                 'num_workers': len(self.worker_app_ids),
                 'configuration': {
-                    'cpu': cpu,
-                    'memory': memory,
-                    'num_gpus': num_gpus,
+                    'head': {
+                        'cpu': head_cpu,
+                        'memory': head_memory,
+                        'num_gpus': 0  # Head node never has GPUs
+                    },
+                    'workers': {
+                        'cpu': cpu,
+                        'memory': memory,
+                        'num_gpus': num_gpus
+                    },
                     'ray_port': ray_port,
                     'dashboard_port': dashboard_port
                 }
@@ -503,7 +523,9 @@ if __name__ == "__main__":
             logger.info("="*60)
             logger.info("✅ Ray cluster started successfully!")
             logger.info(f"   Head address: {self.head_address}")
-            logger.info(f"   Workers: {len(self.worker_app_ids)}")
+            logger.info(f"   Head resources: {head_cpu}CPU, {head_memory}GB RAM, 0GPU")
+            logger.info(f"   Workers: {len(self.worker_app_ids)} nodes")
+            logger.info(f"   Worker resources: {cpu}CPU, {memory}GB RAM, {num_gpus}GPU each")
             logger.info(f"   Total nodes: {1 + len(self.worker_app_ids)}")
             logger.info("="*60)
 

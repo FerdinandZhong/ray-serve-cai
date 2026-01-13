@@ -316,16 +316,22 @@ class RayClusterManager:
         """
         Start Ray cluster using CAI (CML) applications.
 
+        Head node is created WITHOUT GPUs (for cluster coordination).
+        Worker nodes get GPU allocation (for actual computation).
+
         Requires config with 'cai' section:
         cai:
           host: https://ml-instance.cloudera.site
           api_key: your-api-key  # or set CML_API_KEY env var
           project_id: project-123
           num_workers: 2
-          resources:
+          resources:  # Worker node resources
             cpu: 16
             memory: 64
             num_gpus: 1
+          head_resources:  # Optional: Head node resources (defaults to worker resources but 0 GPU)
+            cpu: 8
+            memory: 32
 
         Returns:
             Dictionary with cluster info
@@ -350,10 +356,18 @@ class RayClusterManager:
 
         # Get cluster configuration
         num_workers = cai_config.get('num_workers', 1)
+
+        # Worker node resources
         resources = cai_config.get('resources', {})
         cpu = resources.get('cpu', 16)
         memory = resources.get('memory', 64)
         num_gpus = resources.get('num_gpus', 0)
+
+        # Head node resources (optional, defaults to worker resources)
+        head_resources = cai_config.get('head_resources', {})
+        head_cpu = head_resources.get('cpu')  # None means use worker cpu
+        head_memory = head_resources.get('memory')  # None means use worker memory
+
         runtime_identifier = cai_config.get('runtime_identifier')
 
         try:
@@ -372,13 +386,19 @@ class RayClusterManager:
             # Start cluster
             logger.info(f"Starting CAI-based Ray cluster...")
             logger.info(f"  Workers: {num_workers}")
-            logger.info(f"  Resources: {cpu}CPU, {memory}GB, {num_gpus}GPU")
+            logger.info(f"  Worker resources: {cpu}CPU, {memory}GB, {num_gpus}GPU")
+            if head_cpu or head_memory:
+                logger.info(f"  Head resources: {head_cpu or cpu}CPU, {head_memory or memory}GB, 0GPU")
+            else:
+                logger.info(f"  Head resources: {cpu}CPU, {memory}GB, 0GPU (using worker resources)")
 
             cluster_info = self.cai_manager.start_cluster(
                 num_workers=num_workers,
                 cpu=cpu,
                 memory=memory,
                 num_gpus=num_gpus,
+                head_cpu=head_cpu,
+                head_memory=head_memory,
                 runtime_identifier=runtime_identifier,
                 wait_ready=True
             )
