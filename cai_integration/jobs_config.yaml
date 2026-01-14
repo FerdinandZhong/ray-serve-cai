@@ -1,11 +1,9 @@
-"""
-Ray Cluster Deployment Jobs Configuration
-
-This configuration defines the job sequence for setting up a Ray cluster on CML:
-1. git_sync: Pull latest code from repository
-2. setup_environment: Create Python venv and install Ray
-3. launch_ray_cluster: Start the Ray cluster with head + workers
-"""
+# Ray Cluster Deployment Jobs Configuration
+#
+# This configuration defines the job sequence for setting up a Ray cluster on CML:
+# 1. git_sync: Pull latest code from repository
+# 2. setup_environment: Create Python venv and install Ray
+# 3. launch_ray_cluster: Start the Ray cluster with head + workers
 
 jobs:
   git_sync:
