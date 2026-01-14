@@ -173,13 +173,14 @@ class E2EDeploymentTester:
 
         project_data = {
             "name": self.project_name,
-            "project_visibility": "private",
+            "description": "Ray cluster deployment project",
             "template": "git",
-            "gitUrl": git_url_with_token,
-            "isPrototype": False,
-            "supportAsync": True,
-            "avoidNameCollisions": False,
+            "project_visibility": "private",
         }
+
+        # Add git configuration if provided
+        if git_url_with_token:
+            project_data["git_url"] = git_url_with_token
 
         print("\n📤 Sending project creation request...")
         if self.verbose:
