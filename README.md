@@ -148,15 +148,75 @@ ray.init(address="ray://cluster-head-address:6379")
 
 See the [CAI Cluster Guide](docs/cai_cluster_guide.md) for detailed instructions.
 
+### Testing CAI Deployment
+
+Test CAI cluster deployment with comprehensive end-to-end tests:
+
+```bash
+# End-to-end test (project creation → cluster deployment)
+export CML_HOST="https://ml.example.cloudera.site"
+export CML_API_KEY="your-api-key"
+export GITHUB_REPOSITORY="owner/ray-serve-cai"  # Optional
+
+python tests/test_e2e_deployment.py
+
+# Or test cluster deployment on existing project
+export CML_PROJECT_ID="your-project-id"
+python tests/test_cluster_deployment.py --workers 2
+
+# Or use shell wrapper
+bash tests/run_test.sh --e2e --workers 2
+```
+
+See the [Testing Guide](tests/TESTING_GUIDE.md) for comprehensive testing instructions.
+
+## Understanding the Project Structure
+
+ray-serve-cai is organized as a **library + deployment template** with clear separation:
+
+```
+┌─────────────────────────┐
+│  ray_serve_cai          │  ← Generic Ray Serve library
+│  (What: Orchestration)  │     Use this for any Ray cluster
+└─────────────────────────┘
+         ▲
+         │ (imports)
+         │
+┌─────────────────────────┐
+│  cai_integration        │  ← CML-specific deployment
+│  (How: CML deployment)  │     Use this only for CML
+└─────────────────────────┘
+```
+
+### Choose Your Path
+
+**I want to deploy Ray Serve LLMs locally or on cloud:**
+→ Use `ray_serve_cai` library only
+→ Start with [Quick Start](#quick-start) above
+
+**I want to deploy to Cloudera Machine Learning:**
+→ Use `cai_integration` (which uses `ray_serve_cai`)
+→ Go to [CML Deployment Guide](cai_integration/README.md)
+
+**I want to understand the architecture:**
+→ Read [Architecture Guide](docs/ARCHITECTURE.md)
+
 ## Documentation
 
-- **[Quickstart Guide](docs/QUICKSTART.md)** - Get started in 5 minutes
-- **[Installation Guide](docs/INSTALLATION.md)** - Detailed installation instructions
+### Getting Started
+- **[Architecture Guide](docs/ARCHITECTURE.md)** - Understand project structure and components
+- **[Installation Guide](docs/INSTALLATION.md)** - How to install ray-serve-cai
+- **[Quickstart Guide](docs/QUICKSTART.md)** - 5-minute quick start
+
+### Using ray_serve_cai
 - **[Cluster Setup](docs/CLUSTER_SETUP.md)** - Configure Ray clusters
-- **[CAI Cluster Guide](docs/cai_cluster_guide.md)** - Launch distributed clusters on CML
 - **[API Reference](docs/API.md)** - Complete API documentation
 - **[Developer Guide](docs/DEVELOPER_GUIDE.md)** - Adding custom engines
-- **[Architecture](docs/architecture.md)** - System design and architecture
+
+### Deploying to CML
+- **[CML Deployment Guide](cai_integration/README.md)** - Deploy to Cloudera Machine Learning
+- **[CAI Cluster Guide](docs/cai_cluster_guide.md)** - Launch distributed clusters
+- **[Testing Guide](tests/TESTING_GUIDE.md)** - Comprehensive testing before deployment
 
 ## Supported Engines
 

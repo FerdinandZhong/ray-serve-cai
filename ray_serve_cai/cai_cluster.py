@@ -95,258 +95,7 @@ class CAIClusterManager:
                 "caikit library not found. Install it or add to PYTHONPATH"
             )
 
-    def _get_head_script_content(
-        self,
-        port: int = 6379,
-        dashboard_port: int = 8265,
-        num_cpus: Optional[int] = None,
-        num_gpus: Optional[int] = None
-    ) -> str:
-        """
-        Generate Python script to run Ray head node.
 
-        Args:
-            port: Ray GCS server port
-            dashboard_port: Ray dashboard port
-            num_cpus: Number of CPUs to allocate
-            num_gpus: Number of GPUs to allocate
-
-        Returns:
-            Python script content as string
-        """
-        script = f'''#!/usr/bin/env python3
-"""
-Ray Head Node Launcher for CAI
-This script starts a Ray head node in a CAI application.
-"""
-
-import subprocess
-import sys
-import time
-import os
-from http.server import HTTPServer, BaseHTTPRequestHandler
-
-class HealthHandler(BaseHTTPRequestHandler):
-    """Simple health check handler."""
-
-    def do_GET(self):
-        if self.path == "/health":
-            self.send_response(200)
-            self.send_header("Content-type", "text/plain")
-            self.end_headers()
-            self.wfile.write(b"Ray head node running")
-        else:
-            self.send_response(404)
-            self.end_headers()
-
-    def log_message(self, format, *args):
-        """Suppress HTTP server logs."""
-        pass
-
-def start_ray_head():
-    """Start Ray head node."""
-    print("🚀 Starting Ray head node...")
-
-    # Build ray start command
-    cmd = [
-        "ray", "start", "--head",
-        "--port", "{port}",
-        "--dashboard-host", "0.0.0.0",
-        "--dashboard-port", "{dashboard_port}",
-        "--include-dashboard", "true"
-    ]
-
-    # Add resource configuration
-    {"" if num_cpus is None else f'''cmd.extend(["--num-cpus", "{num_cpus}"])'''}
-    {"" if num_gpus is None else f'''cmd.extend(["--num-gpus", "{num_gpus}"])'''}
-
-    # Start Ray
-    result = subprocess.run(cmd, capture_output=True, text=True)
-
-    if result.returncode != 0:
-        print(f"❌ Failed to start Ray head: {{result.stderr}}", file=sys.stderr)
-        sys.exit(1)
-
-    print("✅ Ray head node started successfully")
-    print(result.stdout)
-
-    # Extract and print connection info
-    print("\\n" + "="*60)
-    print("Ray Head Node Information:")
-    print("="*60)
-
-    # Get hostname/IP that workers should use
-    hostname = os.environ.get("CDSW_APP_PORT_URL", "localhost")
-    if hostname.startswith("http://"):
-        hostname = hostname[7:].split(":")[0]
-    elif hostname.startswith("https://"):
-        hostname = hostname[8:].split(":")[0]
-
-    connection_address = f"{{hostname}}:{port}"
-    print(f"Connection Address: {{connection_address}}")
-    print(f"Dashboard URL: http://{{hostname}}:{dashboard_port}")
-    print("="*60 + "\\n")
-
-    return connection_address
-
-def main():
-    """Main entry point."""
-    # Start Ray head node
-    connection_address = start_ray_head()
-
-    # Start simple health check server on port 8080
-    print("Starting health check server on port 8080...")
-    server = HTTPServer(("0.0.0.0", 8080), HealthHandler)
-
-    print("\\n✅ Ray head node is ready!")
-    print(f"   Connection address: {{connection_address}}")
-    print("   Health check: http://localhost:8080/health")
-    print("\\nKeeping application alive...")
-
-    # Keep application running
-    try:
-        server.serve_forever()
-    except KeyboardInterrupt:
-        print("\\nShutting down...")
-        subprocess.run(["ray", "stop"], check=False)
-        sys.exit(0)
-
-if __name__ == "__main__":
-    main()
-'''
-        return script
-
-    def _get_worker_script_content(
-        self,
-        head_address: str,
-        num_cpus: Optional[int] = None,
-        num_gpus: Optional[int] = None
-    ) -> str:
-        """
-        Generate Python script to run Ray worker node.
-
-        Args:
-            head_address: Ray head node address (host:port)
-            num_cpus: Number of CPUs to allocate
-            num_gpus: Number of GPUs to allocate
-
-        Returns:
-            Python script content as string
-        """
-        script = f'''#!/usr/bin/env python3
-"""
-Ray Worker Node Launcher for CAI
-This script starts a Ray worker node and connects to head.
-"""
-
-import subprocess
-import sys
-import time
-from http.server import HTTPServer, BaseHTTPRequestHandler
-
-class HealthHandler(BaseHTTPRequestHandler):
-    """Simple health check handler."""
-
-    def do_GET(self):
-        if self.path == "/health":
-            self.send_response(200)
-            self.send_header("Content-type", "text/plain")
-            self.end_headers()
-            self.wfile.write(b"Ray worker node running")
-        else:
-            self.send_response(404)
-            self.end_headers()
-
-    def log_message(self, format, *args):
-        """Suppress HTTP server logs."""
-        pass
-
-def start_ray_worker(head_address):
-    """Start Ray worker node."""
-    print(f"🚀 Starting Ray worker node...")
-    print(f"   Connecting to head: {{head_address}}")
-
-    # Build ray start command
-    cmd = [
-        "ray", "start",
-        "--address", head_address
-    ]
-
-    # Add resource configuration
-    {"" if num_cpus is None else f'''cmd.extend(["--num-cpus", "{num_cpus}"])'''}
-    {"" if num_gpus is None else f'''cmd.extend(["--num-gpus", "{num_gpus}"])'''}
-
-    # Start Ray worker
-    result = subprocess.run(cmd, capture_output=True, text=True)
-
-    if result.returncode != 0:
-        print(f"❌ Failed to start Ray worker: {{result.stderr}}", file=sys.stderr)
-        sys.exit(1)
-
-    print("✅ Ray worker node started successfully")
-    print(result.stdout)
-
-def main():
-    """Main entry point."""
-    head_address = "{head_address}"
-
-    if not head_address:
-        print("❌ Head address not provided", file=sys.stderr)
-        sys.exit(1)
-
-    # Start Ray worker node
-    start_ray_worker(head_address)
-
-    # Start simple health check server on port 8080
-    print("Starting health check server on port 8080...")
-    server = HTTPServer(("0.0.0.0", 8080), HealthHandler)
-
-    print("\\n✅ Ray worker node is ready!")
-    print(f"   Connected to: {{head_address}}")
-    print("   Health check: http://localhost:8080/health")
-    print("\\nKeeping application alive...")
-
-    # Keep application running
-    try:
-        server.serve_forever()
-    except KeyboardInterrupt:
-        print("\\nShutting down...")
-        subprocess.run(["ray", "stop"], check=False)
-        sys.exit(0)
-
-if __name__ == "__main__":
-    main()
-'''
-        return script
-
-    def _upload_script_to_project(
-        self,
-        script_content: str,
-        script_name: str
-    ) -> str:
-        """
-        Upload script to CML project.
-
-        Args:
-            script_content: Python script content
-            script_name: Name for the script file
-
-        Returns:
-            Path to uploaded script in project
-        """
-        try:
-            # Upload file to project
-            self.cml_client.files.upload(
-                project_id=self.project_id,
-                file_path=script_name,
-                content=script_content.encode('utf-8')
-            )
-            logger.info(f"✅ Uploaded script: {script_name}")
-            return script_name
-
-        except Exception as e:
-            logger.error(f"Failed to upload script {script_name}: {e}")
-            raise
 
     def start_cluster(
         self,
@@ -359,6 +108,8 @@ if __name__ == "__main__":
         ray_port: int = 6379,
         dashboard_port: int = 8265,
         runtime_identifier: Optional[str] = None,
+        head_script_path: Optional[str] = None,
+        worker_script_path: Optional[str] = None,
         wait_ready: bool = True,
         timeout: int = 300
     ) -> Dict[str, Any]:
@@ -377,13 +128,26 @@ if __name__ == "__main__":
             head_memory: Memory in GB for head node (defaults to same as workers)
             ray_port: Ray GCS server port
             dashboard_port: Ray dashboard port
-            runtime_identifier: Docker runtime identifier
+            runtime_identifier: Docker runtime identifier (REQUIRED for projects with runtimes)
+            head_script_path: Path to head node launcher script (REQUIRED - must be created before calling)
+            worker_script_path: Path to worker node launcher script (REQUIRED - must be created before calling)
             wait_ready: Wait for cluster to be ready
             timeout: Maximum wait time in seconds
 
         Returns:
             Dictionary with cluster information
+
+        Raises:
+            RuntimeError: If runtime_identifier, head_script_path, or worker_script_path not provided
         """
+        # Validate runtime_identifier is provided
+        if not runtime_identifier:
+            raise RuntimeError(
+                "runtime_identifier is required for applications in this project.\n"
+                "Please provide a Docker runtime image, e.g.:\n"
+                'runtime_identifier="docker.repository.cloudera.com/cloudera/cdsw/ml-runtime-pbj-jupyterlab-python3.11-standard:2025.09.1-b5"'
+            )
+
         # Set head node resources (default to worker resources if not specified)
         head_cpu = head_cpu or cpu
         head_memory = head_memory or memory
@@ -393,22 +157,19 @@ if __name__ == "__main__":
         logger.info(f"   Workers: {num_workers} nodes, {cpu}CPU, {memory}GB RAM, {num_gpus}GPU each")
 
         try:
-            # Step 1: Create and upload head node script
+            # Step 1: Create head node application
             # Head node always gets 0 GPUs - it's for cluster coordination only
-            logger.info("📝 Creating head node script...")
-            head_script_content = self._get_head_script_content(
-                port=ray_port,
-                dashboard_port=dashboard_port,
-                num_cpus=head_cpu,
-                num_gpus=0  # Head node never needs GPUs
-            )
-            head_script_path = self._upload_script_to_project(
-                head_script_content,
-                "ray_head_launcher.py"
-            )
-
-            # Step 2: Create head node application
             logger.info("🎯 Creating head node application...")
+
+            # Validate head script path is provided (required)
+            if not head_script_path:
+                raise RuntimeError(
+                    "head_script_path is required for head node application.\n"
+                    "This should be created by launch_ray_cluster.py before calling this method."
+                )
+
+            logger.info(f"   Using head script: {head_script_path}")
+
             head_app = self.cml_client.applications.create(
                 project_id=self.project_id,
                 name="ray-cluster-head",
@@ -416,6 +177,7 @@ if __name__ == "__main__":
                 cpu=head_cpu,
                 memory=head_memory,
                 runtime_identifier=runtime_identifier,
+                subdomain="ray-cluster-head",
                 bypass_authentication=True
             )
             self.head_app_id = head_app.id
@@ -458,29 +220,34 @@ if __name__ == "__main__":
             if num_workers > 0 and self.head_address:
                 logger.info(f"🔧 Creating {num_workers} worker node(s)...")
 
-                # Create worker script
-                worker_script_content = self._get_worker_script_content(
-                    head_address=self.head_address,
-                    num_cpus=cpu,
-                    num_gpus=num_gpus if num_gpus > 0 else None
-                )
-                worker_script_path = self._upload_script_to_project(
-                    worker_script_content,
-                    "ray_worker_launcher.py"
-                )
-
                 # Create worker applications
+                # Validate worker script path is provided (required)
+                if not worker_script_path:
+                    raise RuntimeError(
+                        "worker_script_path is required for worker node applications.\n"
+                        "This should be created by launch_ray_cluster.py before calling this method."
+                    )
+
                 for i in range(num_workers):
                     logger.info(f"   Creating worker {i+1}/{num_workers}...")
-                    worker_app = self.cml_client.applications.create(
-                        project_id=self.project_id,
-                        name=f"ray-cluster-worker-{i+1}",
-                        script=worker_script_path,
-                        cpu=cpu,
-                        memory=memory,
-                        runtime_identifier=runtime_identifier,
-                        bypass_authentication=True
-                    )
+
+                    if i == 0:
+                        logger.info(f"      Using worker script: {worker_script_path}")
+
+                    worker_kwargs = {
+                        'project_id': self.project_id,
+                        'name': f"ray-cluster-worker-{i+1}",
+                        'script': worker_script_path,
+                        'cpu': cpu,
+                        'memory': memory,
+                        'runtime_identifier': runtime_identifier,
+                        'subdomain': f"ray-cluster-worker-{i+1}",
+                        'bypass_authentication': True
+                    }
+                    if num_gpus > 0:
+                        worker_kwargs['num_gpus'] = num_gpus
+
+                    worker_app = self.cml_client.applications.create(**worker_kwargs)
                     self.worker_app_ids.append(worker_app.id)
                     logger.info(f"   ✅ Worker {i+1} created: {worker_app.id}")
 
@@ -534,7 +301,7 @@ if __name__ == "__main__":
         except Exception as e:
             logger.error(f"Failed to start cluster: {e}")
             # Cleanup on failure
-            await self.stop_cluster()
+            self.stop_cluster()
             raise
 
     def _wait_for_application(
@@ -581,7 +348,7 @@ if __name__ == "__main__":
         logger.error(f"Timeout waiting for application {app_id}")
         return False
 
-    async def stop_cluster(self) -> Dict[str, Any]:
+    def stop_cluster(self) -> Dict[str, Any]:
         """
         Stop Ray cluster and delete all applications.
 

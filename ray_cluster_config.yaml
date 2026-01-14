@@ -1,0 +1,44 @@
+# Ray Cluster Configuration for CML Deployment
+#
+# This file defines the configuration for Ray cluster deployment on CML.
+# Adjust these values based on your requirements and available resources.
+
+# Ray cluster resources and configuration
+ray_cluster:
+  # Number of Ray worker nodes to create
+  num_workers: 1
+
+  # Head node resources (coordinator node, typically smaller)
+  # Head node always has 0 GPUs (used for coordination only)
+  head_cpu: 4
+  head_memory: 16  # in GB
+
+  # Worker node resources per node
+  worker_cpu: 8
+  worker_memory: 32  # in GB
+  worker_gpus: 1   # GPUs per worker (0 for CPU-only)
+
+  # Ray daemon ports
+  ray_port: 6379
+  dashboard_port: 8265
+
+# CML/CAI Application configuration
+cai:
+  # Docker runtime image to use
+  # Check your CML instance for available runtimes
+  runtime_identifier: "docker.repository.cloudera.com/cloudera/cdsw/ml-runtime-pbj-jupyterlab-python3.11-standard:2025.09.1-b5"
+
+  # Project name (will be created if not exists)
+  project_name: "ray-cluster"
+
+  # GitHub repository to clone (optional)
+  # Format: "owner/repo"
+  # If provided, code will be cloned from this repository
+  # repository: "owner/ray-serve-cai"
+
+# Environment variables for jobs (optional)
+environment:
+  # Add custom environment variables that will be passed to jobs
+  # Example:
+  # CUSTOM_VAR: "value"
+  # PYTHON_VERSION: "3.11"
