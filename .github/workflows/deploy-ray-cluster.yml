@@ -4,18 +4,17 @@ on:
   workflow_dispatch:
     inputs:
       force_rebuild:
-        description: 'Force rebuild (skip cache)'
+        description: 'Force rebuild (rerun all jobs)'
         required: false
         default: false
         type: boolean
 
-env:
-  GITHUB_REPOSITORY: ${{ github.repository }}
-
 jobs:
-  deploy:
+  setup-project:
     runs-on: ubuntu-latest
     timeout-minutes: 30
+    outputs:
+      project_id: ${{ steps.setup.outputs.project_id }}
 
     steps:
       - name: Checkout code
@@ -31,55 +30,109 @@ jobs:
           python -m pip install --upgrade pip
           pip install requests pyyaml
 
-      - name: Validate environment
-        run: |
-          if [ -z "${{ secrets.CML_HOST }}" ]; then
-            echo "❌ Error: CML_HOST secret not set"
-            exit 1
-          fi
-          if [ -z "${{ secrets.CML_API_KEY }}" ]; then
-            echo "❌ Error: CML_API_KEY secret not set"
-            exit 1
-          fi
-          echo "✅ All required secrets are configured"
-
-      - name: Deploy Ray Cluster
+      - name: Setup CML Project
+        id: setup
         env:
           CML_HOST: ${{ secrets.CML_HOST }}
           CML_API_KEY: ${{ secrets.CML_API_KEY }}
+          GITHUB_REPOSITORY: ${{ github.repository }}
+          GH_PAT: ${{ secrets.GH_PAT }}
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          echo "🚀 Setting up CML project..."
+          python cai_integration/setup_project.py
+          PROJECT_ID=$(cat /tmp/project_id.txt)
+          echo "project_id=$PROJECT_ID" >> $GITHUB_OUTPUT
+          echo "✅ Project ID: $PROJECT_ID"
+
+      - name: Create job summary
+        if: always()
+        run: |
+          echo "## Ray Cluster Setup: Project" >> $GITHUB_STEP_SUMMARY
+          echo "**Status**: ${{ job.status }}" >> $GITHUB_STEP_SUMMARY
+          echo "**Project ID**: ${{ steps.setup.outputs.project_id }}" >> $GITHUB_STEP_SUMMARY
+
+  create-jobs:
+    needs: setup-project
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v4
+        with:
+          python-version: '3.11'
+
+      - name: Install dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install requests pyyaml
+
+      - name: Create CML Jobs
+        env:
+          CML_HOST: ${{ secrets.CML_HOST }}
+          CML_API_KEY: ${{ secrets.CML_API_KEY }}
+        run: |
+          echo "📋 Creating CML jobs..."
+          python cai_integration/create_jobs.py --project-id ${{ needs.setup-project.outputs.project_id }}
+          echo "✅ Jobs created"
+
+      - name: Create job summary
+        if: always()
+        run: |
+          echo "## Ray Cluster Setup: Jobs" >> $GITHUB_STEP_SUMMARY
+          echo "**Status**: ${{ job.status }}" >> $GITHUB_STEP_SUMMARY
+          echo "**Project ID**: ${{ needs.setup-project.outputs.project_id }}" >> $GITHUB_STEP_SUMMARY
+
+  trigger-deployment:
+    needs: [setup-project, create-jobs]
+    runs-on: ubuntu-latest
+    timeout-minutes: 120
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v4
+        with:
+          python-version: '3.11'
+
+      - name: Install dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install requests pyyaml
+
+      - name: Trigger Deployment Jobs
+        env:
+          CML_HOST: ${{ secrets.CML_HOST }}
+          CML_API_KEY: ${{ secrets.CML_API_KEY }}
           FORCE_REBUILD: ${{ github.event.inputs.force_rebuild || 'false' }}
         run: |
-          echo "🚀 Starting Ray cluster deployment..."
-          python cai_integration/deploy_to_cml.py
+          echo "🚀 Triggering Ray cluster deployment jobs..."
+          python cai_integration/trigger_jobs.py \
+            --project-id ${{ needs.setup-project.outputs.project_id }} \
+            --jobs-config cai_integration/jobs_config.yaml
+          echo "✅ Deployment jobs completed"
 
       - name: Create deployment summary
         if: always()
         run: |
           echo "## Ray Cluster Deployment" >> $GITHUB_STEP_SUMMARY
-          echo "" >> $GITHUB_STEP_SUMMARY
           echo "**Status**: ${{ job.status }}" >> $GITHUB_STEP_SUMMARY
+          echo "**Project ID**: ${{ needs.setup-project.outputs.project_id }}" >> $GITHUB_STEP_SUMMARY
           echo "" >> $GITHUB_STEP_SUMMARY
           echo "### Deployment Information" >> $GITHUB_STEP_SUMMARY
           echo "- **Repository**: ${{ github.repository }}" >> $GITHUB_STEP_SUMMARY
           echo "- **Branch**: ${{ github.ref }}" >> $GITHUB_STEP_SUMMARY
           echo "- **Commit**: ${{ github.sha }}" >> $GITHUB_STEP_SUMMARY
-          echo "- **Trigger**: ${{ github.event_name }}" >> $GITHUB_STEP_SUMMARY
+          echo "- **Force Rebuild**: ${{ github.event.inputs.force_rebuild || 'false' }}" >> $GITHUB_STEP_SUMMARY
 
-      - name: Notify on failure
-        if: failure()
-        uses: actions/github-script@v7
-        with:
-          script: |
-            github.rest.issues.createComment({
-              issue_number: context.issue.number,
-              owner: context.repo.owner,
-              repo: context.repo.repo,
-              body: '❌ Ray cluster deployment failed. Check the workflow logs for details.'
-            })
-
-  test-deployment:
-    needs: deploy
+  verify-deployment:
+    needs: trigger-deployment
     runs-on: ubuntu-latest
     if: success()
     timeout-minutes: 15
@@ -112,4 +165,4 @@ jobs:
         if: always()
         run: |
           echo "## Deployment Verification" >> $GITHUB_STEP_SUMMARY
-          echo "- **Status**: ${{ job.status }}" >> $GITHUB_STEP_SUMMARY
+          echo "**Status**: ${{ job.status }}" >> $GITHUB_STEP_SUMMARY
