@@ -40,21 +40,21 @@ classifiers = [
 ]
 
 dependencies = [
-    "ray[serve]>=2.48.0",
-    "pyyaml>=6.0",
-    "aiohttp>=3.9.0",
+    "ray[serve]>=2.53.0",
+    "pyyaml>=6.0.3",
+    "aiohttp>=3.13.3",
 ]
 
 [project.optional-dependencies]
 vllm = [
-    "vllm>=0.6.0",
+    "vllm>=0.13.0",
 ]
 sglang = [
-    "sglang>=0.1.0",
+    "sglang>=0.5.7",
 ]
 all = [
-    "vllm>=0.6.0",
-    "sglang>=0.1.0",
+    "vllm>=0.13.0",
+    "sglang>=0.5.7",
 ]
 dev = [
     "pytest>=7.0",
