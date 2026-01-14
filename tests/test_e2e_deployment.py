@@ -54,6 +54,7 @@ class E2EDeploymentTester:
         self.project_id = None
         self.project_name = "ray-serve-cluster"
         self.args = args
+        self.verbose = args.verbose if hasattr(args, 'verbose') else False
 
         print("=" * 70)
         print("🚀 End-to-End CML Deployment Test")
@@ -155,35 +156,64 @@ class E2EDeploymentTester:
             print("   export GITHUB_REPOSITORY='owner/ray-serve-cai'\n")
             return None
 
-        print("Creating new project with git repository...")
+        print(f"Creating new project with git repository...")
+        print(f"   Repository: {self.github_repo}")
         git_url = f"https://github.com/{self.github_repo}"
 
         if self.gh_pat and "github.com" in git_url:
             git_url_with_token = git_url.replace(
                 "https://github.com", f"https://{self.gh_pat}@github.com"
             )
-            print("   Using authenticated git URL")
+            print("   Auth: Using authenticated git URL (with GH_PAT)")
         else:
             git_url_with_token = git_url
-            print("   Using public git URL")
+            print("   Auth: Using public git URL (no token)")
+            if "private" in self.github_repo.lower():
+                print("   ⚠️  WARNING: Private repo without token may fail!")
 
         project_data = {
             "name": self.project_name,
-            "description": "Ray cluster deployment project (E2E test)",
-            "template": "git",
             "project_visibility": "private",
-            "git_url": git_url_with_token,
+            "template": "git",
+            "gitUrl": git_url_with_token,
+            "isPrototype": False,
+            "supportAsync": True,
+            "avoidNameCollisions": False,
         }
+
+        print("\n📤 Sending project creation request...")
+        if self.verbose:
+            print(f"   Payload: {json.dumps(project_data, indent=2)}")
 
         result = self.make_request("POST", "projects", data=project_data)
 
         if result:
-            project_id = result.get("id")
-            print(f"✅ Project created: {project_id}\n")
-            self.project_id = project_id
-            return project_id
+            print(f"✅ API Response received:")
+            if self.verbose:
+                print(f"   Full Response: {json.dumps(result, indent=2)}")
 
-        print("❌ Failed to create project\n")
+            project_id = result.get("id")
+            if project_id:
+                print(f"✅ Project created: {project_id}")
+                print(f"   Project will clone: {self.github_repo}")
+                print()
+                self.project_id = project_id
+                return project_id
+            else:
+                print(f"⚠️  Response received but no project ID")
+                print(f"   Response: {result}")
+                print()
+                return None
+
+        print("❌ Failed to create project")
+        print("   API returned None or error")
+        print("   Possible causes:")
+        print("   - Invalid repository URL")
+        print("   - Repository does not exist")
+        print("   - Authentication failed (if private repo)")
+        print("   - CML API error or network issue")
+        print("   - API key may not have project creation permissions")
+        print()
         return None
 
     def wait_for_git_clone(self, timeout: int = 900) -> bool:
@@ -196,16 +226,19 @@ class E2EDeploymentTester:
 
         start_time = time.time()
         last_status = None
+        poll_count = 0
 
         while time.time() - start_time < timeout:
             result = self.make_request("GET", f"projects/{self.project_id}")
+            poll_count += 1
 
             if result:
                 status = result.get("status", "unknown").lower()
 
                 # Only print on status change
                 if status != last_status:
-                    print(f"   Status: {status}")
+                    elapsed = int(time.time() - start_time)
+                    print(f"   [{elapsed}s] Status: {status}")
                     last_status = status
 
                 if status in ["success", "ready"]:
@@ -214,16 +247,29 @@ class E2EDeploymentTester:
                     time.sleep(30)
                     return True
                 elif status in ["error", "failed"]:
-                    print(f"❌ Git clone failed: {status}")
-                    error_msg = result.get("error_message")
-                    if error_msg:
-                        print(f"   Error: {error_msg}")
+                    print(f"\n❌ Git clone failed: {status}")
+                    # Print detailed error information
+                    error_msg = result.get("error_message", "No error message provided")
+                    print(f"   Error Message: {error_msg}")
+                    # Print full response for debugging
+                    if self.verbose:
+                        print(f"   Full Response: {result}")
+                    # Check for specific common issues
+                    if "not found" in error_msg.lower():
+                        print(f"   → Repository may not exist or be inaccessible")
+                        print(f"   → Check: {self.github_repo}")
+                    elif "authentication" in error_msg.lower() or "token" in error_msg.lower():
+                        print(f"   → Authentication failed - check GH_PAT/GITHUB_TOKEN")
+                    elif "permission" in error_msg.lower() or "access denied" in error_msg.lower():
+                        print(f"   → Access denied - check token permissions")
                     print()
                     return False
 
             time.sleep(10)
 
-        print(f"❌ Timeout waiting for git clone ({timeout}s)\n")
+        elapsed = int(time.time() - start_time)
+        print(f"❌ Timeout waiting for git clone ({elapsed}s / {timeout}s)")
+        print(f"   Polled {poll_count} times\n")
         return False
 
     # =========================================================================
@@ -580,6 +626,11 @@ Examples:
         type=int,
         default=30,
         help='Seconds to wait before cleanup (default: 30)'
+    )
+    parser.add_argument(
+        '--verbose',
+        action='store_true',
+        help='Enable verbose logging (show API responses)'
     )
 
     args = parser.parse_args()
