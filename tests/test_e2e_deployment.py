@@ -161,12 +161,8 @@ class E2EDeploymentTester:
         git_url = f"https://github.com/{self.github_repo}"
 
         if self.gh_pat and "github.com" in git_url:
-            git_url_with_token = git_url.replace(
-                "https://github.com", f"https://{self.gh_pat}@github.com"
-            )
-            print("   Auth: Using authenticated git URL (with GH_PAT)")
+            print("   Auth: GitHub token available (GH_PAT set)")
         else:
-            git_url_with_token = git_url
             print("   Auth: Using public git URL (no token)")
             if "private" in self.github_repo.lower():
                 print("   ⚠️  WARNING: Private repo without token may fail!")
@@ -178,9 +174,9 @@ class E2EDeploymentTester:
             "project_visibility": "private",
         }
 
-        # Add git configuration if provided
-        if git_url_with_token:
-            project_data["git_url"] = git_url_with_token
+        # Add git configuration (without token in URL for security)
+        if git_url:
+            project_data["git_url"] = git_url
 
         print("\n📤 Sending project creation request...")
         if self.verbose:
