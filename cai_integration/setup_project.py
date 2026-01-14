@@ -138,43 +138,49 @@ class ProjectSetup:
         return self.create_project_with_git(self.project_name, git_url)
 
     def wait_for_git_clone(self, project_id: str, timeout: int = 900) -> bool:
-        """Wait for git repository to be cloned."""
-        print(f"\n⏳ Waiting for git clone to complete...")
-        print(f"   (timeout: {timeout}s)\n")
+        """Wait for git repository to be cloned.
+
+        CML clones git repositories asynchronously. We need to wait until the files
+        are available before creating jobs that reference them.
+        """
+        print(f"\n⏳ Waiting for git repository to be cloned (timeout: {timeout}s)...")
 
         start_time = time.time()
-        last_status = None
-        poll_count = 0
+        poll_interval = 10  # Poll every 10 seconds
 
         while time.time() - start_time < timeout:
+            elapsed = int(time.time() - start_time)
             result = self.make_request("GET", f"projects/{project_id}")
-            poll_count += 1
 
             if result:
-                status = result.get("status", "unknown").lower()
+                # Use creation_status for git clone tracking (not status)
+                creation_status = result.get("creation_status", "unknown")
+                print(f"   [{elapsed}s] Project status: {creation_status}")
 
-                # Only print on status change
-                if status != last_status:
-                    elapsed = int(time.time() - start_time)
-                    print(f"   [{elapsed}s] Status: {status}")
-                    last_status = status
-
-                if status in ["success", "ready"]:
-                    print(f"✅ Git clone complete")
-                    print(f"   Waiting 30 seconds for files to be written...\n")
-                    time.sleep(30)
-                    return True
-                elif status in ["error", "failed"]:
-                    print(f"\n❌ Git clone failed: {status}")
+                # Status progression: unknown -> creating -> success/ready/running
+                if creation_status in ["unknown", "creating"]:
+                    print(f"        Still initializing...")
+                elif creation_status == "error":
+                    print("❌ Error during git clone")
                     error_msg = result.get("error_message", "No error message")
                     print(f"   Error: {error_msg}\n")
                     return False
+                elif creation_status in ["success", "ready", "running"]:
+                    # Project is ready, but need extra time for files to be written
+                    print("✅ Project status indicates clone is complete")
+                    print("   Waiting 30 seconds for files to be available on disk...")
+                    time.sleep(30)
+                    print("✅ Git repository clone should be complete\n")
+                    return True
 
-            time.sleep(10)
+            # Wait before next poll
+            remaining = timeout - elapsed
+            if remaining > 0:
+                wait_time = min(poll_interval, remaining)
+                time.sleep(wait_time)
 
         elapsed = int(time.time() - start_time)
-        print(f"❌ Timeout waiting for git clone ({elapsed}s / {timeout}s)")
-        print(f"   Polled {poll_count} times\n")
+        print(f"❌ Timeout waiting for git clone ({elapsed}s / {timeout}s)\n")
         return False
 
     def run(self) -> bool:
