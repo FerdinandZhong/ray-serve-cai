@@ -150,11 +150,14 @@ class JobTrigger:
                     print(f"      [{elapsed}s] Status: {status}")
                     last_status = status
 
-                if status in ["succeeded", "success"]:
+                # Success statuses
+                if status in ["succeeded", "success", "engine_succeeded"]:
                     print(f"   ✅ Job completed successfully\n")
                     return True
-                elif status in ["failed", "error"]:
-                    print(f"   ❌ Job failed\n")
+
+                # Failure statuses (any failure state should stop immediately)
+                elif status in ["failed", "error", "engine_failed", "killed", "stopped", "timedout"]:
+                    print(f"   ❌ Job failed with status: {status}\n")
                     return False
 
             time.sleep(10)
