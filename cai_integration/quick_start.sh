@@ -165,29 +165,44 @@ deploy() {
 
     echo -e "\n${BLUE}Deploying Ray cluster...${NC}"
     echo "This may take 5-15 minutes depending on cluster size and resources."
+    echo ""
 
-    # Build command
-    cmd="python deploy_to_cml.py"
-
-    if [ "$FORCE_REBUILD" = "true" ]; then
-        cmd="FORCE_REBUILD=true $cmd"
-    fi
-
-    # Run deployment
-    if $cmd; then
-        echo -e "\n${GREEN}✓ Ray cluster deployment successful!${NC}"
-        echo -e "\n${BLUE}Next Steps:${NC}"
-        echo "  1. Monitor Ray cluster: http://head-address:8265"
-        echo "  2. Check cluster info: cat /home/cdsw/ray_cluster_info.json"
-        echo "  3. Connect from Python:"
-        echo "     import ray"
-        echo "     ray.init(address='ray://head-address:6379')"
-        return 0
-    else
-        echo -e "\n${RED}✗ Deployment failed${NC}"
-        echo "Check logs above for details"
+    # Step 1: Setup project
+    echo -e "${BLUE}Step 1: Setting up CML project...${NC}"
+    if ! python setup_project.py; then
+        echo -e "${RED}✗ Project setup failed${NC}"
         return 1
     fi
+    PROJECT_ID=$(cat /tmp/project_id.txt)
+    echo -e "${GREEN}✓ Project ready: $PROJECT_ID${NC}\n"
+
+    # Step 2: Create jobs
+    echo -e "${BLUE}Step 2: Creating CML jobs...${NC}"
+    if ! python create_jobs.py --project-id "$PROJECT_ID"; then
+        echo -e "${RED}✗ Job creation failed${NC}"
+        return 1
+    fi
+    echo -e "${GREEN}✓ Jobs created${NC}\n"
+
+    # Step 3: Trigger deployment
+    echo -e "${BLUE}Step 3: Triggering deployment jobs...${NC}"
+    if [ "$FORCE_REBUILD" = "true" ]; then
+        export FORCE_REBUILD=true
+    fi
+
+    if ! python trigger_jobs.py --project-id "$PROJECT_ID" --jobs-config jobs_config.yaml; then
+        echo -e "${RED}✗ Deployment execution failed${NC}"
+        return 1
+    fi
+
+    echo -e "\n${GREEN}✓ Ray cluster deployment successful!${NC}"
+    echo -e "\n${BLUE}Next Steps:${NC}"
+    echo "  1. Monitor Ray cluster: http://head-address:8265"
+    echo "  2. Check cluster info: cat /home/cdsw/ray_cluster_info.json"
+    echo "  3. Connect from Python:"
+    echo "     import ray"
+    echo "     ray.init(address='ray://head-address:6379')"
+    return 0
 }
 
 # Main flow
@@ -245,7 +260,13 @@ main() {
         deploy
     else
         echo -e "\n${BLUE}To deploy later, run:${NC}"
-        echo "  python deploy_to_cml.py"
+        echo "  ./quick_start.sh -d"
+        echo ""
+        echo "Or manually:"
+        echo "  python setup_project.py"
+        echo "  PROJECT_ID=\$(cat /tmp/project_id.txt)"
+        echo "  python create_jobs.py --project-id \$PROJECT_ID"
+        echo "  python trigger_jobs.py --project-id \$PROJECT_ID --jobs-config jobs_config.yaml"
     fi
 }
 

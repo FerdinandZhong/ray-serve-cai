@@ -15,26 +15,24 @@ The deployment system provides:
 ## Architecture
 
 ```
-┌─────────────────────────────────────────────┐
-│     GitHub Actions Workflow                  │
-│  (deploy-ray-cluster.yml)                    │
-└──────────────┬──────────────────────────────┘
-               │
-               ▼
-┌─────────────────────────────────────────────┐
-│  Deploy Orchestrator (deploy_to_cml.py)     │
-│  ├── Create/find project                    │
-│  ├── Wait for git clone                     │
-│  └── Execute job sequence                   │
-└──────────────┬──────────────────────────────┘
-               │
-        ┌──────┴──────┬──────────┐
-        ▼             ▼          ▼
-    ┌────────┐   ┌─────────┐   ┌──────────┐
-    │ Git    │   │ Setup   │   │ Launch   │
-    │ Sync   │──▶│ Env     │──▶│ Cluster  │
-    │ Job    │   │ Job     │   │ Job      │
-    └────────┘   └─────────┘   └──────────┘
+┌─────────────────────────────────────────────────────────────┐
+│           GitHub Actions Workflow                            │
+│           (deploy-ray-cluster.yml)                           │
+└──┬───────────────┬──────────────────┬──────────────────────┘
+   │               │                  │
+   ▼               ▼                  ▼
+┌─────────┐  ┌──────────┐  ┌──────────────────────┐
+│ Setup   │  │ Create   │  │ Trigger              │
+│ Project │─▶│ Jobs     │─▶│ Deployment           │
+└─────────┘  └──────────┘  └──────────────────────┘
+     │            │               │
+     │            │               ▼
+     │            │         ┌──────────┬──────────┬──────────┐
+     │            │         │ Git Sync │  Setup   │ Launch   │
+     │            └────────▶│ Job      │─▶Env Job │─▶Cluster │
+     │                      └──────────┘  └────────┘ └────────┘
+     └────────────────────────────────────────────────┘
+                         Creates CML Jobs
 ```
 
 ## Components
@@ -62,22 +60,32 @@ Runs as a CML job to:
 - Monitor startup
 - Save connection info to `/home/cdsw/ray_cluster_info.json`
 
-### 4. Deployment Orchestrator (`deploy_to_cml.py`)
+### 4. Deployment Scripts
 
-Orchestrates the entire deployment:
+The deployment is broken into three focused scripts:
+
+**`setup_project.py`** - Project initialization:
 - Creates/discovers CML project
-- Manages git cloning
-- Creates/updates jobs
-- Executes jobs in sequence
+- Waits for git repository cloning
+- Outputs project ID for subsequent jobs
+
+**`create_jobs.py`** - Job management:
+- Creates or updates CML jobs from `jobs_config.yaml`
+- Sets up job dependencies
+- Outputs job IDs for execution
+
+**`trigger_jobs.py`** - Job execution:
+- Triggers jobs in sequence
+- Monitors job completion with status updates
 - Handles idempotency (skips already-successful jobs)
 
 ### 5. GitHub Actions Workflow (`.github/workflows/deploy-ray-cluster.yml`)
 
-Automates deployment on code push or manual trigger:
-- Validates environment variables
-- Calls deployment orchestrator
-- Verifies deployment
-- Creates workflow summary
+Automates deployment with sequential jobs:
+- **setup-project**: Creates CML project and waits for git clone
+- **create-jobs**: Creates/updates CML job definitions
+- **trigger-deployment**: Executes jobs in sequence
+- **verify-deployment**: Runs test suite to verify cluster
 
 ## Setup Instructions
 
@@ -98,17 +106,25 @@ Automates deployment on code push or manual trigger:
 
 ### Local Deployment
 
-#### Option 1: Using Deploy Orchestrator
+#### Option 1: Using Deployment Scripts
 
 ```bash
 # Set environment variables
 export CML_HOST="https://ml.example.cloudera.site"
 export CML_API_KEY="your-api-key"
-export GITHUB_REPOSITORY="owner/ray-serve-cai"  # Optional
-export GH_PAT="your-github-token"                # Optional
+export GITHUB_REPOSITORY="owner/ray-serve-cai"
 
-# Run deployment
-python cai_integration/deploy_to_cml.py
+# Step 1: Setup project
+python cai_integration/setup_project.py
+PROJECT_ID=$(cat /tmp/project_id.txt)
+
+# Step 2: Create jobs
+python cai_integration/create_jobs.py --project-id $PROJECT_ID
+
+# Step 3: Trigger deployment
+python cai_integration/trigger_jobs.py \
+  --project-id $PROJECT_ID \
+  --jobs-config cai_integration/jobs_config.yaml
 ```
 
 #### Option 2: Manual Job Execution
@@ -244,11 +260,11 @@ print(ray.cluster_resources())
 
 ### Custom Runtime
 
-To use a different Docker runtime:
+To use a different Docker runtime, edit `ray_cluster_config.yaml`:
 
-```bash
-export RUNTIME_IDENTIFIER="docker.repository.cloudera.com/cloudera/cdsw/ml-runtime-pbj-jupyterlab-python3.11-gpu:2025.09.1-b5"
-python cai_integration/deploy_to_cml.py
+```yaml
+cai:
+  runtime_identifier: "docker.repository.cloudera.com/cloudera/cdsw/ml-runtime-pbj-jupyterlab-python3.11-gpu:2025.09.1-b5"
 ```
 
 ### Force Rebuild
@@ -257,8 +273,12 @@ Skip job cache and rebuild everything:
 
 ```bash
 export FORCE_REBUILD="true"
-python cai_integration/deploy_to_cml.py
+python cai_integration/trigger_jobs.py \
+  --project-id $PROJECT_ID \
+  --jobs-config cai_integration/jobs_config.yaml
 ```
+
+Or in GitHub Actions, check the "Force rebuild" option when triggering the workflow.
 
 ### Custom Job Dependencies
 
