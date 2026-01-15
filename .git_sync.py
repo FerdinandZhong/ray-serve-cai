@@ -264,10 +264,4 @@ def main():
 
 
 if __name__ == "__main__":
-    try:
-        main()
-    except Exception as e:
-        print(f"\n❌ Unexpected error: {str(e)}")
-        import traceback
-        traceback.print_exc()
-        raise  # Re-raise the exception instead of sys.exit(1)
+    main()
