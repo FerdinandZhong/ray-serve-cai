@@ -213,7 +213,7 @@ def main():
     project_dir = "/home/cdsw"
     if not os.path.exists(project_dir):
         print(f"❌ Error: Project directory not found: {project_dir}")
-        sys.exit(1)
+        raise RuntimeError(f"Project directory not found: {project_dir}")
 
     print(f"\n📂 Working directory: {project_dir}")
 
@@ -221,7 +221,7 @@ def main():
     git_dir = os.path.join(project_dir, ".git")
     if not os.path.exists(git_dir):
         print(f"❌ Error: Not a git repository: {git_dir}")
-        sys.exit(1)
+        raise RuntimeError(f"Not a git repository: {git_dir}")
 
     # Setup git configuration
     if not setup_git_config():
@@ -241,7 +241,7 @@ def main():
     # Step 1: Fetch from remote
     if not fetch_from_remote():
         print("\n❌ Sync failed: Could not fetch from remote")
-        sys.exit(1)
+        raise RuntimeError("Could not fetch from remote")
 
     # Step 2: Clean working directory
     if not clean_working_directory():
@@ -250,7 +250,7 @@ def main():
     # Step 3: Reset to remote
     if not reset_to_remote():
         print("\n❌ Sync failed: Could not reset to remote")
-        sys.exit(1)
+        raise RuntimeError("Could not reset to remote")
 
     # Display final status
     print("\n📊 Final Git Status:")
@@ -261,7 +261,6 @@ def main():
     print("\n" + "=" * 60)
     print("✅ Git synchronization completed successfully!")
     print("=" * 60)
-    sys.exit(0)
 
 
 if __name__ == "__main__":
@@ -271,4 +270,4 @@ if __name__ == "__main__":
         print(f"\n❌ Unexpected error: {str(e)}")
         import traceback
         traceback.print_exc()
-        sys.exit(1)
+        raise  # Re-raise the exception instead of sys.exit(1)
