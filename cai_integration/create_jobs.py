@@ -85,6 +85,29 @@ class JobManager:
             print(f"❌ Failed to load jobs config: {e}")
             return {}
 
+    def get_runtime_identifier(self) -> Optional[str]:
+        """Get runtime identifier from config or environment."""
+        # First check environment variable
+        runtime_id = os.environ.get("RUNTIME_IDENTIFIER")
+        if runtime_id:
+            print(f"✅ Using runtime from environment: {runtime_id[:80]}...")
+            return runtime_id
+
+        # Otherwise load from ray_cluster_config.yaml
+        config_path = Path(__file__).parent.parent / "ray_cluster_config.yaml"
+        try:
+            with open(config_path) as f:
+                config = yaml.safe_load(f)
+            runtime_id = config.get("cai", {}).get("runtime_identifier")
+            if runtime_id:
+                print(f"✅ Using runtime from config: {runtime_id[:80]}...")
+                return runtime_id
+        except Exception as e:
+            print(f"⚠️  Could not load runtime from config: {e}")
+
+        print("❌ No runtime_identifier found in environment or config")
+        return None
+
     def list_jobs(self, project_id: str) -> Dict[str, str]:
         """List all jobs in a project."""
         print("📋 Listing existing jobs...")
@@ -104,6 +127,7 @@ class JobManager:
         project_id: str,
         job_config: Dict[str, Any],
         parent_job_id: Optional[str] = None,
+        runtime_identifier: Optional[str] = None,
     ) -> Optional[str]:
         """Create a new job in the CML project."""
         print(f"   📝 Creating job: {job_config['name']}")
@@ -115,6 +139,10 @@ class JobManager:
             "memory": job_config.get("memory", 16),
             "timeout": job_config.get("timeout", 600),
         }
+
+        # Add runtime_identifier if provided (required for ML Runtime projects)
+        if runtime_identifier:
+            job_data["runtime_identifier"] = runtime_identifier
 
         if parent_job_id:
             job_data["parent_job_id"] = parent_job_id
@@ -130,7 +158,8 @@ class JobManager:
             return None
 
     def update_job(
-        self, project_id: str, job_id: str, job_config: Dict[str, Any]
+        self, project_id: str, job_id: str, job_config: Dict[str, Any],
+        runtime_identifier: Optional[str] = None
     ) -> bool:
         """Update an existing job in the CML project."""
         print(f"   🔄 Updating job: {job_config['name']}")
@@ -142,6 +171,10 @@ class JobManager:
             "memory": job_config.get("memory", 16),
             "timeout": job_config.get("timeout", 600),
         }
+
+        # Add runtime_identifier if provided (required for ML Runtime projects)
+        if runtime_identifier:
+            job_data["runtime_identifier"] = runtime_identifier
 
         result = self.make_request(
             "PATCH", f"projects/{project_id}/jobs/{job_id}", data=job_data
@@ -161,6 +194,11 @@ class JobManager:
         print("\n📋 Creating/Updating Jobs")
         print("-" * 70)
 
+        # Get runtime identifier
+        runtime_identifier = self.get_runtime_identifier()
+        if not runtime_identifier:
+            print("⚠️  Warning: No runtime_identifier found, jobs may fail to create")
+
         job_ids = {}
         existing_jobs = self.list_jobs(project_id)
 
@@ -176,10 +214,10 @@ class JobManager:
             # Create or update job
             if job_name in existing_jobs:
                 job_id = existing_jobs[job_name]
-                if self.update_job(project_id, job_id, job_config):
+                if self.update_job(project_id, job_id, job_config, runtime_identifier):
                     job_ids[job_key] = job_id
             else:
-                job_id = self.create_job(project_id, job_config, parent_job_id)
+                job_id = self.create_job(project_id, job_config, parent_job_id, runtime_identifier)
                 if job_id:
                     job_ids[job_key] = job_id
 
