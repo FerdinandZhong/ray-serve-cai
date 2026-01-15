@@ -72,6 +72,35 @@ class JobTrigger:
             print(f"❌ Request error: {e}")
             return None
 
+    def get_job_ids_by_name(self, project_id: str, job_names: list) -> Dict[str, str]:
+        """Get job IDs by job names from CML API."""
+        print(f"🔍 Looking up job IDs from CML...")
+
+        result = self.make_request("GET", f"projects/{project_id}/jobs")
+        if not result:
+            print("❌ Failed to list jobs")
+            return {}
+
+        jobs = result.get("jobs", [])
+        job_id_map = {}
+
+        for job in jobs:
+            job_name = job.get("name", "")
+            job_id = job.get("id", "")
+            if job_name and job_id:
+                job_id_map[job_name] = job_id
+
+        # Map from job config keys to job IDs
+        job_ids = {}
+        for key, name in job_names.items():
+            if name in job_id_map:
+                job_ids[key] = job_id_map[name]
+                print(f"   ✅ Found {key}: {job_id_map[name]}")
+            else:
+                print(f"   ⚠️  Not found: {name}")
+
+        return job_ids
+
     def job_succeeded_recently(self, project_id: str, job_id: str) -> bool:
         """Check if job has completed successfully recently."""
         result = self.make_request(
@@ -195,11 +224,6 @@ def main():
     parser = argparse.ArgumentParser(description="Trigger and monitor CML jobs")
     parser.add_argument("--project-id", required=True, help="CML project ID")
     parser.add_argument(
-        "--job-ids-file",
-        default="/tmp/job_ids.json",
-        help="Path to job IDs JSON file",
-    )
-    parser.add_argument(
         "--jobs-config",
         default="cai_integration/jobs_config.yaml",
         help="Path to jobs config YAML",
@@ -208,21 +232,27 @@ def main():
     args = parser.parse_args()
 
     try:
-        # Load job IDs and config
-        if not os.path.exists(args.job_ids_file):
-            print(f"❌ Job IDs file not found: {args.job_ids_file}")
-            sys.exit(1)
-
-        with open(args.job_ids_file) as f:
-            job_ids = json.load(f)
-
         import yaml
 
+        # Load job configuration
         with open(args.jobs_config) as f:
             job_configs = yaml.safe_load(f)
 
-        # Trigger jobs
+        # Create trigger instance
         trigger = JobTrigger()
+
+        # Get job IDs by querying CML API with job names from config
+        job_names = {
+            key: config["name"]
+            for key, config in job_configs.get("jobs", {}).items()
+        }
+        job_ids = trigger.get_job_ids_by_name(args.project_id, job_names)
+
+        if not job_ids:
+            print("❌ No jobs found in project")
+            sys.exit(1)
+
+        # Trigger jobs
         success = trigger.run(args.project_id, job_ids, job_configs)
         sys.exit(0 if success else 1)
 

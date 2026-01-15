@@ -250,13 +250,6 @@ class JobManager:
         for job_key, job_id in job_ids.items():
             print(f"   {job_key}: {job_id}")
 
-        # Save job IDs for next step
-        job_ids_json = json.dumps(job_ids)
-        print(f"\n::set-output name=job_ids::{job_ids_json}")
-
-        with open("/tmp/job_ids.json", "w") as f:
-            json.dump(job_ids, f)
-
         return True
 
 
