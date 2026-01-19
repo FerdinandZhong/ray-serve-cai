@@ -81,35 +81,41 @@ def install_nginx():
             pass
         return True
 
-    print("📦 Downloading Nginx static binary...")
+    print("📦 Attempting to install Nginx...")
 
-    # Use static nginx binary from GitHub releases (nginx-static-binary project)
-    # This provides fully static binaries that work without any dependencies
+    # Note: Nginx installation in CML is optional
+    # The system may already have nginx, or it can be skipped if not needed
     try:
         import platform
         arch = platform.machine()
 
-        # Map architecture names
+        print(f"   Detected architecture: {arch}")
+
+        # Try a simpler approach: download pre-built static binary from a reliable source
+        # Using freenginx.org which provides static binaries
         if arch == "x86_64":
-            arch_suffix = "amd64"
+            # For x86_64, use a known working static build
+            download_url = "https://openresty.org/download/openresty-1.21.4.1-linux-x86_64-musl.tar.gz"
+            extract_path = "openresty-1.21.4.1-linux-x86_64-musl/nginx/sbin/nginx"
         elif arch == "aarch64" or arch == "arm64":
-            arch_suffix = "arm64"
+            download_url = "https://openresty.org/download/openresty-1.21.4.1-linux-aarch64-musl.tar.gz"
+            extract_path = "openresty-1.21.4.1-linux-aarch64-musl/nginx/sbin/nginx"
         else:
             print(f"⚠️  Unsupported architecture: {arch}")
+            print(f"   Skipping nginx installation - will need system nginx")
             return False
-
-        download_url = f"https://github.com/just-containers/nginx-static/releases/download/v1.25.3/nginx-linux-{arch_suffix}.tar.gz"
 
         cmds = [
             f"cd /tmp",
-            f"curl -L -o nginx.tar.gz {download_url}",
+            f"curl -L -o nginx.tar.gz '{download_url}'",
             f"tar xzf nginx.tar.gz",
-            f"mv nginx {nginx_bin}",
+            f"cp {extract_path} {nginx_bin}",
             f"chmod +x {nginx_bin}",
-            f"rm -f nginx.tar.gz",
+            f"rm -rf /tmp/openresty-* /tmp/nginx.tar.gz",
         ]
 
         full_cmd = " && ".join(cmds)
+        print(f"   Downloading from openresty.org...")
         result = subprocess.run(full_cmd, shell=True, capture_output=True, text=True, timeout=120)
 
         if result.returncode == 0 and os.path.exists(nginx_bin):
@@ -124,14 +130,18 @@ def install_nginx():
             return True
         else:
             print(f"⚠️  Nginx download/install failed")
+            if result.stdout:
+                print(f"   Output: {result.stdout[:200]}")
             if result.stderr:
                 print(f"   Error: {result.stderr[:200]}")
+
+            print(f"\n   ℹ️  Nginx installation optional - system nginx may be available")
+            print(f"   ℹ️  To use system nginx, ensure it's installed in the runtime image")
             return False
 
     except Exception as e:
         print(f"⚠️  Exception during nginx installation: {e}")
-        import traceback
-        traceback.print_exc()
+        print(f"   ℹ️  Nginx is optional - system nginx can be used if available")
         return False
 
 
@@ -192,27 +202,36 @@ def main():
 
     print("✅ Virtual environment created\n")
 
-    # Install Ray and dependencies using uv
-    print("🚀 Installing Ray and dependencies...")
+    # Install the package itself first (includes all dependencies from pyproject.toml)
+    print("🚀 Installing ray-serve-cai package and dependencies...")
 
-    ray_packages = [
-        "ray[default]>=2.20.0",
-        "ray[tune]",
-        "ray[serve]",
-        "numpy",
-        "pandas",
-        "scikit-learn",
-        "matplotlib",
-        "fastapi",
-        "uvicorn[standard]",
-        "pydantic",
-        "httpx",
-    ]
+    # Install package in editable mode (includes all dependencies from pyproject.toml)
+    print("\n📦 Installing ray-serve-cai package...")
+    if run_command("uv pip install -e /home/cdsw"):
+        print("✅ ray-serve-cai package installed with all dependencies")
+    else:
+        print("⚠️  Failed to install via package, installing dependencies manually...")
 
-    for package in ray_packages:
-        print(f"\n📦 Installing {package}...")
-        if not run_command(f"uv pip install {package}"):
-            print(f"⚠️  Warning: Could not install {package}")
+        # Fallback: Install dependencies manually
+        ray_packages = [
+            "ray[default,serve]>=2.20.0",
+            "pyyaml>=6.0",
+            "aiohttp>=3.13",
+            "numpy",
+            "pandas",
+            "scikit-learn",
+            "matplotlib",
+            "fastapi",
+            "uvicorn[standard]",
+            "pydantic",
+            "httpx",
+            "starlette",  # Explicitly add starlette (FastAPI dependency)
+        ]
+
+        for package in ray_packages:
+            print(f"\n📦 Installing {package}...")
+            if not run_command(f"uv pip install {package}"):
+                print(f"⚠️  Warning: Could not install {package}")
 
     # Verify Ray installation
     print("\n🔍 Verifying Ray installation...")
