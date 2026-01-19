@@ -73,11 +73,11 @@ def main():
         print("   Verifying Ray installation...")
 
         # Check if Ray is installed
-        check_ray = f"{venv_dir}/bin/python -c 'import ray; print(f\"Ray {{ray.__version__}}\")"
+        check_ray = f'{venv_dir}/bin/python -c "import ray; print(ray.__version__)"'
         result = subprocess.run(check_ray, shell=True, capture_output=True, text=True)
 
         if result.returncode == 0:
-            print(f"✅ {result.stdout.strip()} is already installed")
+            print(f"✅ Ray {result.stdout.strip()} is already installed")
             print("\n" + "=" * 70)
             print("✅ Environment already ready - skipped setup!")
             print("=" * 70)
@@ -128,11 +128,11 @@ def main():
 
     # Verify Ray installation
     print("\n🔍 Verifying Ray installation...")
-    check_ray = f"{venv_dir}/bin/python -c 'import ray; print(f\"Ray {{ray.__version__}}\")"
+    check_ray = f'{venv_dir}/bin/python -c "import ray; print(ray.__version__)"'
     result = subprocess.run(check_ray, shell=True, capture_output=True, text=True)
 
     if result.returncode == 0:
-        print(f"✅ {result.stdout.strip()}")
+        print(f"✅ Ray {result.stdout.strip()}")
     else:
         print(f"❌ Ray verification failed: {result.stderr}")
         sys.exit(1)
