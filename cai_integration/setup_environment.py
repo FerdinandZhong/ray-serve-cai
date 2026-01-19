@@ -41,6 +41,14 @@ def main():
     print("🔧 Setting up Python environment for Ray cluster")
     print("=" * 70)
 
+    # Disable user site-packages to prevent --user installs in virtualenv
+    # CML sometimes sets PIP_USER=1 which conflicts with virtualenv
+    os.environ.pop("PIP_USER", None)
+    os.environ.pop("PYTHONUSERBASE", None)
+    os.environ["PIP_NO_USER"] = "1"
+
+    print("✅ Configured pip for virtualenv usage\n")
+
     # Determine venv location
     venv_path = Path("/home/cdsw/.venv")
 
