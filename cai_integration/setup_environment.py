@@ -13,27 +13,47 @@ Run this as a CML job to prepare the environment for Ray cluster deployment.
 import os
 import sys
 import subprocess
-from pathlib import Path
 
 
-def run_command(cmd, description=""):
-    """Run a shell command and handle errors."""
-    if description:
-        print(f"➡️  {description}")
-    print(f"   Running: {' '.join(cmd)}")
-
+def run_command(cmd, cwd=None):
+    """Run a command and return success status."""
+    print(f"Running: {cmd}")
     try:
-        # Pass current environment to subprocess (includes PIP_NO_USER=1)
-        result = subprocess.run(cmd, check=True, capture_output=True, text=True, env=os.environ.copy())
+        # Use shell=True to avoid subprocess inheriting pip config issues
+        result = subprocess.run(
+            cmd,
+            shell=True,
+            cwd=cwd,
+            check=True,
+            capture_output=True,
+            text=True
+        )
         if result.stdout:
-            print(f"   ✅ Success")
+            print(result.stdout)
         return True
     except subprocess.CalledProcessError as e:
-        print(f"   ❌ Failed: {e.stderr}")
+        print(f"Error: {e}")
+        if e.stderr:
+            print(f"Error output: {e.stderr}")
         return False
-    except Exception as e:
-        print(f"   ❌ Error: {e}")
+
+
+def is_venv_ready(venv_dir):
+    """Check if virtual environment exists and is properly configured."""
+    if not os.path.exists(venv_dir):
         return False
+
+    # Check if python executable exists in venv
+    python_exe = os.path.join(venv_dir, "bin", "python")
+    if not os.path.exists(python_exe):
+        return False
+
+    # Check if pyvenv.cfg exists (indicator of valid venv)
+    pyvenv_cfg = os.path.join(venv_dir, "pyvenv.cfg")
+    if not os.path.exists(pyvenv_cfg):
+        return False
+
+    return True
 
 
 def main():
@@ -42,130 +62,107 @@ def main():
     print("🔧 Setting up Python environment for Ray cluster")
     print("=" * 70)
 
-    # Disable user site-packages to prevent --user installs in virtualenv
-    # CML sometimes sets PIP_USER=1 which conflicts with virtualenv
-    os.environ.pop("PIP_USER", None)
-    os.environ.pop("PYTHONUSERBASE", None)
-    os.environ["PIP_NO_USER"] = "1"
+    # Change to project directory
+    os.chdir("/home/cdsw")
+    print(f"Working directory: {os.getcwd()}\n")
 
-    print("✅ Configured pip for virtualenv usage\n")
+    venv_dir = "/home/cdsw/.venv"
 
-    # Determine venv location
-    venv_path = Path("/home/cdsw/.venv")
+    # Check if environment is already properly configured
+    if is_venv_ready(venv_dir):
+        print(f"✅ Virtual environment already exists at: {venv_dir}")
+        print("   Verifying Ray installation...")
 
-    # Check if venv already exists
-    if venv_path.exists():
-        print(f"\n✅ Virtual environment already exists at {venv_path}")
+        # Check if Ray is installed
+        check_ray = f"{venv_dir}/bin/python -c 'import ray; print(f\"Ray {{ray.__version__}}\")"
+        result = subprocess.run(check_ray, shell=True, capture_output=True, text=True)
 
-        # Verify Ray is installed
-        try:
-            result = subprocess.run(
-                [str(venv_path / "bin" / "python"), "-c", "import ray; print(ray.__version__)"],
-                capture_output=True,
-                text=True,
-                check=True
-            )
-            print(f"✅ Ray {result.stdout.strip()} is already installed")
-            print("\n✅ Environment setup complete!")
-            return 0
-        except Exception:
-            print("⚠️  Ray not found in existing venv, will reinstall...")
-
-    print("\n📝 Creating Python virtual environment...")
+        if result.returncode == 0:
+            print(f"✅ {result.stdout.strip()} is already installed")
+            print("\n" + "=" * 70)
+            print("✅ Environment already ready - skipped setup!")
+            print("=" * 70)
+            return
+        else:
+            print("⚠️  Ray not found, will reinstall...")
 
     # Create virtual environment
-    if not run_command([sys.executable, "-m", "venv", str(venv_path)], "Creating venv"):
+    print("\n📝 Creating Python virtual environment...")
+    if os.path.exists(venv_dir):
+        print(f"   Removing existing incomplete venv...")
+        run_command(f"rm -rf {venv_dir}")
+
+    if not run_command(f"python3 -m venv {venv_dir}"):
         print("❌ Failed to create virtual environment")
-        return 1
+        sys.exit(1)
 
-    python_bin = venv_path / "bin" / "python"
-    pip_bin = venv_path / "bin" / "pip"
+    print("✅ Virtual environment created\n")
 
-    print("\n📦 Upgrading pip, setuptools, and wheel...")
-    if not run_command([str(pip_bin), "install", "--upgrade", "pip", "setuptools", "wheel"]):
-        print("⚠️  Warning: Could not upgrade pip packages")
+    # Upgrade pip (using shell command to avoid --user issues)
+    print("📦 Upgrading pip, setuptools, and wheel...")
+    if not run_command(f"{venv_dir}/bin/pip install --upgrade pip setuptools wheel"):
+        print("⚠️  Warning: Could not upgrade pip packages\n")
+    else:
+        print("✅ Pip upgraded successfully\n")
 
-    print("\n🚀 Installing Ray and dependencies...")
+    # Install Ray and dependencies
+    print("🚀 Installing Ray and dependencies...")
 
-    # Ray installation
     ray_packages = [
-        "ray[default]>=2.20.0",  # Ray with default dependencies
-        "ray[tune]",              # For hyperparameter tuning
-    ]
-
-    for package in ray_packages:
-        if not run_command([str(pip_bin), "install", package], f"Installing {package}"):
-            print(f"⚠️  Warning: Could not install {package}")
-
-    print("\n✨ Installing additional dependencies...")
-    additional_deps = [
+        "ray[default]>=2.20.0",
+        "ray[tune]",
         "numpy",
         "pandas",
         "scikit-learn",
         "matplotlib",
     ]
 
-    for package in additional_deps:
-        run_command([str(pip_bin), "install", package], f"Installing {package}")
-
-    print("\n🔍 Verifying installation...")
+    for package in ray_packages:
+        print(f"\n📦 Installing {package}...")
+        if not run_command(f"{venv_dir}/bin/pip install {package}"):
+            print(f"⚠️  Warning: Could not install {package}")
 
     # Verify Ray installation
-    try:
-        result = subprocess.run(
-            [str(python_bin), "-c", "import ray; print(f'Ray {ray.__version__}')"],
-            capture_output=True,
-            text=True,
-            check=True
-        )
-        print(f"✅ {result.stdout.strip()}")
-    except Exception as e:
-        print(f"❌ Ray verification failed: {e}")
-        return 1
+    print("\n🔍 Verifying Ray installation...")
+    check_ray = f"{venv_dir}/bin/python -c 'import ray; print(f\"Ray {{ray.__version__}}\")"
+    result = subprocess.run(check_ray, shell=True, capture_output=True, text=True)
 
-    # Test Ray basic functionality
+    if result.returncode == 0:
+        print(f"✅ {result.stdout.strip()}")
+    else:
+        print(f"❌ Ray verification failed: {result.stderr}")
+        sys.exit(1)
+
+    # Test Ray basic functionality (optional)
     print("\n🧪 Testing Ray functionality...")
     test_script = """
 import ray
-
 @ray.remote
 def test_function():
-    return "Ray is working!"
-
+    return 'Ray is working!'
 ray.init(address='auto', ignore_reinit_error=True)
 result = ray.get(test_function.remote())
-print(f"✅ {result}")
+print(f'✅ {result}')
 ray.shutdown()
 """
+    test_cmd = f"{venv_dir}/bin/python -c \"{test_script}\""
+    result = subprocess.run(test_cmd, shell=True, capture_output=True, text=True, timeout=30)
 
-    try:
-        result = subprocess.run(
-            [str(python_bin), "-c", test_script],
-            capture_output=True,
-            text=True,
-            timeout=30
-        )
-        if result.returncode == 0:
-            print(result.stdout.strip())
-        else:
-            print(f"⚠️  Ray test warning: {result.stderr[:200]}")
-    except subprocess.TimeoutExpired:
-        print("⚠️  Ray test timed out (expected if no Ray cluster running)")
-    except Exception as e:
-        print(f"⚠️  Ray test skipped: {e}")
+    if result.returncode == 0:
+        print(result.stdout.strip())
+    else:
+        print(f"⚠️  Ray test skipped (expected if no cluster running): {result.stderr[:100]}")
 
     print("\n" + "=" * 70)
     print("✅ Environment setup complete!")
     print("=" * 70)
-    print(f"\nVirtual environment: {venv_path}")
-    print(f"Python binary: {python_bin}")
-    print(f"Pip binary: {pip_bin}")
+    print(f"\nVirtual environment: {venv_dir}")
+    print(f"Python binary: {venv_dir}/bin/python")
+    print(f"Pip binary: {venv_dir}/bin/pip")
     print("\nTo activate the environment manually:")
-    print(f"  source {venv_path}/bin/activate")
-    print("\nNext step: Run 'launch_ray_cluster.py' job to start Ray cluster")
-
-    return 0
+    print(f"  source {venv_dir}/bin/activate")
+    print("\nNext step: Ray cluster will be launched by the next job")
 
 
 if __name__ == "__main__":
-    sys.exit(main())
+    main()
