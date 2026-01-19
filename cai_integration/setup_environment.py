@@ -115,10 +115,15 @@ def main():
     ray_packages = [
         "ray[default]>=2.20.0",
         "ray[tune]",
+        "ray[serve]",
         "numpy",
         "pandas",
         "scikit-learn",
         "matplotlib",
+        "fastapi",
+        "uvicorn[standard]",
+        "pydantic",
+        "httpx",
     ]
 
     for package in ray_packages:

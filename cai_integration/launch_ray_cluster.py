@@ -201,6 +201,90 @@ def load_config():
     return config
 
 
+def deploy_management_app_to_ray(
+    cluster_info: dict,
+    ray_config: dict,
+    project_id: str
+) -> dict:
+    """
+    Deploy the management API as a Ray Serve application on the Ray cluster.
+
+    Args:
+        cluster_info: Cluster information dictionary
+        ray_config: Ray cluster configuration
+        project_id: CML project ID
+
+    Returns:
+        Management app deployment information
+    """
+    try:
+        import ray
+        from ray import serve
+
+        # Connect to Ray cluster
+        ray_address = f"ray://{cluster_info['head_address']}"
+        print(f"   Connecting to Ray cluster at {ray_address}")
+
+        ray.init(address=ray_address, ignore_reinit_error=True)
+        print(f"   ✅ Connected to Ray cluster")
+
+        # Start Ray Serve
+        print(f"   Starting Ray Serve...")
+        serve.start(detached=True, http_options={
+            "host": "0.0.0.0",
+            "port": ray_config.get('management_api_port', 8080)
+        })
+        print(f"   ✅ Ray Serve started on port {ray_config.get('management_api_port', 8080)}")
+
+        # Import the FastAPI app
+        sys.path.insert(0, "/home/cdsw")
+
+        # Set environment variables for the deployment
+        os.environ["RAY_ADDRESS"] = "auto"  # Running inside Ray cluster
+        os.environ["CML_PROJECT_ID"] = project_id
+
+        from ray_serve_cai.management.app import app
+
+        # Create Ray Serve deployment
+        print(f"   Deploying management API to Ray Serve...")
+
+        @serve.deployment(
+            name="management-api",
+            route_prefix="/",
+            num_replicas=1,
+            ray_actor_options={
+                "num_cpus": 4,
+                "memory": 16 * 1024 * 1024 * 1024  # 4GB
+            }
+        )
+        @serve.ingress(app)
+        class ManagementAPI:
+            pass
+
+        # Deploy the application
+        deployment = ManagementAPI.bind()
+        serve.run(deployment, name="management-api", route_prefix="/")
+
+        print(f"   ✅ Management API deployed to Ray Serve")
+
+        # Construct management API URL (through head node's Ray Serve port)
+        head_host = cluster_info['head_address'].split(':')[0]
+        management_port = ray_config.get('management_api_port', 8080)
+        management_url = f"http://{head_host}:{management_port}"
+
+        return {
+            'url': management_url,
+            'deployed_via': 'ray_serve',
+            'port': management_port
+        }
+
+    except Exception as e:
+        print(f"   ⚠️  Failed to deploy management API to Ray: {e}")
+        import traceback
+        traceback.print_exc()
+        return None
+
+
 def main():
     """Main launch function."""
     print("=" * 70)
@@ -273,6 +357,20 @@ def main():
             timeout=600
         )
 
+        # Deploy management API as Ray Serve application
+        print("\n🎮 Deploying Management API to Ray Serve...")
+        management_app_info = deploy_management_app_to_ray(
+            cluster_info=cluster_info,
+            ray_config=ray_config,
+            project_id=project_id
+        )
+
+        # Add management API info to cluster info
+        if management_app_info:
+            cluster_info['management_api_url'] = management_app_info.get('url')
+            cluster_info['management_api_port'] = management_app_info.get('port')
+            print(f"✅ Management API: {management_app_info.get('url')}")
+
         # Save cluster info to file for reference
         info_file = Path("/home/cdsw/ray_cluster_info.json")
         with open(info_file, 'w') as f:
@@ -296,6 +394,9 @@ def main():
         print(f"\n🔗 Connection Details:")
         print(f"   Ray Address: ray://{cluster_info['head_address']}")
         print(f"   Python API: ray.init(address='ray://{cluster_info['head_address']}')")
+        if cluster_info.get('management_api_url'):
+            print(f"   Management API: {cluster_info['management_api_url']}")
+            print(f"   API Docs: {cluster_info['management_api_url']}/docs")
 
         print(f"\n📝 Usage:")
         print(f"   To connect from another application:")
@@ -303,6 +404,14 @@ def main():
         print(f"   import ray")
         print(f"   ray.init(address='ray://{cluster_info['head_address']}')")
         print(f"   ```")
+
+        if cluster_info.get('management_api_url'):
+            print(f"\n🎮 Management API Endpoints:")
+            print(f"   • Interactive Docs: {cluster_info['management_api_url']}/docs")
+            print(f"   • Cluster Status: GET {cluster_info['management_api_url']}/api/v1/cluster/status")
+            print(f"   • List Nodes: GET {cluster_info['management_api_url']}/api/v1/resources/nodes")
+            print(f"   • Add Worker: POST {cluster_info['management_api_url']}/api/v1/resources/nodes/add")
+            print(f"   • List Apps: GET {cluster_info['management_api_url']}/api/v1/applications")
 
         print("\n" + "=" * 70)
         print("Cluster info saved to /home/cdsw/ray_cluster_info.json")

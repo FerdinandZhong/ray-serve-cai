@@ -8,10 +8,10 @@ ray_cluster:
   # Number of Ray worker nodes to create
   num_workers: 1
 
-  # Head node resources (coordinator node, typically smaller)
+  # Head node resources (coordinator node + management API)
   # Head node always has 0 GPUs (used for coordination only)
-  head_cpu: 4
-  head_memory: 16  # in GB
+  head_cpu: 8
+  head_memory: 32  # in GB
 
   # Worker node resources per node
   worker_cpu: 8
@@ -21,6 +21,7 @@ ray_cluster:
   # Ray daemon ports
   ray_port: 6379
   dashboard_port: 8265
+  management_api_port: 8080  # Management API port
 
 # CML/CAI Application configuration
 cai:
@@ -35,6 +36,11 @@ cai:
   # Format: "owner/repo"
   # If provided, code will be cloned from this repository
   # repository: "owner/ray-serve-cai"
+
+  # Management API application resources (deployed as Ray Serve app on head node)
+  # These are informational - actual resources allocated via Ray Serve deployment
+  management_api_cpu: 4  # CPU cores for Ray Serve deployment
+  management_api_memory: 8  # GB for Ray Serve deployment
 
 # Environment variables for jobs (optional)
 environment:
