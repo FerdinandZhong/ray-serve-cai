@@ -19,7 +19,14 @@ import yaml
 from pathlib import Path
 
 # Add parent directory to path for imports
-sys.path.insert(0, str(Path(__file__).parent.parent))
+# Handle both regular Python and IPython/Jupyter environments
+try:
+    script_dir = Path(__file__).parent
+except NameError:
+    # __file__ not available in IPython/Jupyter - use current working directory
+    script_dir = Path.cwd() / "cai_integration"
+
+sys.path.insert(0, str(script_dir.parent))
 
 from ray_serve_cai.cai_cluster import CAIClusterManager
 
