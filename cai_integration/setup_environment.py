@@ -23,7 +23,8 @@ def run_command(cmd, description=""):
     print(f"   Running: {' '.join(cmd)}")
 
     try:
-        result = subprocess.run(cmd, check=True, capture_output=True, text=True)
+        # Pass current environment to subprocess (includes PIP_NO_USER=1)
+        result = subprocess.run(cmd, check=True, capture_output=True, text=True, env=os.environ.copy())
         if result.stdout:
             print(f"   ✅ Success")
         return True
