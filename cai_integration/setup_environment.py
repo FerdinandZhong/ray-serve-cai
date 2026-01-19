@@ -3,8 +3,8 @@
 Setup Python environment for Ray cluster on CML.
 
 This script:
-1. Creates a Python virtual environment
-2. Installs Ray and dependencies
+1. Creates a Python virtual environment using uv
+2. Installs Ray and dependencies using uv
 3. Verifies installation
 
 Run this as a CML job to prepare the environment for Ray cluster deployment.
@@ -19,7 +19,6 @@ def run_command(cmd, cwd=None):
     """Run a command and return success status."""
     print(f"Running: {cmd}")
     try:
-        # Use shell=True to avoid subprocess inheriting pip config issues
         result = subprocess.run(
             cmd,
             shell=True,
@@ -32,7 +31,7 @@ def run_command(cmd, cwd=None):
             print(result.stdout)
         return True
     except subprocess.CalledProcessError as e:
-        print(f"Error: {e}")
+        print(f"Error running command: {e}")
         if e.stderr:
             print(f"Error output: {e.stderr}")
         return False
@@ -86,26 +85,31 @@ def main():
         else:
             print("⚠️  Ray not found, will reinstall...")
 
-    # Create virtual environment
+    # Install uv first (bypasses pip config issues)
+    print("\n⬇️  Installing uv package manager...")
+    if not run_command("pip install uv"):
+        print("❌ Failed to install uv")
+        sys.exit(1)
+
+    # Verify uv installation
+    print("\n🔍 Verifying uv installation...")
+    if not run_command("uv --version"):
+        print("❌ Failed to verify uv installation")
+        sys.exit(1)
+
+    # Create virtual environment with uv
     print("\n📝 Creating Python virtual environment...")
     if os.path.exists(venv_dir):
         print(f"   Removing existing incomplete venv...")
         run_command(f"rm -rf {venv_dir}")
 
-    if not run_command(f"python3 -m venv {venv_dir}"):
+    if not run_command(f"uv venv {venv_dir}"):
         print("❌ Failed to create virtual environment")
         sys.exit(1)
 
     print("✅ Virtual environment created\n")
 
-    # Upgrade pip (using shell command to avoid --user issues)
-    print("📦 Upgrading pip, setuptools, and wheel...")
-    if not run_command(f"{venv_dir}/bin/pip install --upgrade pip setuptools wheel"):
-        print("⚠️  Warning: Could not upgrade pip packages\n")
-    else:
-        print("✅ Pip upgraded successfully\n")
-
-    # Install Ray and dependencies
+    # Install Ray and dependencies using uv
     print("🚀 Installing Ray and dependencies...")
 
     ray_packages = [
@@ -119,7 +123,7 @@ def main():
 
     for package in ray_packages:
         print(f"\n📦 Installing {package}...")
-        if not run_command(f"{venv_dir}/bin/pip install {package}"):
+        if not run_command(f"uv pip install {package}"):
             print(f"⚠️  Warning: Could not install {package}")
 
     # Verify Ray installation
@@ -158,7 +162,6 @@ ray.shutdown()
     print("=" * 70)
     print(f"\nVirtual environment: {venv_dir}")
     print(f"Python binary: {venv_dir}/bin/python")
-    print(f"Pip binary: {venv_dir}/bin/pip")
     print("\nTo activate the environment manually:")
     print(f"  source {venv_dir}/bin/activate")
     print("\nNext step: Ray cluster will be launched by the next job")
