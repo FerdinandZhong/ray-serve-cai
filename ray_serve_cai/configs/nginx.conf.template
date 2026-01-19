@@ -1,0 +1,110 @@
+# Nginx configuration for Ray Cluster Management
+# This proxies both Ray Dashboard and Management API through a single port
+
+worker_processes auto;
+pid /home/cdsw/nginx.pid;
+error_log /home/cdsw/logs/nginx_error.log warn;
+
+events {
+    worker_connections 1024;
+}
+
+http {
+    include /etc/nginx/mime.types;
+    default_type application/octet-stream;
+
+    access_log /home/cdsw/logs/nginx_access.log;
+
+    sendfile on;
+    keepalive_timeout 65;
+    client_max_body_size 100M;
+
+    # Upstream for Ray Dashboard
+    upstream ray_dashboard {
+        server 127.0.0.1:8265;
+    }
+
+    # Upstream for Ray Serve (Management API)
+    upstream ray_serve {
+        server 127.0.0.1:8000;
+    }
+
+    server {
+        listen ${CDSW_APP_PORT};
+        server_name _;
+
+        # Management API endpoints (via Ray Serve)
+        # Ray Serve is configured with route_prefix="/api"
+        # So FastAPI routes like /api/v1/* are served at /api/api/v1/* by Ray Serve
+        # We proxy /api/ to /api/ on Ray Serve
+        location /api/ {
+            proxy_pass http://ray_serve/api/;
+            proxy_http_version 1.1;
+            proxy_set_header Upgrade $http_upgrade;
+            proxy_set_header Connection "upgrade";
+            proxy_set_header Host $host;
+            proxy_set_header X-Real-IP $remote_addr;
+            proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+            proxy_set_header X-Forwarded-Proto $scheme;
+            proxy_buffering off;
+        }
+
+        # Management API Swagger UI (served at /api/docs by Ray Serve)
+        location /docs {
+            proxy_pass http://ray_serve/api/docs;
+            proxy_http_version 1.1;
+            proxy_set_header Host $host;
+            proxy_set_header X-Real-IP $remote_addr;
+            proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+            proxy_set_header X-Forwarded-Proto $scheme;
+        }
+
+        # Management API ReDoc (served at /api/redoc by Ray Serve)
+        location /redoc {
+            proxy_pass http://ray_serve/api/redoc;
+            proxy_http_version 1.1;
+            proxy_set_header Host $host;
+            proxy_set_header X-Real-IP $remote_addr;
+            proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+            proxy_set_header X-Forwarded-Proto $scheme;
+        }
+
+        # Management API OpenAPI schema (served at /api/openapi.json by Ray Serve)
+        location /openapi.json {
+            proxy_pass http://ray_serve/api/openapi.json;
+            proxy_http_version 1.1;
+            proxy_set_header Host $host;
+            proxy_set_header X-Real-IP $remote_addr;
+            proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+            proxy_set_header X-Forwarded-Proto $scheme;
+        }
+
+        # Ray Dashboard - proxy to /dashboard path
+        location /dashboard/ {
+            proxy_pass http://ray_dashboard/;
+            proxy_http_version 1.1;
+            proxy_set_header Upgrade $http_upgrade;
+            proxy_set_header Connection "upgrade";
+            proxy_set_header Host $host;
+            proxy_set_header X-Real-IP $remote_addr;
+            proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+            proxy_set_header X-Forwarded-Proto $scheme;
+            proxy_buffering off;
+            proxy_read_timeout 86400;
+        }
+
+        # Root path - serve static landing page
+        location = / {
+            root /home/cdsw/ray_serve_cai/static;
+            try_files /index.html =404;
+            add_header Cache-Control "no-cache, no-store, must-revalidate";
+        }
+
+        # Health check endpoint (served at /api/health by Ray Serve)
+        location /health {
+            proxy_pass http://ray_serve/api/health;
+            proxy_http_version 1.1;
+            proxy_set_header Host $host;
+        }
+    }
+}

@@ -55,6 +55,86 @@ def is_venv_ready(venv_dir):
     return True
 
 
+def install_nginx():
+    """Install nginx binary without sudo (download precompiled binary)."""
+    print("\n🌐 Setting up Nginx...")
+
+    nginx_bin = "/home/cdsw/.local/bin/nginx"
+    nginx_dir = "/home/cdsw/.local/bin"
+
+    # Create bin directory if it doesn't exist
+    os.makedirs(nginx_dir, exist_ok=True)
+
+    # Check if nginx is already installed
+    if os.path.exists(nginx_bin):
+        print("✅ Nginx already installed")
+        return True
+
+    # First check if system nginx exists
+    result = subprocess.run("which nginx", shell=True, capture_output=True, text=True)
+    if result.returncode == 0:
+        system_nginx = result.stdout.strip()
+        print(f"✅ System nginx found: {system_nginx}")
+        try:
+            os.symlink(system_nginx, nginx_bin)
+        except:
+            pass
+        return True
+
+    print("📦 Downloading Nginx static binary...")
+
+    # Use static nginx binary from GitHub releases (nginx-static-binary project)
+    # This provides fully static binaries that work without any dependencies
+    try:
+        import platform
+        arch = platform.machine()
+
+        # Map architecture names
+        if arch == "x86_64":
+            arch_suffix = "amd64"
+        elif arch == "aarch64" or arch == "arm64":
+            arch_suffix = "arm64"
+        else:
+            print(f"⚠️  Unsupported architecture: {arch}")
+            return False
+
+        download_url = f"https://github.com/just-containers/nginx-static/releases/download/v1.25.3/nginx-linux-{arch_suffix}.tar.gz"
+
+        cmds = [
+            f"cd /tmp",
+            f"curl -L -o nginx.tar.gz {download_url}",
+            f"tar xzf nginx.tar.gz",
+            f"mv nginx {nginx_bin}",
+            f"chmod +x {nginx_bin}",
+            f"rm -f nginx.tar.gz",
+        ]
+
+        full_cmd = " && ".join(cmds)
+        result = subprocess.run(full_cmd, shell=True, capture_output=True, text=True, timeout=120)
+
+        if result.returncode == 0 and os.path.exists(nginx_bin):
+            print("✅ Nginx installed successfully")
+            print(f"   Binary location: {nginx_bin}")
+
+            # Verify it works
+            version_check = subprocess.run(f"{nginx_bin} -v", shell=True, capture_output=True, text=True)
+            if version_check.returncode == 0:
+                print(f"   {version_check.stderr.strip()}")
+
+            return True
+        else:
+            print(f"⚠️  Nginx download/install failed")
+            if result.stderr:
+                print(f"   Error: {result.stderr[:200]}")
+            return False
+
+    except Exception as e:
+        print(f"⚠️  Exception during nginx installation: {e}")
+        import traceback
+        traceback.print_exc()
+        return False
+
+
 def main():
     """Main setup function."""
     print("=" * 70)
@@ -64,6 +144,9 @@ def main():
     # Change to project directory
     os.chdir("/home/cdsw")
     print(f"Working directory: {os.getcwd()}\n")
+
+    # Install system dependencies
+    install_nginx()
 
     venv_dir = "/home/cdsw/.venv"
 

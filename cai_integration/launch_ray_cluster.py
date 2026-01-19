@@ -48,10 +48,11 @@ def create_ray_launcher_scripts(head_address: str = None) -> tuple:
     # Create head launcher script
     head_script_path = project_dir / "ray_head_launcher.py"
     head_script_content = '''#!/usr/bin/env python3
-"""Ray Head Node Launcher for CAI"""
+"""Ray Head Node Launcher for CAI with Nginx Proxy"""
 import subprocess
 import sys
 import os
+import time
 from pathlib import Path
 
 # Activate venv
@@ -60,26 +61,44 @@ if not venv_python.exists():
     print("❌ Virtual environment not found at /home/cdsw/.venv")
     sys.exit(1)
 
-# Ray start command for head node
-cmd = [
+print("=" * 70)
+print("🚀 Starting Ray Head Node with Nginx Proxy")
+print("=" * 70)
+
+# Step 1: Start Ray head on internal dashboard port (8265)
+ray_cmd = [
     str(venv_python), "-m", "ray.scripts.ray_start",
     "--head",
     "--port", "6379",
-    "--dashboard-host", "0.0.0.0",
-    "--dashboard-port", "8265",
+    "--dashboard-host", "127.0.0.1",  # Internal only
+    "--dashboard-port", "8265",       # Internal dashboard port
     "--include-dashboard", "true"
 ]
 
-print("🚀 Starting Ray head node...")
-print(f"Command: {' '.join(cmd)}")
+print("\\n📊 Starting Ray Dashboard on internal port 8265...")
+print(f"Command: {' '.join(ray_cmd)}")
 
 try:
-    # Start Ray
-    result = subprocess.run(cmd, check=True)
-    sys.exit(result.returncode)
+    result = subprocess.run(ray_cmd, check=True)
+    if result.returncode != 0:
+        print(f"❌ Ray head failed with exit code {result.returncode}")
+        sys.exit(result.returncode)
 except Exception as e:
     print(f"❌ Failed to start Ray head: {e}")
     sys.exit(1)
+
+print("✅ Ray head started")
+
+# Step 2: Start Nginx proxy (will be started by management API deployment)
+# The Nginx setup is handled separately by the management API deployment script
+
+print("\\n" + "=" * 70)
+print("✅ Ray Head Node Started Successfully")
+print("=" * 70)
+print("\\nServices:")
+print("  • Ray Dashboard: 127.0.0.1:8265 (internal)")
+print("  • Ray GCS: 0.0.0.0:6379")
+print("\\nNote: Nginx proxy will be started by management API deployment")
 '''
 
     with open(head_script_path, 'w') as f:
@@ -220,6 +239,7 @@ def deploy_management_app_to_ray(
     try:
         import ray
         from ray import serve
+        import subprocess
 
         # Connect to Ray cluster
         ray_address = f"ray://{cluster_info['head_address']}"
@@ -228,13 +248,13 @@ def deploy_management_app_to_ray(
         ray.init(address=ray_address, ignore_reinit_error=True)
         print(f"   ✅ Connected to Ray cluster")
 
-        # Start Ray Serve
-        print(f"   Starting Ray Serve...")
+        # Start Ray Serve on internal port 8000
+        print(f"   Starting Ray Serve on internal port 8000...")
         serve.start(detached=True, http_options={
-            "host": "0.0.0.0",
-            "port": ray_config.get('management_api_port', 8080)
+            "host": "127.0.0.1",  # Internal only
+            "port": 8000           # Ray Serve default port
         })
-        print(f"   ✅ Ray Serve started on port {ray_config.get('management_api_port', 8080)}")
+        print(f"   ✅ Ray Serve started on port 8000 (internal)")
 
         # Import the FastAPI app
         sys.path.insert(0, "/home/cdsw")
@@ -245,16 +265,16 @@ def deploy_management_app_to_ray(
 
         from ray_serve_cai.management.app import app
 
-        # Create Ray Serve deployment
-        print(f"   Deploying management API to Ray Serve...")
+        # Create Ray Serve deployment with /api route prefix
+        print(f"   Deploying management API to Ray Serve with route_prefix=/api...")
 
         @serve.deployment(
             name="management-api",
-            route_prefix="/",
+            route_prefix="/api",  # Management API at /api/*
             num_replicas=1,
             ray_actor_options={
                 "num_cpus": 4,
-                "memory": 16 * 1024 * 1024 * 1024  # 4GB
+                "memory": 8 * 1024 * 1024 * 1024  # 8GB
             }
         )
         @serve.ingress(app)
@@ -263,19 +283,43 @@ def deploy_management_app_to_ray(
 
         # Deploy the application
         deployment = ManagementAPI.bind()
-        serve.run(deployment, name="management-api", route_prefix="/")
+        serve.run(deployment, name="management-api", route_prefix="/api")
 
-        print(f"   ✅ Management API deployed to Ray Serve")
+        print(f"   ✅ Management API deployed to Ray Serve at /api/*")
 
-        # Construct management API URL (through head node's Ray Serve port)
+        # Start Nginx proxy on public port (CDSW_APP_PORT)
+        print(f"\n   Starting Nginx reverse proxy...")
+        nginx_script = Path("/home/cdsw/ray_serve_cai/scripts/start_nginx.py")
+
+        if nginx_script.exists():
+            result = subprocess.run(
+                ["/home/cdsw/.venv/bin/python", str(nginx_script)],
+                capture_output=True,
+                text=True,
+                timeout=30
+            )
+
+            if result.returncode == 0:
+                print(f"   ✅ Nginx proxy started successfully")
+                print(result.stdout)
+            else:
+                print(f"   ⚠️  Warning: Nginx startup reported issues")
+                if result.stderr:
+                    print(f"   Error: {result.stderr}")
+        else:
+            print(f"   ⚠️  Warning: Nginx startup script not found at {nginx_script}")
+
+        # Construct management API URL (through Nginx on public port)
         head_host = cluster_info['head_address'].split(':')[0]
-        management_port = ray_config.get('management_api_port', 8080)
-        management_url = f"http://{head_host}:{management_port}"
+        public_port = int(os.environ.get('CDSW_APP_PORT', 8080))
+        management_url = f"http://{head_host}:{public_port}"
 
         return {
             'url': management_url,
-            'deployed_via': 'ray_serve',
-            'port': management_port
+            'deployed_via': 'ray_serve_with_nginx',
+            'port': public_port,
+            'internal_ray_serve_port': 8000,
+            'internal_dashboard_port': 8265
         }
 
     except Exception as e:

@@ -1,0 +1,208 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Ray Cluster Management</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            padding: 20px;
+        }
+
+        .container {
+            background: white;
+            border-radius: 12px;
+            box-shadow: 0 20px 60px rgba(0, 0, 0, 0.3);
+            max-width: 800px;
+            width: 100%;
+            padding: 40px;
+        }
+
+        h1 {
+            color: #333;
+            font-size: 2.5em;
+            margin-bottom: 10px;
+            display: flex;
+            align-items: center;
+            gap: 15px;
+        }
+
+        .subtitle {
+            color: #666;
+            font-size: 1.1em;
+            margin-bottom: 30px;
+            padding-bottom: 20px;
+            border-bottom: 2px solid #f0f0f0;
+        }
+
+        .links {
+            display: grid;
+            gap: 25px;
+        }
+
+        .link-section {
+            background: #f8f9fa;
+            border-radius: 8px;
+            padding: 25px;
+            transition: transform 0.2s, box-shadow 0.2s;
+        }
+
+        .link-section:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+        }
+
+        .link-section h2 {
+            color: #444;
+            font-size: 1.5em;
+            margin-bottom: 15px;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+
+        .link-list {
+            list-style: none;
+            display: grid;
+            gap: 12px;
+        }
+
+        .link-item {
+            display: flex;
+            align-items: center;
+        }
+
+        .link-item a {
+            color: #667eea;
+            text-decoration: none;
+            font-size: 1.05em;
+            font-weight: 500;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            transition: color 0.2s;
+        }
+
+        .link-item a:hover {
+            color: #764ba2;
+            text-decoration: underline;
+        }
+
+        .icon {
+            font-size: 1.3em;
+        }
+
+        .description {
+            color: #999;
+            font-size: 0.9em;
+            margin-left: 8px;
+            font-style: italic;
+        }
+
+        .footer {
+            margin-top: 30px;
+            padding-top: 20px;
+            border-top: 2px solid #f0f0f0;
+            text-align: center;
+            color: #999;
+            font-size: 0.9em;
+        }
+
+        .status-badge {
+            display: inline-block;
+            padding: 4px 12px;
+            background: #10b981;
+            color: white;
+            border-radius: 12px;
+            font-size: 0.8em;
+            font-weight: 600;
+            margin-left: 10px;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>
+            <span class="icon">🚀</span>
+            Ray Cluster Management
+            <span class="status-badge">ONLINE</span>
+        </h1>
+
+        <p class="subtitle">
+            Unified interface for managing your Ray cluster on CML
+        </p>
+
+        <div class="links">
+            <div class="link-section">
+                <h2><span class="icon">📡</span> Management API</h2>
+                <ul class="link-list">
+                    <li class="link-item">
+                        <a href="/docs">
+                            <span class="icon">📚</span>
+                            API Documentation (Swagger UI)
+                        </a>
+                        <span class="description">Interactive API explorer</span>
+                    </li>
+                    <li class="link-item">
+                        <a href="/redoc">
+                            <span class="icon">📖</span>
+                            API Documentation (ReDoc)
+                        </a>
+                        <span class="description">Clean API reference</span>
+                    </li>
+                    <li class="link-item">
+                        <a href="/api/v1/cluster/status">
+                            <span class="icon">📊</span>
+                            Cluster Status
+                        </a>
+                        <span class="description">JSON endpoint</span>
+                    </li>
+                    <li class="link-item">
+                        <a href="/api/v1/resources/nodes">
+                            <span class="icon">🖥️</span>
+                            List Nodes
+                        </a>
+                        <span class="description">JSON endpoint</span>
+                    </li>
+                    <li class="link-item">
+                        <a href="/api/v1/applications">
+                            <span class="icon">📦</span>
+                            List Applications
+                        </a>
+                        <span class="description">JSON endpoint</span>
+                    </li>
+                </ul>
+            </div>
+
+            <div class="link-section">
+                <h2><span class="icon">🎛️</span> Ray Dashboard</h2>
+                <ul class="link-list">
+                    <li class="link-item">
+                        <a href="/dashboard/">
+                            <span class="icon">📈</span>
+                            Open Ray Dashboard
+                        </a>
+                        <span class="description">Cluster monitoring & observability</span>
+                    </li>
+                </ul>
+            </div>
+        </div>
+
+        <div class="footer">
+            <p>Powered by Ray Serve, FastAPI, and Nginx</p>
+        </div>
+    </div>
+</body>
+</html>
