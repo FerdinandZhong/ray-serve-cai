@@ -169,9 +169,13 @@ class JobTrigger:
     def run(
         self, project_id: str, job_ids: Dict[str, str], job_configs: Dict
     ) -> bool:
-        """Execute job triggering and monitoring."""
+        """Execute job triggering and monitoring.
+
+        Note: Jobs with parent_job_key dependencies are automatically triggered
+        by CML when the parent succeeds. We only need to trigger the root job.
+        """
         print("=" * 70)
-        print("🚀 Trigger Ray Cluster Deployment Jobs")
+        print("🚀 Trigger Ray Cluster Deployment")
         print("=" * 70)
 
         if self.force_rebuild:
@@ -179,45 +183,53 @@ class JobTrigger:
         else:
             print(f"   Force rebuild: ❌ DISABLED (skip already-successful jobs)\n")
 
-        # Job execution order (respecting dependencies)
-        job_sequence = ["git_sync", "setup_environment", "launch_ray_cluster"]
+        # Find root job (job with no parent)
+        root_job_key = None
+        for job_key, job_config in job_configs.get("jobs", {}).items():
+            if job_config.get("parent_job_key") is None:
+                root_job_key = job_key
+                break
 
-        for job_key in job_sequence:
-            if job_key not in job_ids:
-                print(f"⚠️  Job not found: {job_key}")
-                continue
+        if not root_job_key or root_job_key not in job_ids:
+            print(f"❌ Root job not found")
+            return False
 
-            job_id = job_ids[job_key]
-            job_config = job_configs.get("jobs", {}).get(job_key, {})
-            job_name = job_config.get("name", job_key)
+        root_job_id = job_ids[root_job_key]
+        root_job_config = job_configs.get("jobs", {}).get(root_job_key, {})
+        root_job_name = root_job_config.get("name", root_job_key)
 
-            print(f"🔷 Running: {job_name}")
+        print(f"🔷 Triggering root job: {root_job_name}")
+        print(f"   (Child jobs will auto-trigger via CML dependencies)\n")
 
-            # Check if already succeeded
-            if (
-                not self.force_rebuild
-                and self.job_succeeded_recently(project_id, job_id)
-            ):
-                print(f"   ✅ Already succeeded, skipping\n")
-                continue
+        # Check if root already succeeded
+        if (
+            not self.force_rebuild
+            and self.job_succeeded_recently(project_id, root_job_id)
+        ):
+            print(f"   ✅ Root job already succeeded")
+            print(f"   Note: Child jobs may have already run as well\n")
+            # Still return success - jobs completed previously
+            return True
 
-            # Trigger job
-            run_id = self.trigger_job(project_id, job_id)
-            if not run_id:
-                print(f"   ❌ Failed to trigger job\n")
-                return False
+        # Trigger root job only
+        run_id = self.trigger_job(project_id, root_job_id)
+        if not run_id:
+            print(f"   ❌ Failed to trigger root job\n")
+            return False
 
-            print(f"   ✅ Job triggered: {run_id}")
+        print(f"   ✅ Root job triggered: {run_id}\n")
 
-            # Wait for completion
-            timeout = job_config.get("timeout", 1800)
-            if not self.wait_for_job_completion(project_id, job_id, run_id, timeout):
-                print(f"❌ Job failed: {job_name}")
-                return False
+        # Wait for root job completion
+        timeout = root_job_config.get("timeout", 1800)
+        if not self.wait_for_job_completion(project_id, root_job_id, run_id, timeout):
+            print(f"❌ Root job failed: {root_job_name}")
+            return False
 
         print("=" * 70)
-        print("✅ All Deployment Jobs Complete!")
+        print("✅ Root Job Complete!")
         print("=" * 70)
+        print("\n💡 Note: Child jobs with dependencies will auto-trigger.")
+        print("   Monitor them in the CML UI: Jobs > Job Runs\n")
 
         return True
 
