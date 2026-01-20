@@ -143,26 +143,29 @@ location /docs {
 
 ### 1. Install Nginx (in setup_environment.py)
 
-Nginx is installed **without sudo** by downloading a static binary from GitHub:
+Nginx is installed **without sudo** by compiling from official source:
 
 ```python
 def install_nginx():
-    """Install nginx binary without sudo (download precompiled binary)."""
-    # Download static nginx binary from GitHub releases
-    # Source: https://github.com/just-containers/nginx-static
+    """Install nginx by compiling from source without sudo."""
+    # Downloads nginx-1.28.1 from https://nginx.org/download/
+    # Compiles with minimal dependencies (no PCRE, no zlib)
     # Installs to: /home/cdsw/.local/bin/nginx
 
-    download_url = f"https://github.com/just-containers/nginx-static/releases/download/v1.25.3/nginx-linux-{arch_suffix}.tar.gz"
-
-    # Downloads, extracts, and installs to user directory
-    # No root/sudo privileges required!
+    # Configure options:
+    # --without-http_rewrite_module (no PCRE dependency)
+    # --without-http_gzip_module (no zlib dependency)
+    # --with-http_ssl_module (SSL support)
+    # --with-http_v2_module (HTTP/2 support)
 ```
 
 **Key Benefits:**
 - ✅ No sudo required
-- ✅ Static binary with no dependencies
+- ✅ Compiles from official nginx.org source (reliable)
+- ✅ Minimal dependencies (no PCRE, no zlib)
 - ✅ Works in restricted CML environments
-- ✅ Supports x86_64 (amd64) and ARM64 architectures
+- ✅ Includes SSL and HTTP/2 support
+- ✅ Takes 2-3 minutes to compile
 
 ### 2. Start Ray Head with Internal Dashboard
 

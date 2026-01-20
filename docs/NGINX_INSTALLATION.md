@@ -2,16 +2,17 @@
 
 ## Installation Approaches
 
-The `setup_environment.py` script attempts to install Nginx automatically, but there are multiple fallback options.
+**Primary: Automatic Compilation from Source**
 
-### Automatic Installation (Preferred)
+The `setup_environment.py` script automatically compiles and installs nginx from the official nginx.org source (version 1.28.1).
 
-The script attempts to download OpenResty (which includes Nginx) from official sources:
+### Why Compile from Source?
 
-- **x86_64**: `https://openresty.org/download/openresty-1.21.4.1-linux-x86_64-musl.tar.gz`
-- **aarch64**: `https://openresty.org/download/openresty-1.21.4.1-linux-aarch64-musl.tar.gz`
-
-Installs to: `/home/cdsw/.local/bin/nginx`
+- Official source is reliable and stable (nginx.org)
+- No dependency on pre-built binaries (which may not be available)
+- Minimal compilation requirements (just gcc and make)
+- Works in CML environments without sudo
+- Compiled with minimal modules (no PCRE, no zlib needed)
 
 ### Fallback Options
 
@@ -22,11 +23,37 @@ If automatic installation fails, the system will look for nginx in these locatio
 3. `/usr/bin/nginx` (alternative system location)
 4. Result of `which nginx` (PATH search)
 
+## How Automatic Installation Works
+
+The `setup_environment.py` script performs these steps:
+
+1. **Check for existing nginx**: If nginx is already installed at `/home/cdsw/.local/bin/nginx` or available system-wide, it skips installation
+
+2. **Download source**: Downloads nginx-1.28.1.tar.gz from https://nginx.org/download/
+
+3. **Extract**: Extracts the source in a temporary directory
+
+4. **Configure**: Runs `./configure` with these options:
+   - `--prefix=/home/cdsw/.local/nginx`
+   - `--sbin-path=/home/cdsw/.local/bin/nginx`
+   - `--without-http_rewrite_module` (no PCRE dependency)
+   - `--without-http_gzip_module` (no zlib dependency)
+   - `--with-http_ssl_module`
+   - `--with-http_v2_module`
+
+5. **Compile**: Runs `make -j<cores>` (parallel compilation)
+
+6. **Install**: Runs `make install` (installs to user directory, no sudo needed)
+
+7. **Verify**: Tests that the binary works with `nginx -v`
+
+**Time**: Compilation takes 2-3 minutes on typical CML environments.
+
 ### Manual Installation Options
 
-#### Option 1: Pre-install in Runtime Image
+#### Option 1: Pre-install in Runtime Image (Fastest)
 
-Add nginx to your CML runtime image:
+Add nginx to your CML runtime image to skip compilation:
 
 ```dockerfile
 # In your custom runtime Dockerfile
@@ -35,17 +62,24 @@ RUN yum install -y nginx  # For RHEL/CentOS
 RUN apt-get update && apt-get install -y nginx  # For Debian/Ubuntu
 ```
 
-#### Option 2: Download Pre-built Binary
+#### Option 2: Manual Compilation (if automatic fails)
 
 ```bash
-# For x86_64
 cd /tmp
-curl -L -o openresty.tar.gz https://openresty.org/download/openresty-1.21.4.1-linux-x86_64-musl.tar.gz
-tar xzf openresty.tar.gz
-mkdir -p /home/cdsw/.local/bin
-cp openresty-1.21.4.1-linux-x86_64-musl/nginx/sbin/nginx /home/cdsw/.local/bin/
-chmod +x /home/cdsw/.local/bin/nginx
-rm -rf /tmp/openresty*
+curl -L -o nginx.tar.gz https://nginx.org/download/nginx-1.28.1.tar.gz
+tar xzf nginx.tar.gz
+cd nginx-1.28.1
+
+./configure \
+  --prefix=/home/cdsw/.local/nginx \
+  --sbin-path=/home/cdsw/.local/bin/nginx \
+  --without-http_rewrite_module \
+  --without-http_gzip_module \
+  --with-http_ssl_module \
+  --with-http_v2_module
+
+make -j$(nproc)
+make install
 
 # Verify
 /home/cdsw/.local/bin/nginx -v
@@ -122,10 +156,12 @@ ls -la /home/cdsw/.local/bin/nginx
 
 As of the latest update:
 
-- ✅ Automatic installation from openresty.org
-- ✅ Fallback to system nginx if install fails
+- ✅ Automatic compilation from official nginx.org source (nginx-1.28.1)
+- ✅ Fallback to system nginx if compilation fails
+- ✅ Minimal dependencies (no PCRE, no zlib required)
 - ✅ Clear error messages if nginx unavailable
 - ✅ Graceful degradation (setup continues even if nginx fails)
+- ✅ Nginx compiled with SSL and HTTP/2 support
 - ℹ️  Nginx is treated as optional component
 
 ## Recommendations

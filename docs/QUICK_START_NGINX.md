@@ -20,7 +20,7 @@ Public Port 8080 (CML Exposed)
 
 The setup is **fully automated** when deploying a Ray cluster:
 
-1. `setup_environment.py` - Installs Nginx binary (no sudo needed)
+1. `setup_environment.py` - Compiles Nginx from source (nginx-1.28.1, no sudo needed)
 2. `launch_ray_cluster.py` - Deploys Management API and starts Nginx
 
 ## Manual Verification
@@ -37,7 +37,7 @@ ls -la /home/cdsw/.local/bin/nginx
 
 **Expected Output:**
 ```
-nginx version: nginx/1.25.3
+nginx version: nginx/1.28.1
 ```
 
 ### 2. Check Services are Running
@@ -194,14 +194,15 @@ If you need to modify Nginx routing:
 
 ## Key Points
 
-✅ **No sudo required** - Nginx installed as static binary in user directory
-✅ **Fully automated** - Setup happens during cluster launch
+✅ **No sudo required** - Nginx compiled from source in user directory
+✅ **Fully automated** - Compilation and setup during cluster launch
 ✅ **Single public port** - All services accessible through port 8080
 ✅ **Clean URLs** - No port numbers needed in URLs
-✅ **Production-ready** - WebSocket support, proper headers, logging
+✅ **Production-ready** - WebSocket support, SSL/HTTP2, proper headers, logging
 
 ## Further Reading
 
-- [Full Nginx Proxy Design](./NGINX_PROXY_DESIGN.md) - Complete architecture documentation
-- [Management API README](./ray_serve_cai/management/README.md) - API endpoints reference
+- [Full Nginx Proxy Design](NGINX_PROXY_DESIGN.md) - Complete architecture documentation
+- [Nginx Installation Guide](NGINX_INSTALLATION.md) - Installation and troubleshooting
+- [Management API README](../ray_serve_cai/management/README.md) - API endpoints reference
 - [Ray Serve Documentation](https://docs.ray.io/en/latest/serve/) - Official Ray Serve docs

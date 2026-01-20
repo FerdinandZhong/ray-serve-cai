@@ -56,19 +56,26 @@ def is_venv_ready(venv_dir):
 
 
 def install_nginx():
-    """Install nginx binary without sudo (download precompiled binary)."""
+    """Install nginx by compiling from source without sudo."""
     print("\n🌐 Setting up Nginx...")
 
     nginx_bin = "/home/cdsw/.local/bin/nginx"
-    nginx_dir = "/home/cdsw/.local/bin"
+    nginx_prefix = "/home/cdsw/.local/nginx"
 
     # Create bin directory if it doesn't exist
-    os.makedirs(nginx_dir, exist_ok=True)
+    os.makedirs("/home/cdsw/.local/bin", exist_ok=True)
 
     # Check if nginx is already installed
     if os.path.exists(nginx_bin):
         print("✅ Nginx already installed")
-        return True
+        # Verify it works
+        result = subprocess.run(f"{nginx_bin} -v", shell=True, capture_output=True, text=True)
+        if result.returncode == 0:
+            print(f"   Version: {result.stderr.strip()}")  # nginx prints version to stderr
+            return True
+        else:
+            print("⚠️  Existing nginx binary seems broken, reinstalling...")
+            os.remove(nginx_bin)
 
     # First check if system nginx exists
     result = subprocess.run("which nginx", shell=True, capture_output=True, text=True)
@@ -77,71 +84,98 @@ def install_nginx():
         print(f"✅ System nginx found: {system_nginx}")
         try:
             os.symlink(system_nginx, nginx_bin)
-        except:
-            pass
-        return True
-
-    print("📦 Attempting to install Nginx...")
-
-    # Note: Nginx installation in CML is optional
-    # The system may already have nginx, or it can be skipped if not needed
-    try:
-        import platform
-        arch = platform.machine()
-
-        print(f"   Detected architecture: {arch}")
-
-        # Try a simpler approach: download pre-built static binary from a reliable source
-        # Using freenginx.org which provides static binaries
-        if arch == "x86_64":
-            # For x86_64, use a known working static build
-            download_url = "https://openresty.org/download/openresty-1.21.4.1-linux-x86_64-musl.tar.gz"
-            extract_path = "openresty-1.21.4.1-linux-x86_64-musl/nginx/sbin/nginx"
-        elif arch == "aarch64" or arch == "arm64":
-            download_url = "https://openresty.org/download/openresty-1.21.4.1-linux-aarch64-musl.tar.gz"
-            extract_path = "openresty-1.21.4.1-linux-aarch64-musl/nginx/sbin/nginx"
-        else:
-            print(f"⚠️  Unsupported architecture: {arch}")
-            print(f"   Skipping nginx installation - will need system nginx")
-            return False
-
-        cmds = [
-            f"cd /tmp",
-            f"curl -L -o nginx.tar.gz '{download_url}'",
-            f"tar xzf nginx.tar.gz",
-            f"cp {extract_path} {nginx_bin}",
-            f"chmod +x {nginx_bin}",
-            f"rm -rf /tmp/openresty-* /tmp/nginx.tar.gz",
-        ]
-
-        full_cmd = " && ".join(cmds)
-        print(f"   Downloading from openresty.org...")
-        result = subprocess.run(full_cmd, shell=True, capture_output=True, text=True, timeout=120)
-
-        if result.returncode == 0 and os.path.exists(nginx_bin):
-            print("✅ Nginx installed successfully")
-            print(f"   Binary location: {nginx_bin}")
-
-            # Verify it works
-            version_check = subprocess.run(f"{nginx_bin} -v", shell=True, capture_output=True, text=True)
-            if version_check.returncode == 0:
-                print(f"   {version_check.stderr.strip()}")
-
+            print(f"✅ Created symlink to system nginx")
             return True
-        else:
-            print(f"⚠️  Nginx download/install failed")
-            if result.stdout:
-                print(f"   Output: {result.stdout[:200]}")
-            if result.stderr:
-                print(f"   Error: {result.stderr[:200]}")
+        except Exception as e:
+            print(f"⚠️  Could not create symlink: {e}")
 
-            print(f"\n   ℹ️  Nginx installation optional - system nginx may be available")
-            print(f"   ℹ️  To use system nginx, ensure it's installed in the runtime image")
-            return False
+    print("📦 Compiling Nginx from source...")
+    print("   This may take a few minutes...")
+
+    try:
+        import tempfile
+        import tarfile
+
+        # Nginx version to download
+        nginx_version = "1.28.1"
+        nginx_url = f"https://nginx.org/download/nginx-{nginx_version}.tar.gz"
+
+        with tempfile.TemporaryDirectory() as tmpdir:
+            print(f"   Working directory: {tmpdir}")
+
+            # Download nginx source
+            print(f"   📥 Downloading nginx-{nginx_version}...")
+            tar_path = os.path.join(tmpdir, "nginx.tar.gz")
+            download_cmd = f"curl -L -o {tar_path} {nginx_url}"
+
+            if not run_command(download_cmd, cwd=tmpdir):
+                print("❌ Failed to download nginx source")
+                return False
+
+            # Extract
+            print("   📦 Extracting source...")
+            with tarfile.open(tar_path, 'r:gz') as tar:
+                tar.extractall(path=tmpdir)
+
+            nginx_src_dir = os.path.join(tmpdir, f"nginx-{nginx_version}")
+
+            if not os.path.exists(nginx_src_dir):
+                print(f"❌ Source directory not found: {nginx_src_dir}")
+                return False
+
+            # Configure
+            print("   🔧 Configuring build...")
+            configure_cmd = (
+                f"./configure "
+                f"--prefix={nginx_prefix} "
+                f"--sbin-path={nginx_bin} "
+                f"--conf-path={nginx_prefix}/conf/nginx.conf "
+                f"--pid-path={nginx_prefix}/run/nginx.pid "
+                f"--error-log-path={nginx_prefix}/logs/error.log "
+                f"--http-log-path={nginx_prefix}/logs/access.log "
+                f"--without-http_rewrite_module "
+                f"--without-http_gzip_module "
+                f"--with-http_ssl_module "
+                f"--with-http_v2_module"
+            )
+
+            if not run_command(configure_cmd, cwd=nginx_src_dir):
+                print("❌ Failed to configure nginx")
+                return False
+
+            # Compile
+            print("   🔨 Compiling (this takes 2-3 minutes)...")
+            num_cores = os.cpu_count() or 2
+            make_cmd = f"make -j{num_cores}"
+
+            if not run_command(make_cmd, cwd=nginx_src_dir):
+                print("❌ Failed to compile nginx")
+                return False
+
+            # Install
+            print("   📦 Installing...")
+            install_cmd = "make install"
+
+            if not run_command(install_cmd, cwd=nginx_src_dir):
+                print("❌ Failed to install nginx")
+                return False
+
+        # Verify installation
+        if os.path.exists(nginx_bin):
+            result = subprocess.run(f"{nginx_bin} -v", shell=True, capture_output=True, text=True)
+            if result.returncode == 0:
+                print(f"✅ Nginx installed successfully")
+                print(f"   Binary: {nginx_bin}")
+                print(f"   Version: {result.stderr.strip()}")
+                return True
+
+        print("❌ Nginx binary not found after installation")
+        return False
 
     except Exception as e:
-        print(f"⚠️  Exception during nginx installation: {e}")
-        print(f"   ℹ️  Nginx is optional - system nginx can be used if available")
+        print(f"❌ Exception during nginx installation: {e}")
+        import traceback
+        traceback.print_exc()
         return False
 
 
@@ -213,19 +247,21 @@ def main():
         print("⚠️  Failed to install via package, installing dependencies manually...")
 
         # Fallback: Install dependencies manually
+        # These match pyproject.toml dependencies
         ray_packages = [
-            "ray[default,serve]>=2.20.0",
-            "pyyaml>=6.0",
-            "aiohttp>=3.13",
-            "numpy",
-            "pandas",
-            "scikit-learn",
-            "matplotlib",
-            "fastapi",
-            "uvicorn[standard]",
-            "pydantic",
-            "httpx",
-            "starlette",  # Explicitly add starlette (FastAPI dependency)
+            # Core dependencies from pyproject.toml
+            "ray[serve]>=2.53.0",
+            "pyyaml>=6.0.3",
+            "aiohttp>=3.13.3",
+            # Management API dependencies
+            "fastapi>=0.110.0",
+            "uvicorn[standard]>=0.27.0",
+            "pydantic>=2.0.0",
+            "httpx>=0.27.0",
+            "starlette>=0.36.0",  # FastAPI dependency
+            # Common ML libraries (optional but useful)
+            "numpy>=1.24.0",
+            "pandas>=2.0.0",
         ]
 
         for package in ray_packages:
