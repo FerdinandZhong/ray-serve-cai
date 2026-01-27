@@ -215,11 +215,11 @@ def load_config():
     """Load Ray cluster configuration from environment or config file."""
     config = {
         'num_workers': int(os.environ.get('RAY_NUM_WORKERS', 1)),
-        'head_cpu': int(os.environ.get('RAY_HEAD_CPU', 4)),
-        'head_memory': int(os.environ.get('RAY_HEAD_MEMORY', 16)),
-        'worker_cpu': int(os.environ.get('RAY_WORKER_CPU', 8)),
+        'head_cpu': int(os.environ.get('RAY_HEAD_CPU', 8)),
+        'head_memory': int(os.environ.get('RAY_HEAD_MEMORY', 32)),
+        'worker_cpu': int(os.environ.get('RAY_WORKER_CPU', 32)),
         'worker_memory': int(os.environ.get('RAY_WORKER_MEMORY', 32)),
-        'worker_gpus': int(os.environ.get('RAY_WORKER_GPUS', 0)),
+        'worker_gpus': int(os.environ.get('RAY_WORKER_GPUS', 4)),
         'ray_port': int(os.environ.get('RAY_PORT', 6379)),
         'dashboard_port': int(os.environ.get('RAY_DASHBOARD_PORT', 8265)),
     }

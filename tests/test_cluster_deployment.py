@@ -228,11 +228,11 @@ except Exception as e:
     def test_cluster_creation(
         self,
         num_workers: int = 1,
-        cpu: int = 4,
-        memory: int = 16,
-        num_gpus: int = 1,
-        head_cpu: int = 2,
-        head_memory: int = 8
+        cpu: int = 32,
+        memory: int = 32,
+        num_gpus: int = 4,
+        head_cpu: int = 8,
+        head_memory: int = 32
     ):
         """Test creating a minimal CAI cluster."""
         print("\n" + "=" * 70)
@@ -429,32 +429,32 @@ Examples:
     parser.add_argument(
         '--cpu',
         type=int,
-        default=4,
-        help='CPU cores per worker node (default: 4)'
+        default=32,
+        help='CPU cores per worker node (default: 32)'
     )
     parser.add_argument(
         '--memory',
         type=int,
-        default=16,
-        help='Memory in GB per worker node (default: 16)'
+        default=32,
+        help='Memory in GB per worker node (default: 32)'
     )
     parser.add_argument(
         '--gpu',
         type=int,
-        default=1,
-        help='GPUs per worker node (default: 1)'
+        default=4,
+        help='GPUs per worker node (default: 4)'
     )
     parser.add_argument(
         '--head-cpu',
         type=int,
-        default=2,
-        help='CPU cores for head node (default: 2)'
+        default=8,
+        help='CPU cores for head node (default: 8)'
     )
     parser.add_argument(
         '--head-memory',
         type=int,
-        default=8,
-        help='Memory in GB for head node (default: 8)'
+        default=32,
+        help='Memory in GB for head node (default: 32)'
     )
     parser.add_argument(
         '--no-cleanup',
