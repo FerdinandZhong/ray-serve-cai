@@ -20,26 +20,29 @@ import sys
 import yaml
 from pathlib import Path
 
-# CRITICAL: Ensure virtual environment is used
-venv_python = Path("/home/cdsw/.venv/bin/python")
-current_python = Path(sys.executable)
-
-if venv_python.exists() and not str(current_python).startswith("/home/cdsw/.venv"):
-    print("=" * 70)
-    print("🔄 Re-executing with virtual environment...")
-    print("=" * 70)
-    import subprocess
-    # Re-execute this script with the venv Python
-    result = subprocess.run([str(venv_python), __file__] + sys.argv[1:])
-    sys.exit(result.returncode)
-
 # Add parent directory to path for imports
 # Handle both regular Python and IPython/Jupyter environments
 try:
     script_dir = Path(__file__).parent
+    script_file = __file__
 except NameError:
     # __file__ not available in IPython/Jupyter - use current working directory
     script_dir = Path.cwd() / "cai_integration"
+    script_file = None
+
+# CRITICAL: Ensure virtual environment is used (only if running as script)
+if script_file:
+    venv_python = Path("/home/cdsw/.venv/bin/python")
+    current_python = Path(sys.executable)
+
+    if venv_python.exists() and not str(current_python).startswith("/home/cdsw/.venv"):
+        print("=" * 70)
+        print("🔄 Re-executing with virtual environment...")
+        print("=" * 70)
+        import subprocess
+        # Re-execute this script with the venv Python
+        result = subprocess.run([str(venv_python), script_file] + sys.argv[1:])
+        sys.exit(result.returncode)
 
 sys.path.insert(0, str(script_dir.parent))
 
