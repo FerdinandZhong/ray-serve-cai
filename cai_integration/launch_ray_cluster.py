@@ -10,6 +10,8 @@ This script:
 5. Outputs connection information
 
 Run this as a CML job after setup_environment.py completes.
+IMPORTANT: This script must run within the virtual environment created by setup_environment.py.
+If running as a CML job, ensure the job is configured to use: /home/cdsw/.venv/bin/python
 """
 
 import json
@@ -17,6 +19,19 @@ import os
 import sys
 import yaml
 from pathlib import Path
+
+# CRITICAL: Ensure virtual environment is used
+venv_python = Path("/home/cdsw/.venv/bin/python")
+current_python = Path(sys.executable)
+
+if venv_python.exists() and not str(current_python).startswith("/home/cdsw/.venv"):
+    print("=" * 70)
+    print("🔄 Re-executing with virtual environment...")
+    print("=" * 70)
+    import subprocess
+    # Re-execute this script with the venv Python
+    result = subprocess.run([str(venv_python), __file__] + sys.argv[1:])
+    sys.exit(result.returncode)
 
 # Add parent directory to path for imports
 # Handle both regular Python and IPython/Jupyter environments
