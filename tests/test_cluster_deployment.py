@@ -11,10 +11,13 @@ Usage:
     export CML_API_KEY="your-api-key"
     export CML_PROJECT_ID="your-project-id"
 
-    # Run the test
+    # Run the test via bash wrapper (recommended)
+    bash scripts/test_cluster.sh
+
+    # Or directly with Python (if venv is already activated)
     python tests/test_cluster_deployment.py
 
-    # Or with custom configuration
+    # With custom configuration
     python tests/test_cluster_deployment.py --workers 1 --cpu 4 --memory 16
 """
 
@@ -23,24 +26,6 @@ import sys
 import argparse
 import time
 from pathlib import Path
-
-# Handle both regular Python and virtual environment contexts
-# Try to re-execute with venv if available and not already in it
-try:
-    script_file = __file__
-    venv_python = Path("/home/cdsw/.venv/bin/python")
-    current_python = Path(sys.executable)
-
-    if venv_python.exists() and not str(current_python).startswith("/home/cdsw/.venv"):
-        print("=" * 70)
-        print("🔄 Re-executing test with virtual environment...")
-        print("=" * 70)
-        import subprocess
-        result = subprocess.run([str(venv_python), script_file] + sys.argv[1:])
-        sys.exit(result.returncode)
-except NameError:
-    # __file__ not available in some execution contexts, continue normally
-    pass
 
 # Add parent directory to path
 sys.path.insert(0, str(Path(__file__).parent.parent))
@@ -53,12 +38,13 @@ except ImportError as e:
     print("=" * 70)
     print(f"\nError: {e}")
     print("\nThis test requires dependencies to be installed.")
-    print("In GitHub Actions or CI environments:")
+    print("\nIn GitHub Actions or CI environments:")
     print("  1. Ensure the package is installed: pip install -e .")
     print("  2. Or install dependencies: pip install ray[serve] fastapi starlette")
     print("\nIn CAI environments:")
     print("  1. Run setup_environment.py as a CML Job first")
-    print("  2. Then run this test with: /home/cdsw/.venv/bin/python tests/test_cluster_deployment.py")
+    print("  2. Then run this test via bash wrapper: bash build/shell_scripts/test_cluster.sh")
+    print("  3. Or directly: python tests/test_cluster_deployment.py (if venv is activated)")
     print("\n" + "=" * 70)
     sys.exit(1)
 

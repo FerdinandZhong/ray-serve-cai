@@ -60,7 +60,29 @@ Runs as a CML job to:
 - Monitor startup
 - Save connection info to `/home/cdsw/ray_cluster_info.json`
 
-### 4. Deployment Scripts
+**Note:** Use the bash wrapper script (`../../scripts/launch_ray_cluster.sh`) as the CAI application entry point. The wrapper automatically activates the virtual environment before running the Python script. This is the recommended approach for CAI deployments.
+
+### 4. Bash Wrapper Scripts (`../../scripts/`)
+
+For CAI application integration, use these bash wrapper scripts as entry points:
+
+- **`launch_ray_cluster.sh`** - Wrapper for launching Ray cluster
+  - Activates virtual environment
+  - Calls `launch_ray_cluster.py`
+  - **Use this as the CAI application script** for cluster deployment
+
+- **`test_cluster.sh`** - Wrapper for testing cluster deployment
+  - Activates virtual environment
+  - Calls `test_cluster_deployment.py`
+  - **Use this for validation** after deployment
+
+**Why use bash wrappers?**
+- Ensures virtual environment is always activated (no Python re-execution logic)
+- Follows CAI best practices (matches reference projects like CAI_AMP_Synthetic_Data_Studio)
+- Simpler, cleaner entry point for CAI applications
+- Automatic project root detection via directory structure
+
+### 5. Deployment Scripts
 
 The deployment is broken into three focused scripts:
 
@@ -138,10 +160,15 @@ cd ray-serve-cai
 # 3. Run setup job
 python cai_integration/setup_environment.py
 
-# 4. Run cluster launch job
+# 4. Run cluster launch job (using bash wrapper - recommended for CAI)
 export CML_HOST="https://ml.example.cloudera.site"
 export CML_API_KEY="your-api-key"
 export CDSW_PROJECT_ID="your-project-id"
+bash ../scripts/launch_ray_cluster.sh
+```
+
+**Alternative (if venv is already activated):**
+```bash
 python cai_integration/launch_ray_cluster.py
 ```
 
