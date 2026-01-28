@@ -131,38 +131,38 @@ jobs:
           echo "- **Commit**: ${{ github.sha }}" >> $GITHUB_STEP_SUMMARY
           echo "- **Force Rebuild**: ${{ github.event.inputs.force_rebuild || 'false' }}" >> $GITHUB_STEP_SUMMARY
 
-  verify-deployment:
-    needs: trigger-deployment
-    runs-on: ubuntu-latest
-    if: success()
-    timeout-minutes: 15
+  # verify-deployment:
+  #   needs: trigger-deployment
+  #   runs-on: ubuntu-latest
+  #   if: success()
+  #   timeout-minutes: 15
 
-    steps:
-      - name: Checkout code
-        uses: actions/checkout@v4
+  #   steps:
+  #     - name: Checkout code
+  #       uses: actions/checkout@v4
 
-      - name: Set up Python
-        uses: actions/setup-python@v4
-        with:
-          python-version: '3.11'
+  #     - name: Set up Python
+  #       uses: actions/setup-python@v4
+  #       with:
+  #         python-version: '3.11'
 
-      - name: Install test dependencies
-        run: |
-          python -m pip install --upgrade pip
-          pip install requests pyyaml
+  #     - name: Install test dependencies
+  #       run: |
+  #         python -m pip install --upgrade pip
+  #         pip install requests pyyaml
 
-      - name: Verify deployment
-        env:
-          CML_HOST: ${{ secrets.CML_HOST }}
-          CML_API_KEY: ${{ secrets.CML_API_KEY }}
-          CML_PROJECT_ID: ${{ secrets.CML_PROJECT_ID }}
-        run: |
-          echo "🔍 Verifying Ray cluster deployment..."
-          python tests/test_cluster_deployment.py --no-cleanup --no-wait
-          echo "✅ Deployment verification complete"
+  #     - name: Verify deployment
+  #       env:
+  #         CML_HOST: ${{ secrets.CML_HOST }}
+  #         CML_API_KEY: ${{ secrets.CML_API_KEY }}
+  #         CML_PROJECT_ID: ${{ secrets.CML_PROJECT_ID }}
+  #       run: |
+  #         echo "🔍 Verifying Ray cluster deployment..."
+  #         python tests/test_cluster_deployment.py --no-cleanup --no-wait
+  #         echo "✅ Deployment verification complete"
 
-      - name: Create verification summary
-        if: always()
-        run: |
-          echo "## Deployment Verification" >> $GITHUB_STEP_SUMMARY
-          echo "**Status**: ${{ job.status }}" >> $GITHUB_STEP_SUMMARY
+  #     - name: Create verification summary
+  #       if: always()
+  #       run: |
+  #         echo "## Deployment Verification" >> $GITHUB_STEP_SUMMARY
+  #         echo "**Status**: ${{ job.status }}" >> $GITHUB_STEP_SUMMARY

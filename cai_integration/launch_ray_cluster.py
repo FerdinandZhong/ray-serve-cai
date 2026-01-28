@@ -341,15 +341,22 @@ def main():
     cml_host = os.environ.get("CML_HOST")
     cml_api_key = os.environ.get("CML_API_KEY")
     project_id = os.environ.get("CDSW_PROJECT_ID") or os.environ.get("CML_PROJECT_ID")
-    runtime_identifier = os.environ.get(
-        "RUNTIME_IDENTIFIER",
+
+    # Runtime identifiers
+    head_runtime = os.environ.get(
+        "HEAD_RUNTIME_IDENTIFIER",
         "docker.repository.cloudera.com/cloudera/cdsw/ml-runtime-pbj-jupyterlab-python3.11-standard:2025.09.1-b5"
+    )
+    worker_runtime = os.environ.get(
+        "WORKER_RUNTIME_IDENTIFIER",
+        "docker.repository.cloudera.com/cloudera/cdsw/ml-runtime-pbj-jupyterlab-python3.11-cuda:2025.09.1-b5"
     )
 
     print("\n📋 Configuration:")
     print(f"   CML Host: {cml_host}")
     print(f"   Project ID: {project_id}")
-    print(f"   Runtime: {runtime_identifier[:80]}...")
+    print(f"   Head Runtime: {head_runtime[:80]}...")
+    print(f"   Worker Runtime: {worker_runtime[:80]}...")
 
     if not all([cml_host, cml_api_key, project_id]):
         print("\n❌ Missing required environment variables:")
@@ -396,7 +403,8 @@ def main():
             head_memory=ray_config['head_memory'],
             ray_port=ray_config['ray_port'],
             dashboard_port=ray_config['dashboard_port'],
-            runtime_identifier=runtime_identifier,
+            head_runtime_identifier=head_runtime,
+            worker_runtime_identifier=worker_runtime,
             head_script_path=head_script_path,
             worker_script_path=worker_script_path,
             wait_ready=True,
