@@ -32,12 +32,3 @@ jobs:
     parent_job_key: "setup_environment"
     timeout: 600
     description: "Start Ray cluster with configured head and worker nodes (calls bash wrapper via Python subprocess)"
-
-# Application configuration for Ray cluster
-application:
-  name: "ray-cluster-dashboard"
-  script: "cai_integration/ray_dashboard.py"
-  cpu: 4
-  memory: 16
-  description: "Ray cluster dashboard and monitoring"
-  bypass_authentication: true
