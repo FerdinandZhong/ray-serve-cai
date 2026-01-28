@@ -9,9 +9,15 @@ This script:
 4. Monitors cluster startup
 5. Outputs connection information
 
-Run this as a CML job after setup_environment.py completes.
-IMPORTANT: This script must run within the virtual environment created by setup_environment.py.
-If running as a CML job, ensure the job is configured to use: /home/cdsw/.venv/bin/python
+Run this via the bash wrapper: cai_integration/launch_ray_cluster.sh
+The wrapper script handles virtual environment activation.
+
+Usage:
+    bash cai_integration/launch_ray_cluster.sh
+    # or directly with Python (if venv is already activated)
+    python cai_integration/launch_ray_cluster.py
+    # or via Python job wrapper (simulates CAI)
+    python cai_integration/launch_ray_cluster_job.py
 """
 
 import json
@@ -21,29 +27,7 @@ import yaml
 from pathlib import Path
 
 # Add parent directory to path for imports
-# Handle both regular Python and IPython/Jupyter environments
-try:
-    script_dir = Path(__file__).parent
-    script_file = __file__
-except NameError:
-    # __file__ not available in IPython/Jupyter - use current working directory
-    script_dir = Path.cwd() / "cai_integration"
-    script_file = None
-
-# CRITICAL: Ensure virtual environment is used (only if running as script)
-if script_file:
-    venv_python = Path("/home/cdsw/.venv/bin/python")
-    current_python = Path(sys.executable)
-
-    if venv_python.exists() and not str(current_python).startswith("/home/cdsw/.venv"):
-        print("=" * 70)
-        print("🔄 Re-executing with virtual environment...")
-        print("=" * 70)
-        import subprocess
-        # Re-execute this script with the venv Python
-        result = subprocess.run([str(venv_python), script_file] + sys.argv[1:])
-        sys.exit(result.returncode)
-
+script_dir = Path(__file__).parent
 sys.path.insert(0, str(script_dir.parent))
 
 from ray_serve_cai.cai_cluster import CAIClusterManager

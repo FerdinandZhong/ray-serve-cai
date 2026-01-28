@@ -51,16 +51,87 @@ Runs as a CML job to:
 - Install Ray and dependencies
 - Verify Ray installation
 
-### 3. Launch Ray Cluster Script (`launch_ray_cluster.py`)
+### 3. CAI Job Entry Points
 
-Runs as a CML job to:
-- Load cluster configuration
-- Create Ray head node application
-- Create Ray worker node applications
-- Monitor startup
-- Save connection info to `/home/cdsw/ray_cluster_info.json`
+#### Python Wrappers (For CAI Jobs)
 
-### 4. Deployment Scripts
+These scripts serve as CAI job entry points and call bash wrappers via subprocess:
+
+- **`launch_ray_cluster_job.py`** - Entry point for Ray cluster launch job
+  - Python script (required by CAI)
+  - Calls `./launch_ray_cluster.sh` via subprocess
+  - Bash wrapper activates venv and runs `launch_ray_cluster.py`
+  - Used in `jobs_config.yaml` for job execution
+
+- **`test_cluster_deployment_job.py`** - Entry point for cluster test job
+  - Python script (required by CAI)
+  - Calls `./test_cluster.sh` via subprocess
+  - Bash wrapper activates venv and runs `test_cluster_deployment.py`
+
+#### Core Scripts (Application Logic)
+
+- **`launch_ray_cluster.py`** - Ray cluster launch logic
+  - Runs inside bash wrapper (activated venv)
+  - Loads cluster configuration
+  - Creates Ray head node application
+  - Creates Ray worker node applications
+  - Monitors startup and saves connection info
+
+- **`test_cluster_deployment.py`** - Cluster testing logic
+  - Runs inside bash wrapper (activated venv)
+  - Tests cluster deployment capabilities
+
+### 4. Bash Wrapper Scripts (`./`)
+
+These scripts handle virtual environment activation:
+
+- **`launch_ray_cluster.sh`** - Activates venv and calls `launch_ray_cluster.py`
+  - Can be used manually: `bash cai_integration/launch_ray_cluster.sh`
+  - Called from `launch_ray_cluster_job.py` for CAI jobs
+
+- **`test_cluster.sh`** - Activates venv and calls `test_cluster_deployment.py`
+  - Can be used manually: `bash cai_integration/test_cluster.sh`
+  - Called from `test_cluster_deployment_job.py` for CAI jobs
+
+**Why this architecture?**
+- **CAI Requirement**: CAI jobs must use Python entry points (not bash scripts directly)
+- **Clean venv Activation**: Bash wrapper handles environment activation cleanly
+- **Follows Best Practices**: Matches patterns used in CAI_AMP_Synthetic_Data_Studio
+- **Flexibility**: Bash wrappers can be called directly for manual testing
+
+### 5. Script Execution Flow
+
+**For CAI Jobs (via jobs_config.yaml):**
+```
+CAI Job Execution
+  ↓
+Python Entry Point (cai_integration/launch_ray_cluster_job.py)
+  ↓
+subprocess.run(["bash", "cai_integration/launch_ray_cluster.sh"])
+  ↓
+Bash Wrapper Script (cai_integration/launch_ray_cluster.sh)
+  ├─ Auto-detect project root
+  ├─ Activate venv (.venv/bin/activate)
+  └─ Run Python Script
+      ↓
+    launch_ray_cluster.py (Application Logic)
+```
+
+**For Manual Execution:**
+```
+Option 1: Via Bash Wrapper
+  bash cai_integration/launch_ray_cluster.sh
+  ├─ Activate venv
+  └─ Run launch_ray_cluster.py
+
+Option 2: Direct Python (if venv already activated)
+  python cai_integration/launch_ray_cluster.py
+
+Option 3: Via Python Wrapper (simulates CAI)
+  python cai_integration/launch_ray_cluster_job.py
+```
+
+### 6. Deployment Scripts
 
 The deployment is broken into three focused scripts:
 
@@ -129,6 +200,7 @@ python cai_integration/trigger_jobs.py \
 
 #### Option 2: Manual Job Execution
 
+**Simulating CAI Job Execution (Recommended for Testing):**
 ```bash
 # 1. Create project manually in CML UI
 # 2. Clone repository
@@ -138,10 +210,20 @@ cd ray-serve-cai
 # 3. Run setup job
 python cai_integration/setup_environment.py
 
-# 4. Run cluster launch job
+# 4. Run cluster launch job using Python wrapper (simulates CAI)
 export CML_HOST="https://ml.example.cloudera.site"
 export CML_API_KEY="your-api-key"
 export CDSW_PROJECT_ID="your-project-id"
+python cai_integration/launch_ray_cluster_job.py
+```
+
+**Alternative: Via Bash Wrapper (if testing manually):**
+```bash
+bash cai_integration/launch_ray_cluster.sh
+```
+
+**Direct Python (if venv is already activated):**
+```bash
 python cai_integration/launch_ray_cluster.py
 ```
 
