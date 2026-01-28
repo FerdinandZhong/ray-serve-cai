@@ -9,13 +9,15 @@ This script:
 4. Monitors cluster startup
 5. Outputs connection information
 
-Run this via the bash wrapper: scripts/launch_ray_cluster.sh
+Run this via the bash wrapper: cai_integration/launch_ray_cluster.sh
 The wrapper script handles virtual environment activation.
 
 Usage:
-    bash scripts/launch_ray_cluster.sh
+    bash cai_integration/launch_ray_cluster.sh
     # or directly with Python (if venv is already activated)
     python cai_integration/launch_ray_cluster.py
+    # or via Python job wrapper (simulates CAI)
+    python cai_integration/launch_ray_cluster_job.py
 """
 
 import json

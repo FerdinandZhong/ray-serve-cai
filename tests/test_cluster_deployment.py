@@ -12,7 +12,7 @@ Usage:
     export CML_PROJECT_ID="your-project-id"
 
     # Run the test via bash wrapper (recommended)
-    bash scripts/test_cluster.sh
+    bash cai_integration/test_cluster.sh
 
     # Or directly with Python (if venv is already activated)
     python tests/test_cluster_deployment.py

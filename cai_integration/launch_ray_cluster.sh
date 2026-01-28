@@ -7,11 +7,10 @@ set -eox pipefail
 # 2. Ensures we're in the project root directory
 # 3. Calls the Python launcher script
 #
-# Usage: bash build/shell_scripts/launch_ray_cluster.sh
-# Or as CAI application script: build/shell_scripts/launch_ray_cluster.sh
+# Usage: bash cai_integration/launch_ray_cluster.sh
 
-# Get the project root directory (parent of build/shell_scripts)
-PROJECT_ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/../.." && pwd)"
+# Get the project root directory (parent of cai_integration)
+PROJECT_ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 cd "$PROJECT_ROOT"
 
 echo "="

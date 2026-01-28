@@ -7,11 +7,11 @@ set -eox pipefail
 # 2. Ensures we're in the project root directory
 # 3. Calls the test deployment script
 #
-# Usage: bash build/shell_scripts/test_cluster.sh
-# With options: bash build/shell_scripts/test_cluster.sh --workers 2 --cpu 32 --gpu 4
+# Usage: bash cai_integration/test_cluster.sh
+# With options: bash cai_integration/test_cluster.sh --workers 2 --cpu 32 --gpu 4
 
-# Get the project root directory (parent of build/shell_scripts)
-PROJECT_ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/../.." && pwd)"
+# Get the project root directory (parent of cai_integration)
+PROJECT_ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 cd "$PROJECT_ROOT"
 
 echo "="
