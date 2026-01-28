@@ -3,10 +3,10 @@
 Quick script to deploy Qwen3-30B-A3B model on Ray Cluster
 
 Usage:
-    python deploy_qwen2_model.py --mgmt-api http://head-host:8080
+    python deploy_qwen3_model.py --mgmt-api http://head-host:8080
 
 Or with custom settings:
-    python deploy_qwen2_model.py \
+    python deploy_qwen3_model.py \
         --mgmt-api http://head-host:8080 \
         --model "Qwen/Qwen3-30B-A3B" \
         --tensor-parallel 4 \
@@ -224,7 +224,7 @@ Examples:
   # Deploy with custom settings
   python deploy_qwen2_model.py \
     --mgmt-api http://localhost:8080 \
-    --model "Qwen/Qwen2-A3B-30B" \
+    --model "Qwen/Qwen3-A3B-30B" \
     --name my-qwen-model \
     --dtype float16 \
     --max-model-len 8192

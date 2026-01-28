@@ -55,20 +55,20 @@ curl -X POST "$MGMT_API/api/v1/applications" \
   }' | jq .
 ```
 
-### 3. Deploy Qwen2-A3B-30B Model (Option B: Using Python Script)
+### 3. Deploy Qwen3-A3B-30B Model (Option B: Using Python Script)
 
 ```bash
 # Make script executable
-chmod +x scripts/deploy_qwen2_model.py
+chmod +x scripts/deploy_qwen3_model.py
 
 # Deploy with defaults (Qwen3-30B-A3B, 4 GPUs, wait and test)
-python scripts/deploy_qwen2_model.py \
+python scripts/deploy_qwen3_model.py \
   --mgmt-api "http://$HEAD_HOST:8080" \
   --wait \
   --test
 
 # Or with specific model
-python scripts/deploy_qwen2_model.py \
+python scripts/deploy_qwen3_model.py \
   --mgmt-api "http://$HEAD_HOST:8080" \
   --model "Qwen/Qwen3-30B-A3B" \
   --tensor-parallel 4 \
@@ -164,7 +164,7 @@ Open in browser: http://$HEAD_HOST:8265
 curl -s "$MGMT_API/api/v1/cluster/status" | jq '.healthy'
 
 # 2. Deploy
-python scripts/deploy_qwen2_model.py \
+python scripts/deploy_qwen3_model.py \
   --mgmt-api "$MGMT_API" \
   --wait --test
 
@@ -172,7 +172,7 @@ python scripts/deploy_qwen2_model.py \
 curl -X POST "$INFERENCE_API/chat/completions" \
   -H "Content-Type: application/json" \
   -d '{
-    "model": "Qwen/Qwen2-A3B-30B",
+    "model": "Qwen/Qwen3-A3B-30B",
     "messages": [{"role": "user", "content": "Hello"}],
     "max_tokens": 100
   }' | jq '.choices[0].message.content'
@@ -209,7 +209,7 @@ curl -X DELETE "$MGMT_API/api/v1/applications/qwen2-30b" | jq .
 
 ## Environment Variables
 
-For `deploy_qwen2_model.py`:
+For `deploy_qwen3_model.py`:
 ```bash
 export MGMT_API="http://head-host:8080"
 
@@ -235,7 +235,7 @@ curl -X DELETE "$MGMT_API/api/v1/applications/qwen2-30b"
 ### Out of memory
 ```bash
 # Reduce tensor parallel or GPU memory utilization
-python scripts/deploy_qwen2_model.py \
+python scripts/deploy_qwen3_model.py \
   --mgmt-api "$MGMT_API" \
   --tensor-parallel 2 \
   --gpu-memory-util 0.8
@@ -264,7 +264,7 @@ curl -s "$MGMT_API/api/v1/cluster/status" | jq .
 
 **For Qwen3-30B-A3B (Default):**
 ```bash
-python scripts/deploy_qwen2_model.py \
+python scripts/deploy_qwen3_model.py \
   --model "Qwen/Qwen3-30B-A3B" \
   --tensor-parallel 4 \
   --dtype bfloat16 \
@@ -273,7 +273,7 @@ python scripts/deploy_qwen2_model.py \
 
 **For smaller model (faster):**
 ```bash
-python scripts/deploy_qwen2_model.py \
+python scripts/deploy_qwen3_model.py \
   --model "Qwen/Qwen3-A2B-7B" \
   --tensor-parallel 2 \
   --dtype bfloat16 \
@@ -282,7 +282,7 @@ python scripts/deploy_qwen2_model.py \
 
 **For single GPU:**
 ```bash
-python scripts/deploy_qwen2_model.py \
+python scripts/deploy_qwen3_model.py \
   --model "Qwen/Qwen3-A2B-7B" \
   --tensor-parallel 1 \
   --wait --test
