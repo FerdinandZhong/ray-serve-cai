@@ -108,6 +108,8 @@ class CAIClusterManager:
         ray_port: int = 6379,
         dashboard_port: int = 8265,
         runtime_identifier: Optional[str] = None,
+        head_runtime_identifier: Optional[str] = None,
+        worker_runtime_identifier: Optional[str] = None,
         head_script_path: Optional[str] = None,
         worker_script_path: Optional[str] = None,
         wait_ready: bool = True,
@@ -128,7 +130,9 @@ class CAIClusterManager:
             head_memory: Memory in GB for head node (defaults to same as workers)
             ray_port: Ray GCS server port
             dashboard_port: Ray dashboard port
-            runtime_identifier: Docker runtime identifier (REQUIRED for projects with runtimes)
+            runtime_identifier: Docker runtime identifier (DEPRECATED - use head_runtime_identifier and worker_runtime_identifier)
+            head_runtime_identifier: Docker runtime identifier for head node (overrides runtime_identifier)
+            worker_runtime_identifier: Docker runtime identifier for worker nodes (overrides runtime_identifier)
             head_script_path: Path to head node launcher script (REQUIRED - must be created before calling)
             worker_script_path: Path to worker node launcher script (REQUIRED - must be created before calling)
             wait_ready: Wait for cluster to be ready
@@ -138,14 +142,22 @@ class CAIClusterManager:
             Dictionary with cluster information
 
         Raises:
-            RuntimeError: If runtime_identifier, head_script_path, or worker_script_path not provided
+            RuntimeError: If runtime_identifier(s), head_script_path, or worker_script_path not provided
         """
-        # Validate runtime_identifier is provided
-        if not runtime_identifier:
+        # Determine runtime identifiers
+        # Priority: specific head/worker identifiers > generic runtime_identifier > error
+        head_rt = head_runtime_identifier or runtime_identifier
+        worker_rt = worker_runtime_identifier or runtime_identifier
+
+        if not head_rt or not worker_rt:
             raise RuntimeError(
-                "runtime_identifier is required for applications in this project.\n"
-                "Please provide a Docker runtime image, e.g.:\n"
-                'runtime_identifier="docker.repository.cloudera.com/cloudera/cdsw/ml-runtime-pbj-jupyterlab-python3.11-standard:2025.09.1-b5"'
+                "Runtime identifiers are required for applications in this project.\n"
+                "Please provide either:\n"
+                "  - head_runtime_identifier and worker_runtime_identifier, or\n"
+                "  - runtime_identifier (used for both head and workers)\n"
+                "Example:\n"
+                'head_runtime_identifier="docker.repository.cloudera.com/cloudera/cdsw/ml-runtime-pbj-jupyterlab-python3.11-standard:2025.09.1-b5"\n'
+                'worker_runtime_identifier="docker.repository.cloudera.com/cloudera/cdsw/ml-runtime-pbj-jupyterlab-python3.11-cuda:2025.09.1-b5"'
             )
 
         # Set head node resources (default to worker resources if not specified)
@@ -176,7 +188,7 @@ class CAIClusterManager:
                 script=head_script_path,
                 cpu=head_cpu,
                 memory=head_memory,
-                runtime_identifier=runtime_identifier,
+                runtime_identifier=head_rt,
                 subdomain="ray-cluster-head",
                 bypass_authentication=True
             )
@@ -240,7 +252,7 @@ class CAIClusterManager:
                         'script': worker_script_path,
                         'cpu': cpu,
                         'memory': memory,
-                        'runtime_identifier': runtime_identifier,
+                        'runtime_identifier': worker_rt,
                         'subdomain': f"ray-cluster-worker-{i+1}",
                         'bypass_authentication': True
                     }
