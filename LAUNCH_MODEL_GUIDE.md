@@ -42,7 +42,7 @@ MGMT_API="http://<head-host>:8080"
 curl -X POST "$MGMT_API/api/v1/applications" \
   -H "Content-Type: application/json" \
   -d '{
-    "name": "qwen2-a3b-30b",
+    "name": "qwen3-a3b-30b",
     "import_path": "ray_serve_cai.engines.vllm_engine:create_vllm_deployment",
     "route_prefix": "/v1",
     "num_replicas": 1,
@@ -80,7 +80,7 @@ engine_config = {
 
 # Deployment request
 deployment_request = {
-    "name": "qwen2-a3b-30b",
+    "name": "qwen3-a3b-30b",
     "import_path": "ray_serve_cai.engines.vllm_engine:create_vllm_deployment",
     "route_prefix": "/v1",
     "num_replicas": 1,
@@ -109,11 +109,11 @@ print("Deployment status:", response.json())
 
 ```bash
 # Check deployment status
-curl -s "http://<head-host>:8080/api/v1/applications/qwen2-a3b-30b" | jq .
+curl -s "http://<head-host>:8080/api/v1/applications/qwen3-a3b-30b" | jq .
 
 # Expected output shows:
 # {
-#   "name": "qwen2-a3b-30b",
+#   "name": "qwen3-a3b-30b",
 #   "status": "healthy",  # or "running"
 #   "route_prefix": "/v1",
 #   "num_replicas": 1,
@@ -218,7 +218,7 @@ import sys
 # Configuration
 MGMT_API = "http://<head-host>:8080"
 INFERENCE_API = f"{MGMT_API}/v1"
-MODEL_NAME = "qwen2-a3b-30b"
+MODEL_NAME = "qwen3-a3b-30b"
 
 def wait_for_deployment(app_name, max_retries=60, retry_interval=10):
     """Wait for deployment to be healthy"""
@@ -415,7 +415,7 @@ Available parameters for model queries:
 
 ```bash
 # Check deployment logs
-curl "http://<head-host>:8080/api/v1/applications/qwen2-a3b-30b" | jq .
+curl "http://<head-host>:8080/api/v1/applications/qwen3-a3b-30b" | jq .
 
 # Check Ray cluster status
 curl "http://<head-host>:8080/api/v1/cluster/status" | jq .
