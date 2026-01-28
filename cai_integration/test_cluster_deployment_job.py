@@ -25,8 +25,14 @@ from pathlib import Path
 def main():
     """Execute the cluster deployment test via bash wrapper."""
     # Get cai_integration directory
-    script_dir = Path(__file__).parent
-    project_root = script_dir.parent
+    # Handle case where __file__ might not be available in some CAI execution contexts
+    try:
+        script_dir = Path(__file__).resolve().parent
+        project_root = script_dir.parent
+    except (NameError, AttributeError):
+        # Fallback: assume we're in project root and cai_integration is a subdirectory
+        project_root = Path.cwd()
+        script_dir = project_root / "cai_integration"
 
     # Path to bash wrapper script (in cai_integration)
     bash_wrapper = script_dir / "test_cluster.sh"
