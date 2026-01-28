@@ -359,9 +359,9 @@ class RayClusterManager:
 
         # Worker node resources
         resources = cai_config.get('resources', {})
-        cpu = resources.get('cpu', 16)
-        memory = resources.get('memory', 64)
-        num_gpus = resources.get('num_gpus', 0)
+        cpu = resources.get('cpu', 32)
+        memory = resources.get('memory', 32)
+        num_gpus = resources.get('num_gpus', 4)
 
         # Head node resources (optional, defaults to worker resources)
         head_resources = cai_config.get('head_resources', {})

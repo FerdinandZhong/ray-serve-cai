@@ -12,10 +12,10 @@ Usage:
     export CML_PROJECT_ID="your-project-id"
 
     # Run the test
-    python tests/test_cai_deployment.py
+    python tests/test_cluster_deployment.py
 
     # Or with custom configuration
-    python tests/test_cai_deployment.py --workers 1 --cpu 4 --memory 16
+    python tests/test_cluster_deployment.py --workers 1 --cpu 4 --memory 16
 """
 
 import os
@@ -24,10 +24,43 @@ import argparse
 import time
 from pathlib import Path
 
+# Handle both regular Python and virtual environment contexts
+# Try to re-execute with venv if available and not already in it
+try:
+    script_file = __file__
+    venv_python = Path("/home/cdsw/.venv/bin/python")
+    current_python = Path(sys.executable)
+
+    if venv_python.exists() and not str(current_python).startswith("/home/cdsw/.venv"):
+        print("=" * 70)
+        print("🔄 Re-executing test with virtual environment...")
+        print("=" * 70)
+        import subprocess
+        result = subprocess.run([str(venv_python), script_file] + sys.argv[1:])
+        sys.exit(result.returncode)
+except NameError:
+    # __file__ not available in some execution contexts, continue normally
+    pass
+
 # Add parent directory to path
 sys.path.insert(0, str(Path(__file__).parent.parent))
 
-from ray_serve_cai.cai_cluster import CAIClusterManager
+try:
+    from ray_serve_cai.cai_cluster import CAIClusterManager
+except ImportError as e:
+    print("=" * 70)
+    print("❌ ImportError: Could not import ray_serve_cai")
+    print("=" * 70)
+    print(f"\nError: {e}")
+    print("\nThis test requires dependencies to be installed.")
+    print("In GitHub Actions or CI environments:")
+    print("  1. Ensure the package is installed: pip install -e .")
+    print("  2. Or install dependencies: pip install ray[serve] fastapi starlette")
+    print("\nIn CAI environments:")
+    print("  1. Run setup_environment.py as a CML Job first")
+    print("  2. Then run this test with: /home/cdsw/.venv/bin/python tests/test_cluster_deployment.py")
+    print("\n" + "=" * 70)
+    sys.exit(1)
 
 
 class CAIClusterTester:
@@ -195,11 +228,11 @@ except Exception as e:
     def test_cluster_creation(
         self,
         num_workers: int = 1,
-        cpu: int = 4,
-        memory: int = 16,
-        num_gpus: int = 1,
-        head_cpu: int = 2,
-        head_memory: int = 8
+        cpu: int = 32,
+        memory: int = 32,
+        num_gpus: int = 4,
+        head_cpu: int = 8,
+        head_memory: int = 32
     ):
         """Test creating a minimal CAI cluster."""
         print("\n" + "=" * 70)
@@ -396,32 +429,32 @@ Examples:
     parser.add_argument(
         '--cpu',
         type=int,
-        default=4,
-        help='CPU cores per worker node (default: 4)'
+        default=32,
+        help='CPU cores per worker node (default: 32)'
     )
     parser.add_argument(
         '--memory',
         type=int,
-        default=16,
-        help='Memory in GB per worker node (default: 16)'
+        default=32,
+        help='Memory in GB per worker node (default: 32)'
     )
     parser.add_argument(
         '--gpu',
         type=int,
-        default=1,
-        help='GPUs per worker node (default: 1)'
+        default=4,
+        help='GPUs per worker node (default: 4)'
     )
     parser.add_argument(
         '--head-cpu',
         type=int,
-        default=2,
-        help='CPU cores for head node (default: 2)'
+        default=8,
+        help='CPU cores for head node (default: 8)'
     )
     parser.add_argument(
         '--head-memory',
         type=int,
-        default=8,
-        help='Memory in GB for head node (default: 8)'
+        default=32,
+        help='Memory in GB for head node (default: 32)'
     )
     parser.add_argument(
         '--no-cleanup',
