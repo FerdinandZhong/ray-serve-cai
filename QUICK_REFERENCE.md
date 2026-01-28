@@ -2,6 +2,9 @@
 
 ## After Ray Cluster + Management API are Ready
 
+**Model:** Qwen3-30B-A3B (Qwen/Qwen3-30B-A3B)
+**Cluster:** 4 GPU worker + management API head node
+
 ### 1. Basic Setup
 
 ```bash
@@ -27,14 +30,14 @@ curl -s "$MGMT_API/api/v1/resources/capacity" | jq .
 curl -s "$MGMT_API/api/v1/resources/nodes" | jq .
 ```
 
-### 3. Deploy Qwen2-A3B-30B Model (Option A: Simple)
+### 3. Deploy Qwen3-30B-A3B Model (Option A: Simple)
 
 ```bash
 # Deploy with 4 GPUs tensor parallelism
 curl -X POST "$MGMT_API/api/v1/applications" \
   -H "Content-Type: application/json" \
   -d '{
-    "name": "qwen2-30b",
+    "name": "qwen3-30b",
     "import_path": "ray_serve_cai.engines.vllm_engine:create_vllm_deployment",
     "route_prefix": "/v1",
     "num_replicas": 1,
@@ -58,7 +61,7 @@ curl -X POST "$MGMT_API/api/v1/applications" \
 # Make script executable
 chmod +x scripts/deploy_qwen2_model.py
 
-# Deploy with defaults (Qwen2-57B-A14B, 4 GPUs, wait and test)
+# Deploy with defaults (Qwen3-30B-A3B, 4 GPUs, wait and test)
 python scripts/deploy_qwen2_model.py \
   --mgmt-api "http://$HEAD_HOST:8080" \
   --wait \
@@ -67,7 +70,7 @@ python scripts/deploy_qwen2_model.py \
 # Or with specific model
 python scripts/deploy_qwen2_model.py \
   --mgmt-api "http://$HEAD_HOST:8080" \
-  --model "Qwen/Qwen2-A3B-30B" \
+  --model "Qwen/Qwen3-30B-A3B" \
   --tensor-parallel 4 \
   --wait \
   --test
@@ -90,7 +93,7 @@ curl -s "$MGMT_API/api/v1/applications" | jq .
 curl -X POST "$INFERENCE_API/chat/completions" \
   -H "Content-Type: application/json" \
   -d '{
-    "model": "Qwen/Qwen2-A3B-30B",
+    "model": "Qwen/Qwen3-30B-A3B",
     "messages": [
       {"role": "user", "content": "What is machine learning?"}
     ],
@@ -104,7 +107,7 @@ curl -X POST "$INFERENCE_API/chat/completions" \
 curl -X POST "$INFERENCE_API/completions" \
   -H "Content-Type: application/json" \
   -d '{
-    "model": "Qwen/Qwen2-A3B-30B",
+    "model": "Qwen/Qwen3-30B-A3B",
     "prompt": "Machine learning is",
     "temperature": 0.7,
     "max_tokens": 512
@@ -253,16 +256,16 @@ curl -s "$MGMT_API/api/v1/cluster/status" | jq .
 ## Model Options
 
 ### Recommended Models for 4 GPUs
-- `Qwen/Qwen2-57B-A14B` (Default, good balance)
-- `Qwen/Qwen2-A3B-30B` (30B, faster)
-- `Qwen/Qwen2-A2B-7B` (7B, very fast)
+- `Qwen/Qwen3-30B-A3B` (Default, 30B A3B optimized)
+- `Qwen/Qwen3-A2B-7B` (7B, faster inference)
+- `Qwen/Qwen3-A14B` (14B, balanced)
 
 ### Configuration Examples
 
-**For 30B model:**
+**For Qwen3-30B-A3B (Default):**
 ```bash
 python scripts/deploy_qwen2_model.py \
-  --model "Qwen/Qwen2-A3B-30B" \
+  --model "Qwen/Qwen3-30B-A3B" \
   --tensor-parallel 4 \
   --dtype bfloat16 \
   --wait --test
@@ -271,16 +274,16 @@ python scripts/deploy_qwen2_model.py \
 **For smaller model (faster):**
 ```bash
 python scripts/deploy_qwen2_model.py \
-  --model "Qwen/Qwen2-A2B-7B" \
+  --model "Qwen/Qwen3-A2B-7B" \
   --tensor-parallel 2 \
-  --dtype float16 \
+  --dtype bfloat16 \
   --wait --test
 ```
 
 **For single GPU:**
 ```bash
 python scripts/deploy_qwen2_model.py \
-  --model "Qwen/Qwen2-A2B-7B" \
+  --model "Qwen/Qwen3-A2B-7B" \
   --tensor-parallel 1 \
   --wait --test
 ```

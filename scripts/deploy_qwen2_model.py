@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 """
-Quick script to deploy Qwen2-A3B-30B model on Ray Cluster
+Quick script to deploy Qwen3-30B-A3B model on Ray Cluster
 
 Usage:
     python deploy_qwen2_model.py --mgmt-api http://head-host:8080
@@ -8,7 +8,7 @@ Usage:
 Or with custom settings:
     python deploy_qwen2_model.py \
         --mgmt-api http://head-host:8080 \
-        --model "Qwen/Qwen2-57B-A14B" \
+        --model "Qwen/Qwen3-30B-A3B" \
         --tensor-parallel 4 \
         --wait
 """
@@ -239,8 +239,8 @@ Examples:
 
     parser.add_argument(
         '--model',
-        default='Qwen/Qwen2-57B-A14B',
-        help='Model name from HuggingFace (default: Qwen/Qwen2-57B-A14B)'
+        default='Qwen/Qwen3-30B-A3B',
+        help='Model name from HuggingFace (default: Qwen/Qwen3-30B-A3B)'
     )
 
     parser.add_argument(

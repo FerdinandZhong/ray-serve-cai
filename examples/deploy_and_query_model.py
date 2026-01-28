@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 """
-Example: Deploy Qwen2-A3B-30B and Query It
+Example: Deploy Qwen3-30B-A3B and Query It
 
 This example shows how to:
 1. Connect to the management API
@@ -19,8 +19,8 @@ from typing import Iterator
 # Configuration
 MGMT_API_URL = "http://localhost:8080"
 INFERENCE_API_URL = f"{MGMT_API_URL}/v1"
-MODEL_NAME = "qwen2-30b"
-MODEL_ID = "Qwen/Qwen2-A3B-30B"
+MODEL_NAME = "qwen3-30b"
+MODEL_ID = "Qwen/Qwen3-30B-A3B"
 
 
 class RayServeClient:

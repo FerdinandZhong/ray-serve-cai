@@ -1,6 +1,6 @@
-# Launch Qwen2-A3B-30B Model on Ray Cluster
+# Launch Qwen3-30B-A3B Model on Ray Cluster
 
-This guide shows how to deploy and query the Qwen2-A3B-30B model using the Ray Serve management API after the Ray cluster is running.
+This guide shows how to deploy and query the Qwen3-30B-A3B model using the Ray Serve management API after the Ray cluster is running.
 
 ## Prerequisites
 
@@ -28,7 +28,7 @@ Expected output shows:
 - Worker node has 4 GPUs available
 - Ray cluster is healthy
 
-## Step 2: Deploy Qwen2-A3B-30B Model
+## Step 2: Deploy Qwen3-30B-A3B Model
 
 ### Option A: Deploy with vLLM (Recommended for Qwen model)
 
@@ -38,7 +38,7 @@ Deploy the model using the vLLM engine with tensor parallelism across all 4 GPUs
 # Set your management API URL
 MGMT_API="http://<head-host>:8080"
 
-# Deploy Qwen2-A3B-30B with tensor parallelism on 4 GPUs
+# Deploy Qwen3-30B-A3B with tensor parallelism on 4 GPUs
 curl -X POST "$MGMT_API/api/v1/applications" \
   -H "Content-Type: application/json" \
   -d '{
@@ -69,7 +69,7 @@ MGMT_API = "http://<head-host>:8080"
 
 # vLLM Engine Configuration
 engine_config = {
-    "model": "Qwen/Qwen2-57B-A14B",  # or Qwen/Qwen2-A3B-30B if available
+    "model": "Qwen/Qwen2-57B-A14B",  # or Qwen/Qwen3-30B-A3B if available
     "tensor_parallel_size": 4,
     "dtype": "bfloat16",
     "gpu_memory_utilization": 0.9,
@@ -138,7 +138,7 @@ Once deployed, the model is available at:
 curl -X POST "http://<head-host>:8080/v1/chat/completions" \
   -H "Content-Type: application/json" \
   -d '{
-    "model": "Qwen/Qwen2-A3B-30B",
+    "model": "Qwen/Qwen3-30B-A3B",
     "messages": [
       {
         "role": "user",
@@ -161,7 +161,7 @@ INFERENCE_API = "http://<head-host>:8080/v1"
 response = requests.post(
     f"{INFERENCE_API}/chat/completions",
     json={
-        "model": "Qwen/Qwen2-A3B-30B",
+        "model": "Qwen/Qwen3-30B-A3B",
         "messages": [
             {
                 "role": "user",
@@ -184,7 +184,7 @@ print("Response:", result['choices'][0]['message']['content'])
 curl -X POST "http://<head-host>:8080/v1/completions" \
   -H "Content-Type: application/json" \
   -d '{
-    "model": "Qwen/Qwen2-A3B-30B",
+    "model": "Qwen/Qwen3-30B-A3B",
     "prompt": "Machine learning is",
     "temperature": 0.7,
     "max_tokens": 512
@@ -208,7 +208,7 @@ curl "http://<head-host>:8080/health" | jq .
 ```python
 #!/usr/bin/env python3
 """
-Complete example: Deploy Qwen2-A3B-30B and query it
+Complete example: Deploy Qwen3-30B-A3B and query it
 """
 
 import requests
@@ -242,9 +242,9 @@ def wait_for_deployment(app_name, max_retries=60, retry_interval=10):
     return False
 
 def deploy_model():
-    """Deploy Qwen2-A3B-30B model"""
+    """Deploy Qwen3-30B-A3B model"""
     print("=" * 70)
-    print("🚀 Deploying Qwen2-A3B-30B Model")
+    print("🚀 Deploying Qwen3-30B-A3B Model")
     print("=" * 70)
 
     deployment_request = {
@@ -280,7 +280,7 @@ def deploy_model():
 def query_model():
     """Query the deployed model"""
     print("\n" + "=" * 70)
-    print("💬 Querying Qwen2-A3B-30B Model")
+    print("💬 Querying Qwen3-30B-A3B Model")
     print("=" * 70)
 
     messages = [
@@ -288,7 +288,7 @@ def query_model():
     ]
 
     request_payload = {
-        "model": "Qwen/Qwen2-A3B-30B",
+        "model": "Qwen/Qwen3-30B-A3B",
         "messages": messages,
         "temperature": 0.7,
         "max_tokens": 256,
@@ -353,7 +353,7 @@ def check_cluster_health():
         return False
 
 if __name__ == "__main__":
-    print("\n🎯 Qwen2-A3B-30B Model Deployment & Query\n")
+    print("\n🎯 Qwen3-30B-A3B Model Deployment & Query\n")
 
     # Check cluster health
     if not check_cluster_health():
@@ -389,11 +389,11 @@ Available parameters when deploying with vLLM:
 
 | Parameter | Type | Default | Description |
 |-----------|------|---------|-------------|
-| `model` | str | - | Model name/path (e.g., `Qwen/Qwen2-A3B-30B`) |
-| `tensor_parallel_size` | int | 1 | Number of GPUs for tensor parallelism (1-4 for Qwen2-A3B-30B) |
+| `model` | str | - | Model name/path (e.g., `Qwen/Qwen3-30B-A3B`) |
+| `tensor_parallel_size` | int | 1 | Number of GPUs for tensor parallelism (1-4 for Qwen3-30B-A3B) |
 | `dtype` | str | auto | Data type: auto, float16, bfloat16, float32 |
 | `gpu_memory_utilization` | float | 0.9 | GPU memory utilization (0.0-1.0) |
-| `max_model_len` | int | auto | Maximum context length (32768 for Qwen2-A3B-30B) |
+| `max_model_len` | int | auto | Maximum context length (32768 for Qwen3-30B-A3B) |
 | `load_format` | str | auto | Model load format: auto, safetensors, pt |
 | `trust_remote_code` | bool | False | Allow remote code execution (needed for some models) |
 
