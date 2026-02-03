@@ -18,16 +18,33 @@ from starlette.responses import JSONResponse, StreamingResponse
 
 from vllm import AsyncLLMEngine
 from vllm.engine.arg_utils import AsyncEngineArgs
-from vllm.entrypoints.openai.serving_completion import OpenAIServingCompletion
-from vllm.entrypoints.openai.serving_chat import OpenAIServingChat
-from vllm.entrypoints.openai.serving_models import (
-    OpenAIServingModels,
-    BaseModelPath,
-)
-from vllm.entrypoints.openai.protocol import (
-    CompletionRequest,
-    ChatCompletionRequest,
-)
+
+# vLLM API changed between versions:
+# - v0.13.x: flat structure (serving_completion, serving_chat, serving_models, protocol)
+# - v0.14+/v0.15+: subdirectory structure (completion/serving, chat_completion/serving, etc.)
+# Try new structure first, fall back to old structure
+try:
+    # vLLM 0.14+/0.15+ (new subdirectory structure)
+    from vllm.entrypoints.openai.completion.serving import OpenAIServingCompletion
+    from vllm.entrypoints.openai.chat_completion.serving import OpenAIServingChat
+    from vllm.entrypoints.openai.models.serving import (
+        OpenAIServingModels,
+        BaseModelPath,
+    )
+    from vllm.entrypoints.openai.completion.protocol import CompletionRequest
+    from vllm.entrypoints.openai.chat_completion.protocol import ChatCompletionRequest
+except ImportError:
+    # vLLM 0.13.x (old flat structure)
+    from vllm.entrypoints.openai.serving_completion import OpenAIServingCompletion
+    from vllm.entrypoints.openai.serving_chat import OpenAIServingChat
+    from vllm.entrypoints.openai.serving_models import (
+        OpenAIServingModels,
+        BaseModelPath,
+    )
+    from vllm.entrypoints.openai.protocol import (
+        CompletionRequest,
+        ChatCompletionRequest,
+    )
 
 logger = logging.getLogger(__name__)
 
