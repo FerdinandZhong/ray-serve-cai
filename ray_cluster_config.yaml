@@ -14,9 +14,9 @@ ray_cluster:
   head_memory: 32  # in GB
 
   # Worker node resources per node
-  worker_cpu: 32
+  worker_cpu: 16
   worker_memory: 32  # in GB
-  worker_gpus: 4   # GPUs per worker (0 for CPU-only)
+  worker_gpus: 2   # GPUs per worker (0 for CPU-only)
 
   # Ray daemon ports
   ray_port: 6379

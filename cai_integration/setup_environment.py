@@ -239,10 +239,10 @@ def main():
     # Install the package itself first (includes all dependencies from pyproject.toml)
     print("🚀 Installing ray-serve-cai package and dependencies...")
 
-    # Install package in editable mode (includes all dependencies from pyproject.toml)
-    print("\n📦 Installing ray-serve-cai package...")
-    if run_command("uv pip install -e /home/cdsw"):
-        print("✅ ray-serve-cai package installed with all dependencies")
+    # Install package in editable mode with all extras (includes vLLM and sglang)
+    print("\n📦 Installing ray-serve-cai package with all extras (vLLM, sglang)...")
+    if run_command("uv pip install -e '/home/cdsw[all]'"):
+        print("✅ ray-serve-cai package installed with all dependencies and extras")
     else:
         print("⚠️  Failed to install via package, installing dependencies manually...")
 
@@ -262,6 +262,9 @@ def main():
             # Common ML libraries (optional but useful)
             "numpy>=1.24.0",
             "pandas>=2.0.0",
+            # LLM inference engines
+            "vllm>=0.13.0",
+            "sglang>=0.5.7",
         ]
 
         for package in ray_packages:
