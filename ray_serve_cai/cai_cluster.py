@@ -31,12 +31,154 @@ Usage:
 
 import logging
 import time
-import sys
-import os
+import requests
 from typing import Dict, Any, Optional, List
-from pathlib import Path
+from dataclasses import dataclass
 
 logger = logging.getLogger(__name__)
+
+
+@dataclass
+class ApplicationInfo:
+    """Simple data class to hold application info from CML API."""
+    id: str
+    name: str
+    status: str
+    subdomain: Optional[str] = None
+    metadata: Optional[Dict[str, Any]] = None
+
+
+class CMLAPIClient:
+    """
+    Simple CML API v2 client using direct HTTP requests.
+    Replaces external caikit dependency with internal implementation.
+    """
+
+    def __init__(self, host: str, api_key: str, verbose: bool = False):
+        """
+        Initialize CML API client.
+
+        Args:
+            host: CML instance URL (e.g., https://ml-instance.cloudera.site)
+            api_key: API key for authentication (CDSW_APIV2_KEY)
+            verbose: Enable verbose logging
+        """
+        self.host = host.rstrip('/')
+        self.api_key = api_key
+        self.verbose = verbose
+        self.base_url = f"{self.host}/api/v2"
+        self.session = requests.Session()
+        self.session.headers.update({
+            'Authorization': f'Bearer {api_key}',
+            'Content-Type': 'application/json'
+        })
+
+    def create_application(
+        self,
+        project_id: str,
+        name: str,
+        script: str,
+        cpu: int,
+        memory: int,
+        runtime_identifier: str,
+        subdomain: str,
+        bypass_authentication: bool = True,
+        num_gpus: int = 0
+    ) -> ApplicationInfo:
+        """
+        Create a CML application.
+
+        Args:
+            project_id: Project ID
+            name: Application name
+            script: Script path to run
+            cpu: Number of CPU cores
+            memory: Memory in GB
+            runtime_identifier: Docker runtime identifier
+            subdomain: Application subdomain
+            bypass_authentication: Allow unauthenticated access
+            num_gpus: Number of GPUs (0 for no GPU)
+
+        Returns:
+            ApplicationInfo with created application details
+        """
+        url = f"{self.base_url}/projects/{project_id}/applications"
+
+        payload = {
+            'name': name,
+            'script': script,
+            'cpu': cpu,
+            'memory': memory,
+            'runtime_identifier': runtime_identifier,
+            'subdomain': subdomain,
+            'bypass_authentication': bypass_authentication
+        }
+
+        if num_gpus > 0:
+            payload['nvidia_gpu'] = num_gpus
+
+        if self.verbose:
+            logger.debug(f"Creating application: POST {url}")
+            logger.debug(f"Payload: {payload}")
+
+        response = self.session.post(url, json=payload)
+        response.raise_for_status()
+
+        data = response.json()
+        return ApplicationInfo(
+            id=data.get('id'),
+            name=data.get('name'),
+            status=data.get('status', 'unknown'),
+            subdomain=data.get('subdomain'),
+            metadata=data
+        )
+
+    def get_application(self, project_id: str, app_id: str) -> ApplicationInfo:
+        """
+        Get application details.
+
+        Args:
+            project_id: Project ID
+            app_id: Application ID
+
+        Returns:
+            ApplicationInfo with application details
+        """
+        url = f"{self.base_url}/projects/{project_id}/applications/{app_id}"
+
+        if self.verbose:
+            logger.debug(f"Getting application: GET {url}")
+
+        response = self.session.get(url)
+        response.raise_for_status()
+
+        data = response.json()
+        return ApplicationInfo(
+            id=data.get('id'),
+            name=data.get('name'),
+            status=data.get('status', 'unknown'),
+            subdomain=data.get('subdomain'),
+            metadata=data
+        )
+
+    def delete_application(self, project_id: str, app_id: str) -> bool:
+        """
+        Delete an application.
+
+        Args:
+            project_id: Project ID
+            app_id: Application ID
+
+        Returns:
+            True if deleted successfully
+        """
+        url = f"{self.base_url}/projects/{project_id}/applications/{app_id}"
+
+        if self.verbose:
+            logger.debug(f"Deleting application: DELETE {url}")
+
+        response = self.session.delete(url)
+        return response.status_code in [200, 204]
 
 
 class CAIClusterManager:
@@ -75,25 +217,13 @@ class CAIClusterManager:
         self.worker_app_ids: List[str] = []
         self.head_address: Optional[str] = None
 
-        # Initialize CML client
-        try:
-            # Try to import from local caikit package
-            sys.path.insert(0, str(Path(__file__).parent.parent.parent / "caikit"))
-            from caikit import CMLClient
-
-            self.cml_client = CMLClient(
-                host=cml_host,
-                api_key=cml_api_key,
-                verbose=verbose
-            )
-            logger.info(f"✅ Connected to CML instance: {cml_host}")
-
-        except ImportError as e:
-            logger.error(f"Failed to import caikit library: {e}")
-            logger.error("Please ensure caikit package is installed or in Python path")
-            raise RuntimeError(
-                "caikit library not found. Install it or add to PYTHONPATH"
-            )
+        # Initialize CML API client (internal implementation)
+        self.cml_client = CMLAPIClient(
+            host=cml_host,
+            api_key=cml_api_key,
+            verbose=verbose
+        )
+        logger.info(f"✅ Connected to CML instance: {cml_host}")
 
 
 
@@ -182,7 +312,7 @@ class CAIClusterManager:
 
             logger.info(f"   Using head script: {head_script_path}")
 
-            head_app = self.cml_client.applications.create(
+            head_app = self.cml_client.create_application(
                 project_id=self.project_id,
                 name="ray-cluster-head",
                 script=head_script_path,
@@ -206,7 +336,7 @@ class CAIClusterManager:
                     raise RuntimeError("Head node failed to start")
 
                 # Get head node details
-                head_app = self.cml_client.applications.get(
+                head_app = self.cml_client.get_application(
                     self.project_id,
                     head_app.id
                 )
@@ -246,20 +376,17 @@ class CAIClusterManager:
                     if i == 0:
                         logger.info(f"      Using worker script: {worker_script_path}")
 
-                    worker_kwargs = {
-                        'project_id': self.project_id,
-                        'name': f"ray-cluster-worker-{i+1}",
-                        'script': worker_script_path,
-                        'cpu': cpu,
-                        'memory': memory,
-                        'runtime_identifier': worker_rt,
-                        'subdomain': f"ray-cluster-worker-{i+1}",
-                        'bypass_authentication': True
-                    }
-                    if num_gpus > 0:
-                        worker_kwargs['num_gpus'] = num_gpus
-
-                    worker_app = self.cml_client.applications.create(**worker_kwargs)
+                    worker_app = self.cml_client.create_application(
+                        project_id=self.project_id,
+                        name=f"ray-cluster-worker-{i+1}",
+                        script=worker_script_path,
+                        cpu=cpu,
+                        memory=memory,
+                        runtime_identifier=worker_rt,
+                        subdomain=f"ray-cluster-worker-{i+1}",
+                        bypass_authentication=True,
+                        num_gpus=num_gpus
+                    )
                     self.worker_app_ids.append(worker_app.id)
                     logger.info(f"   ✅ Worker {i+1} created: {worker_app.id}")
 
@@ -337,7 +464,7 @@ class CAIClusterManager:
 
         while time.time() - start_time < timeout:
             try:
-                app = self.cml_client.applications.get(
+                app = self.cml_client.get_application(
                     self.project_id,
                     app_id
                 )
@@ -423,7 +550,7 @@ class CAIClusterManager:
 
         try:
             # Check head node status
-            head_app = self.cml_client.applications.get(
+            head_app = self.cml_client.get_application(
                 self.project_id,
                 self.head_app_id
             )
@@ -432,7 +559,7 @@ class CAIClusterManager:
             worker_statuses = []
             for worker_id in self.worker_app_ids:
                 try:
-                    worker_app = self.cml_client.applications.get(
+                    worker_app = self.cml_client.get_application(
                         self.project_id,
                         worker_id
                     )
