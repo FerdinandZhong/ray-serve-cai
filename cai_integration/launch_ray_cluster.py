@@ -337,9 +337,16 @@ def main():
     print("🚀 Launching Ray Cluster on CML")
     print("=" * 70)
 
-    # Get CML configuration
+    # Get CML configuration from environment
+    # Support both CML_* and CDSW_* environment variables
     cml_host = os.environ.get("CML_HOST")
-    cml_api_key = os.environ.get("CML_API_KEY")
+    if not cml_host:
+        # Construct from CDSW_DOMAIN if CML_HOST not set
+        cdsw_domain = os.environ.get("CDSW_DOMAIN")
+        if cdsw_domain:
+            cml_host = f"https://{cdsw_domain}"
+
+    cml_api_key = os.environ.get("CML_API_KEY") or os.environ.get("CDSW_APIV2_KEY")
     project_id = os.environ.get("CDSW_PROJECT_ID") or os.environ.get("CML_PROJECT_ID")
 
     # Runtime identifiers
