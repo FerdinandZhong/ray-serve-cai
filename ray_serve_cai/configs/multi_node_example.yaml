@@ -1,92 +1,51 @@
-# Multi-Node Ray Cluster Configuration Example
-# This is a template for ray up command with autoscaler
-# Requires cloud provider credentials (AWS, GCP, Azure)
+# Multi-Node CAI Ray Cluster Configuration Example
+# One large head node + multiple GPU worker nodes.
+# Scale worker count via num_workers or RAY_NUM_WORKERS env var.
+#
+# All resource values are picked up by load_config() in
+# cai_integration/launch_ray_cluster.py.  Environment variables override
+# anything set here (RAY_HEAD_CPU, RAY_WORKER_GPUS, etc.).
 
-# Cluster name
-cluster_name: vllm-cluster
+ray_cluster:
 
-# Cloud provider configuration
-provider:
-    type: aws
-    region: us-west-2
-    # Availability zone (optional)
-    # availability_zone: us-west-2a
+  # ── Cluster topology ──────────────────────────────────────────────────────
+  num_workers: 4   # one head + four GPU workers
 
-# Authentication
-auth:
-    ssh_user: ubuntu
+  # ── Head node resources ───────────────────────────────────────────────────
+  # The head node runs Ray GCS, the Ray Dashboard, the Management API, and
+  # nginx.  It is CPU-only — GPUs are reserved for worker nodes.
+  # Size the head node to comfortably host the Management API alongside Ray GCS.
+  head_cpu:    16
+  head_memory: 64   # GB
 
-# Minimum and maximum workers
-min_workers: 0
-max_workers: 2
+  # ── Management API resources (Ray Serve deployment on the head node) ──────
+  # Must not exceed head_cpu / head_memory.
+  management_api_cpu:    8   # = head_cpu // 2
+  management_api_memory: 32  # GB  = head_memory // 2
 
-# Upscaling speed
-upscaling_speed: 1.0
+  # ── Worker node resources ─────────────────────────────────────────────────
+  # Each worker is an independent CAI application.
+  # Increase worker_gpus for tensor-parallel shards within a single worker.
+  worker_cpu:    32
+  worker_memory: 128  # GB
+  worker_gpus:   4    # GPUs per worker (e.g. 4× A100 for tensor parallelism)
 
-# Idle timeout (minutes)
-idle_timeout_minutes: 5
+  # ── Ray daemon ports ──────────────────────────────────────────────────────
+  ray_port:       6379
+  dashboard_port: 8265
 
-# Head node configuration
-head_node:
-    InstanceType: p3.2xlarge  # 1x V100 GPU
-    ImageId: ami-0c55b159cbfafe1f0  # Deep Learning AMI
+# ── CAI / CML Application configuration ──────────────────────────────────────
+cai:
+  # Worker nodes use a CUDA runtime; head node uses the standard runtime.
+  # launch_ray_cluster.py selects the right image per node type via
+  # HEAD_RUNTIME_IDENTIFIER / WORKER_RUNTIME_IDENTIFIER env vars.
+  runtime_identifier: "docker.repository.cloudera.com/cloudera/cdsw/ml-runtime-pbj-jupyterlab-python3.11-cuda:2025.09.1-b5"
 
-    # Disk size
-    BlockDeviceMappings:
-        - DeviceName: /dev/sda1
-          Ebs:
-              VolumeSize: 100
-              VolumeType: gp3
+  project_name: "ray-cluster"
 
-# Worker node configuration
-worker_nodes:
-    InstanceType: p3.8xlarge  # 4x V100 GPUs
-    ImageId: ami-0c55b159cbfafe1f0
-
-    # Disk size
-    BlockDeviceMappings:
-        - DeviceName: /dev/sda1
-          Ebs:
-              VolumeSize: 200
-              VolumeType: gp3
-
-    # Min and max workers
-    MinWorkers: 0
-    MaxWorkers: 2
-
-# Setup commands (run on all nodes)
-setup_commands:
-    - pip install -U ray[serve]==2.9.0
-    - pip install vllm==0.6.0
-    - pip install aiohttp
-
-# Head node setup (additional)
-head_setup_commands:
-    - pip install ray[default]==2.9.0
-
-# Head node start command
-head_start_ray_commands:
-    - ray stop
-    - ray start --head --port=6379 --object-manager-port=8076 --autoscaling-config=~/ray_bootstrap_config.yaml --dashboard-host=0.0.0.0
-
-# Worker node start command
-worker_start_ray_commands:
-    - ray stop
-    - ray start --address=$RAY_HEAD_IP:6379 --object-manager-port=8076
-
-# Files to sync to cluster
-file_mounts: {}
-
-# Initialization commands
-initialization_commands: []
-
-# NOTE: This is an example configuration for AWS
-# For other cloud providers (GCP, Azure), adjust the provider section
-# and instance types accordingly.
-
-# Usage:
-# 1. Configure your AWS credentials
-# 2. Adjust instance types and regions
-# 3. Run: ray up multi_node_example.yaml
-# 4. Get cluster address: ray attach vllm-cluster "ray status"
-# 5. Use address with vllm-playground
+# ── Optional per-job environment variables ────────────────────────────────────
+# Passed through to every CAI application (head + workers).
+environment:
+  # VLLM_TENSOR_PARALLEL_SIZE: "4"   # match worker_gpus for intra-node TP
+  # VLLM_PIPELINE_PARALLEL_SIZE: "4" # match num_workers for inter-node PP
+  {}

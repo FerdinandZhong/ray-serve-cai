@@ -23,8 +23,11 @@ Usage:
 import json
 import os
 import sys
+import time
 import yaml
 from pathlib import Path
+
+from jinja2 import Environment, FileSystemLoader
 
 # Add parent directory to path for imports
 script_dir = Path(__file__).parent
@@ -32,303 +35,164 @@ sys.path.insert(0, str(script_dir.parent))
 
 from ray_serve_cai.cai_cluster import CAIClusterManager
 
+# Jinja2 templates for generated launcher scripts
+TEMPLATE_DIR = script_dir / "templates"
 
-def create_ray_launcher_scripts(head_address: str = None) -> tuple:
+
+def create_ray_launcher_scripts(
+    head_address: str = None,
+    ray_port: int = 6379,
+    dashboard_port: int = 8265,
+    mgmt_cpu: int = 2,
+    mgmt_memory_gb: int = 8,
+) -> tuple:
     """
-    Create Ray launcher scripts in project directory.
+    Render and write the head and worker launcher scripts from Jinja2 templates.
 
-    These scripts will be used as entry points for CAI applications.
+    Templates live in cai_integration/templates/:
+        ray_head_launcher.py.j2   -- full startup: Ray + Management API + nginx
+        ray_worker_launcher.py.j2 -- connects to head GCS
 
     Args:
-        head_address: Address of head node for worker scripts
+        head_address:    Ray GCS address of head (baked into worker script).
+                         If None, worker reads RAY_HEAD_ADDRESS at runtime.
+        ray_port:        Ray GCS port.
+        dashboard_port:  Ray Dashboard port (internal).
+        mgmt_cpu:        CPUs allocated to the Management API Ray Serve deployment.
+        mgmt_memory_gb:  Memory (GB) allocated to the Management API deployment.
 
     Returns:
-        Tuple of (head_script_path, worker_script_path)
+        Tuple of (head_script_path, worker_script_path) as strings.
     """
     project_dir = Path("/home/cdsw")
+    venv_python = project_dir / ".venv" / "bin" / "python"
 
-    # Create head launcher script
+    env = Environment(
+        loader=FileSystemLoader(str(TEMPLATE_DIR)),
+        keep_trailing_newline=True,
+    )
+
+    # -- Head launcher -------------------------------------------------------
+    head_context = {
+        "venv_python":    str(venv_python),
+        "project_dir":    str(project_dir),
+        "ray_port":       ray_port,
+        "dashboard_port": dashboard_port,
+        "mgmt_cpu":       mgmt_cpu,
+        "mgmt_memory_gb": mgmt_memory_gb,
+    }
     head_script_path = project_dir / "ray_head_launcher.py"
-    head_script_content = '''#!/usr/bin/env python3
-"""Ray Head Node Launcher for CAI with Nginx Proxy"""
-import subprocess
-import sys
-import os
-import time
-from pathlib import Path
+    head_script_path.write_text(
+        env.get_template("ray_head_launcher.py.j2").render(**head_context)
+    )
+    head_script_path.chmod(0o755)
 
-# Activate venv
-venv_python = Path("/home/cdsw/.venv/bin/python")
-if not venv_python.exists():
-    print("❌ Virtual environment not found at /home/cdsw/.venv")
-    sys.exit(1)
-
-print("=" * 70)
-print("🚀 Starting Ray Head Node with Nginx Proxy")
-print("=" * 70)
-
-# Step 1: Start Ray head on internal dashboard port (8265)
-ray_cmd = [
-    str(venv_python), "-m", "ray.scripts.ray_start",
-    "--head",
-    "--port", "6379",
-    "--dashboard-host", "127.0.0.1",  # Internal only
-    "--dashboard-port", "8265",       # Internal dashboard port
-    "--include-dashboard", "true"
-]
-
-print("\\n📊 Starting Ray Dashboard on internal port 8265...")
-print(f"Command: {' '.join(ray_cmd)}")
-
-try:
-    result = subprocess.run(ray_cmd, check=True)
-    if result.returncode != 0:
-        print(f"❌ Ray head failed with exit code {result.returncode}")
-        sys.exit(result.returncode)
-except Exception as e:
-    print(f"❌ Failed to start Ray head: {e}")
-    sys.exit(1)
-
-print("✅ Ray head started")
-
-# Step 2: Start Nginx proxy (will be started by management API deployment)
-# The Nginx setup is handled separately by the management API deployment script
-
-print("\\n" + "=" * 70)
-print("✅ Ray Head Node Started Successfully")
-print("=" * 70)
-print("\\nServices:")
-print("  • Ray Dashboard: 127.0.0.1:8265 (internal)")
-print("  • Ray GCS: 0.0.0.0:6379")
-print("\\nNote: Nginx proxy will be started by management API deployment")
-'''
-
-    with open(head_script_path, 'w') as f:
-        f.write(head_script_content)
-    os.chmod(head_script_path, 0o755)
-
-    # Create worker launcher script
+    # -- Worker launcher -----------------------------------------------------
+    worker_context = {
+        "venv_python":  str(venv_python),
+        "head_address": head_address,   # None -> worker reads env var at runtime
+        "ray_port":     ray_port,
+    }
     worker_script_path = project_dir / "ray_worker_launcher.py"
+    worker_script_path.write_text(
+        env.get_template("ray_worker_launcher.py.j2").render(**worker_context)
+    )
+    worker_script_path.chmod(0o755)
 
-    if head_address:
-        worker_script_content = f'''#!/usr/bin/env python3
-"""Ray Worker Node Launcher for CAI"""
-import subprocess
-import sys
-import os
-from pathlib import Path
-
-# Activate venv
-venv_python = Path("/home/cdsw/.venv/bin/python")
-if not venv_python.exists():
-    print("❌ Virtual environment not found at /home/cdsw/.venv")
-    sys.exit(1)
-
-# Ray start command for worker node
-cmd = [
-    str(venv_python), "-m", "ray.scripts.ray_start",
-    "--address", "{head_address}"
-]
-
-print("🚀 Starting Ray worker node...")
-print(f"Connecting to: {head_address}")
-print(f"Command: {{' '.join(cmd)}}")
-
-try:
-    # Start Ray worker
-    result = subprocess.run(cmd, check=True)
-    sys.exit(result.returncode)
-except Exception as e:
-    print(f"❌ Failed to start Ray worker: {{e}}")
-    sys.exit(1)
-'''
-    else:
-        worker_script_content = '''#!/usr/bin/env python3
-"""Ray Worker Node Launcher for CAI"""
-import subprocess
-import sys
-import os
-import time
-from pathlib import Path
-
-# Activate venv
-venv_python = Path("/home/cdsw/.venv/bin/python")
-if not venv_python.exists():
-    print("❌ Virtual environment not found at /home/cdsw/.venv")
-    sys.exit(1)
-
-# Get head address from environment
-head_address = os.environ.get("RAY_HEAD_ADDRESS")
-if not head_address:
-    print("❌ RAY_HEAD_ADDRESS environment variable not set")
-    sys.exit(1)
-
-print(f"Waiting for head node at {head_address}...")
-time.sleep(10)  # Give head node time to start
-
-# Ray start command for worker node
-cmd = [
-    str(venv_python), "-m", "ray.scripts.ray_start",
-    "--address", head_address
-]
-
-print("🚀 Starting Ray worker node...")
-print(f"Connecting to: {head_address}")
-print(f"Command: {' '.join(cmd)}")
-
-try:
-    # Start Ray worker
-    result = subprocess.run(cmd, check=True)
-    sys.exit(result.returncode)
-except Exception as e:
-    print(f"❌ Failed to start Ray worker: {e}")
-    sys.exit(1)
-'''
-
-    with open(worker_script_path, 'w') as f:
-        f.write(worker_script_content)
-    os.chmod(worker_script_path, 0o755)
-
-    print(f"✅ Created head launcher: {head_script_path}")
-    print(f"✅ Created worker launcher: {worker_script_path}")
+    print(f"Created head launcher   : {head_script_path}")
+    print(f"  mgmt_cpu={mgmt_cpu}, mgmt_memory_gb={mgmt_memory_gb}")
+    print(f"Created worker launcher : {worker_script_path}")
 
     return str(head_script_path), str(worker_script_path)
 
 
+
 def load_config():
-    """Load Ray cluster configuration from environment or config file."""
+    """
+    Load Ray cluster configuration.
+
+    Priority order (highest wins):
+      1. Environment variables
+      2. ray_cluster_config.yaml  (ray_cluster section)
+      3. Built-in defaults
+
+    management_api_cpu / management_api_memory are optional; when absent
+    they default to half of the head node resources (computed in main()).
+    Head node has no GPUs — only workers carry GPU resources.
+    """
     config = {
-        'num_workers': int(os.environ.get('RAY_NUM_WORKERS', 1)),
-        'head_cpu': int(os.environ.get('RAY_HEAD_CPU', 8)),
-        'head_memory': int(os.environ.get('RAY_HEAD_MEMORY', 32)),
-        'worker_cpu': int(os.environ.get('RAY_WORKER_CPU', 32)),
+        # Cluster topology
+        'num_workers':   int(os.environ.get('RAY_NUM_WORKERS', 1)),
+        # Head node — CPU + memory only, no GPUs
+        'head_cpu':      int(os.environ.get('RAY_HEAD_CPU', 8)),
+        'head_memory':   int(os.environ.get('RAY_HEAD_MEMORY', 32)),
+        # Worker nodes — may carry GPUs
+        'worker_cpu':    int(os.environ.get('RAY_WORKER_CPU', 16)),
         'worker_memory': int(os.environ.get('RAY_WORKER_MEMORY', 32)),
-        'worker_gpus': int(os.environ.get('RAY_WORKER_GPUS', 4)),
-        'ray_port': int(os.environ.get('RAY_PORT', 6379)),
+        'worker_gpus':   int(os.environ.get('RAY_WORKER_GPUS', 0)),
+        # Ray daemon ports
+        'ray_port':       int(os.environ.get('RAY_PORT', 6379)),
         'dashboard_port': int(os.environ.get('RAY_DASHBOARD_PORT', 8265)),
+        # Management API resources (None = derive from head resources in main())
+        'management_api_cpu':    None,
+        'management_api_memory': None,
     }
 
-    # Try to load from config file
+    # Override with values from the YAML config file
     config_path = Path(__file__).parent.parent / "ray_cluster_config.yaml"
     if config_path.exists():
         try:
             with open(config_path) as f:
                 file_config = yaml.safe_load(f) or {}
             config.update(file_config.get('ray_cluster', {}))
-            print(f"✅ Loaded configuration from {config_path}")
+            print(f"Loaded configuration from {config_path}")
         except Exception as e:
-            print(f"⚠️  Could not load config file: {e}")
+            print(f"Warning: could not load config file: {e}")
 
     return config
 
 
-def deploy_management_app_to_ray(
-    cluster_info: dict,
-    ray_config: dict,
-    project_id: str
-) -> dict:
+def _wait_for_management_api(cluster_info: dict, timeout: int = 300) -> str:
     """
-    Deploy the management API as a Ray Serve application on the Ray cluster.
+    Poll the head node's /health endpoint until it responds 200.
+
+    The Management API is started automatically by the head node launcher
+    (ray_head_launcher.py) — this function just waits for it to be ready
+    and returns the public base URL.
 
     Args:
-        cluster_info: Cluster information dictionary
-        ray_config: Ray cluster configuration
-        project_id: CML project ID
+        cluster_info: Must contain 'head_url' (the CAI application public URL).
+        timeout: Maximum seconds to wait.
 
     Returns:
-        Management app deployment information
+        Public base URL of the Management API, or None on timeout.
     """
-    try:
-        import ray
-        from ray import serve
-        import subprocess
+    import urllib.request
 
-        # Connect to Ray cluster
-        ray_address = f"ray://{cluster_info['head_address']}"
-        print(f"   Connecting to Ray cluster at {ray_address}")
-
-        ray.init(address=ray_address, ignore_reinit_error=True)
-        print(f"   ✅ Connected to Ray cluster")
-
-        # Start Ray Serve on internal port 8000
-        print(f"   Starting Ray Serve on internal port 8000...")
-        serve.start(detached=True, http_options={
-            "host": "127.0.0.1",  # Internal only
-            "port": 8000           # Ray Serve default port
-        })
-        print(f"   ✅ Ray Serve started on port 8000 (internal)")
-
-        # Import the FastAPI app
-        sys.path.insert(0, "/home/cdsw")
-
-        # Set environment variables for the deployment
-        os.environ["RAY_ADDRESS"] = "auto"  # Running inside Ray cluster
-        os.environ["CML_PROJECT_ID"] = project_id
-
-        from ray_serve_cai.management.app import app
-
-        # Create Ray Serve deployment with /api route prefix
-        print(f"   Deploying management API to Ray Serve with route_prefix=/api...")
-
-        @serve.deployment(
-            name="management-api",
-            route_prefix="/api",  # Management API at /api/*
-            num_replicas=1,
-            ray_actor_options={
-                "num_cpus": 4,
-                "memory": 8 * 1024 * 1024 * 1024  # 8GB
-            }
-        )
-        @serve.ingress(app)
-        class ManagementAPI:
-            pass
-
-        # Deploy the application
-        deployment = ManagementAPI.bind()
-        serve.run(deployment, name="management-api", route_prefix="/api")
-
-        print(f"   ✅ Management API deployed to Ray Serve at /api/*")
-
-        # Start Nginx proxy on public port (CDSW_APP_PORT)
-        print(f"\n   Starting Nginx reverse proxy...")
-        nginx_script = Path("/home/cdsw/ray_serve_cai/scripts/start_nginx.py")
-
-        if nginx_script.exists():
-            result = subprocess.run(
-                ["/home/cdsw/.venv/bin/python", str(nginx_script)],
-                capture_output=True,
-                text=True,
-                timeout=30
-            )
-
-            if result.returncode == 0:
-                print(f"   ✅ Nginx proxy started successfully")
-                print(result.stdout)
-            else:
-                print(f"   ⚠️  Warning: Nginx startup reported issues")
-                if result.stderr:
-                    print(f"   Error: {result.stderr}")
-        else:
-            print(f"   ⚠️  Warning: Nginx startup script not found at {nginx_script}")
-
-        # Construct management API URL (through Nginx on public port)
-        head_host = cluster_info['head_address'].split(':')[0]
-        public_port = int(os.environ.get('CDSW_APP_PORT', 8080))
-        management_url = f"http://{head_host}:{public_port}"
-
-        return {
-            'url': management_url,
-            'deployed_via': 'ray_serve_with_nginx',
-            'port': public_port,
-            'internal_ray_serve_port': 8000,
-            'internal_dashboard_port': 8265
-        }
-
-    except Exception as e:
-        print(f"   ⚠️  Failed to deploy management API to Ray: {e}")
-        import traceback
-        traceback.print_exc()
+    head_url = cluster_info.get("head_url", "").rstrip("/")
+    if not head_url:
+        print("   head_url not available — skipping health check")
         return None
+
+    health_url = f"{head_url}/health"
+    print(f"   Polling {health_url} ...")
+
+    start = time.time()
+    attempt = 0
+    while time.time() - start < timeout:
+        attempt += 1
+        try:
+            with urllib.request.urlopen(health_url, timeout=5) as resp:
+                if resp.status == 200:
+                    elapsed = int(time.time() - start)
+                    print(f"   Management API healthy (attempt {attempt}, {elapsed}s)")
+                    return head_url
+        except Exception:
+            pass
+        time.sleep(10)
+
+    print(f"   Timeout: management API not ready after {timeout}s")
+    return None
 
 
 def main():
@@ -373,17 +237,30 @@ def main():
     # Load Ray cluster configuration
     ray_config = load_config()
 
+    # Compute management API resources — default to half of head node resources.
+    # Head node is CPU-only; management API inherits that constraint.
+    head_cpu    = ray_config['head_cpu']
+    head_memory = ray_config['head_memory']
+    mgmt_cpu    = ray_config['management_api_cpu']    or max(1, head_cpu // 2)
+    mgmt_memory = ray_config['management_api_memory'] or max(4, head_memory // 2)
+
     print("\n🎯 Ray Cluster Configuration:")
-    print(f"   Head Node: {ray_config['head_cpu']}CPU, {ray_config['head_memory']}GB RAM, 0GPU")
-    print(f"   Workers: {ray_config['num_workers']} nodes")
-    print(f"   Worker Resources: {ray_config['worker_cpu']}CPU, {ray_config['worker_memory']}GB RAM, {ray_config['worker_gpus']}GPU each")
-    print(f"   Ray Port: {ray_config['ray_port']}")
+    print(f"   Head Node     : {head_cpu} CPU, {head_memory} GB RAM  (no GPU)")
+    print(f"   Management API: {mgmt_cpu} CPU, {mgmt_memory} GB RAM  (subset of head)")
+    print(f"   Workers       : {ray_config['num_workers']} × {ray_config['worker_cpu']} CPU, "
+          f"{ray_config['worker_memory']} GB RAM, {ray_config['worker_gpus']} GPU")
+    print(f"   Ray Port      : {ray_config['ray_port']}")
     print(f"   Dashboard Port: {ray_config['dashboard_port']}")
 
     try:
-        # Create launcher scripts
-        print("\n📝 Creating Ray launcher scripts...")
-        head_script_path, worker_script_path = create_ray_launcher_scripts()
+        # Render launcher scripts from Jinja2 templates
+        print("\n📝 Rendering Ray launcher scripts from templates...")
+        head_script_path, worker_script_path = create_ray_launcher_scripts(
+            ray_port=ray_config['ray_port'],
+            dashboard_port=ray_config['dashboard_port'],
+            mgmt_cpu=mgmt_cpu,
+            mgmt_memory_gb=mgmt_memory,
+        )
 
         # Initialize CAI cluster manager
         print("\n🔧 Initializing CAI cluster manager...")
@@ -418,19 +295,18 @@ def main():
             timeout=600
         )
 
-        # Deploy management API as Ray Serve application
-        print("\n🎮 Deploying Management API to Ray Serve...")
-        management_app_info = deploy_management_app_to_ray(
-            cluster_info=cluster_info,
-            ray_config=ray_config,
-            project_id=project_id
-        )
+        # The head node launcher starts the Management API + nginx automatically.
+        # Poll /health until the API responds so we can record the final URL.
+        print("\n⏳ Waiting for Management API to become healthy on head node...")
+        management_url = _wait_for_management_api(cluster_info, timeout=300)
 
-        # Add management API info to cluster info
-        if management_app_info:
-            cluster_info['management_api_url'] = management_app_info.get('url')
-            cluster_info['management_api_port'] = management_app_info.get('port')
-            print(f"✅ Management API: {management_app_info.get('url')}")
+        if management_url:
+            cluster_info['management_api_url'] = management_url
+            print(f"✅ Management API: {management_url}")
+        else:
+            # Best-effort: record the head URL even if health check timed out
+            cluster_info['management_api_url'] = cluster_info.get('head_url', '')
+            print("⚠️  Management API health check timed out (may still be starting)")
 
         # Save cluster info to file for reference
         info_file = Path("/home/cdsw/ray_cluster_info.json")

@@ -216,6 +216,7 @@ class CAIClusterManager:
         self.head_app_id: Optional[str] = None
         self.worker_app_ids: List[str] = []
         self.head_address: Optional[str] = None
+        self.head_url: Optional[str] = None  # public CAI application URL
 
         # Initialize CML API client (internal implementation)
         self.cml_client = CMLAPIClient(
@@ -341,19 +342,19 @@ class CAIClusterManager:
                     head_app.id
                 )
 
-                # Extract head address from application URL
+                # Extract head address and public URL from application metadata
                 head_url = head_app.metadata.get('url') or head_app.subdomain
                 if head_url:
-                    # Remove http:// or https:// and extract hostname
-                    if head_url.startswith('http://'):
-                        head_hostname = head_url[7:].split(':')[0].split('/')[0]
-                    elif head_url.startswith('https://'):
-                        head_hostname = head_url[8:].split(':')[0].split('/')[0]
-                    else:
-                        head_hostname = head_url.split(':')[0].split('/')[0]
+                    # Normalise to a bare https:// URL (strip trailing slash/path)
+                    if not head_url.startswith('http'):
+                        head_url = f"https://{head_url}"
+                    self.head_url = head_url.rstrip('/')
 
-                    self.head_address = f"{head_hostname}:{ray_port}"
+                    # Derive the internal Ray GCS address from the hostname
+                    hostname = head_url.split('://', 1)[-1].split(':')[0].split('/')[0]
+                    self.head_address = f"{hostname}:{ray_port}"
                     logger.info(f"✅ Head node ready: {self.head_address}")
+                    logger.info(f"   Public URL: {self.head_url}")
                 else:
                     logger.warning("Could not determine head node address from application URL")
                     self.head_address = f"ray-cluster-head:{ray_port}"
@@ -408,6 +409,7 @@ class CAIClusterManager:
                 'status': 'running',
                 'head_app_id': self.head_app_id,
                 'head_address': self.head_address,
+                'head_url': self.head_url,          # public CAI application URL
                 'worker_app_ids': self.worker_app_ids,
                 'num_workers': len(self.worker_app_ids),
                 'configuration': {
@@ -522,6 +524,7 @@ class CAIClusterManager:
         # Clear state
         self.head_app_id = None
         self.head_address = None
+        self.head_url = None
         self.worker_app_ids = []
 
         if errors:
