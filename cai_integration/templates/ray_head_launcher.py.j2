@@ -81,15 +81,35 @@ try:
 
     ray.init(address="auto", ignore_reinit_error=True)
 
-    # Pin the deployment to this head node — it must co-locate with nginx.
-    head_node_id = ray.get_runtime_context().get_node_id()
+    # ── Identify the head node ───────────────────────────────────────────────
+    # Ray 2.x automatically assigns the resource "node:__internal_head__" to
+    # the head node.  Use that label first; fall back to the driver's own
+    # runtime-context node ID (which is also the head node when this script
+    # runs on the head).
+    head_node_id = None
+    for _node in ray.nodes():
+        if _node.get("Alive") and "node:__internal_head__" in _node.get("Resources", {}):
+            head_node_id = _node["NodeID"]
+            break
+    if head_node_id is None:
+        head_node_id = ray.get_runtime_context().get_node_id()
     print(f"  Head node ID : {head_node_id}")
 
-    serve.start(
-        detached=True,
-        http_options={"host": "127.0.0.1", "port": 8000},
-    )
-    print("  Ray Serve listening on 127.0.0.1:8000")
+    # ── Start Ray Serve (idempotent) ─────────────────────────────────────────
+    # serve.start() raises RayServeException if Serve is already running
+    # (e.g. on a second deploy attempt or after a partial restart).
+    # Catch that case and reuse the existing Serve instance.
+    try:
+        serve.start(
+            detached=True,
+            http_options={"host": "127.0.0.1", "port": 8000},
+        )
+        print("  Ray Serve started on 127.0.0.1:8000")
+    except Exception as _e:
+        if any(kw in str(_e).lower() for kw in ("already", "running", "exists")):
+            print(f"  Ray Serve already running — reusing existing instance")
+        else:
+            raise
 
     # Propagate identity so the Management API can reach the CAI platform.
     os.environ.setdefault("RAY_ADDRESS", "auto")
@@ -100,9 +120,11 @@ try:
 
     from ray_serve_cai.management.app import app as fastapi_app
 
+    # ── Deploy Management API pinned to this head node ───────────────────────
+    # route_prefix must NOT appear in @serve.deployment (deprecated / removed
+    # in Ray 2.6+).  Pass it only to serve.run() below.
     @serve.deployment(
         name="management-api",
-        route_prefix="/api",
         num_replicas=1,
         ray_actor_options={
             "num_cpus": {{ mgmt_cpu }},

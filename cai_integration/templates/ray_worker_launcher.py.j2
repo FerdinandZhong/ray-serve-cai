@@ -8,7 +8,9 @@ Head address (baked in at generation time): {{ head_address }}
 {% else %}
 Head address: read from RAY_HEAD_ADDRESS environment variable at runtime.
 {% endif %}
+Node type: {{ node_type }}  (registered as resource "node_type:{{ node_type }}")
 """
+import json
 import os
 import subprocess
 import sys
@@ -40,10 +42,18 @@ print(f"\nConnecting to head node: {HEAD_ADDRESS}")
 print("Waiting 10 s for head node to be ready...")
 time.sleep(10)
 
+# Register this node's type as a custom Ray resource label so that
+# coordinator.py (_detect_node_type) and deployment scheduling strategies
+# can identify and target specific node types without knowing node IDs.
+NODE_TYPE = "{{ node_type }}"
+node_resources = json.dumps({f"node_type:{NODE_TYPE}": 1})
+
 cmd = [
     str(VENV_PYTHON), "-m", "ray.scripts.ray_start",
     "--address", HEAD_ADDRESS,
+    "--resources", node_resources,
 ]
+print(f"Node type label: node_type:{NODE_TYPE}")
 print("Command:", " ".join(cmd))
 
 result = subprocess.run(cmd)

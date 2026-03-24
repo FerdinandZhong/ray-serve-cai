@@ -9,7 +9,9 @@
 ray_cluster:
 
   # ── Cluster topology ──────────────────────────────────────────────────────
-  num_workers: 4   # one head + four GPU workers
+  # num_workers is derived from the sum of worker_groups[].count when
+  # worker_groups is present.  Set it here only for simple single-group mode.
+  num_workers: 4
 
   # ── Head node resources ───────────────────────────────────────────────────
   # The head node runs Ray GCS, the Ray Dashboard, the Management API, and
@@ -23,12 +25,39 @@ ray_cluster:
   management_api_cpu:    8   # = head_cpu // 2
   management_api_memory: 32  # GB  = head_memory // 2
 
-  # ── Worker node resources ─────────────────────────────────────────────────
-  # Each worker is an independent CAI application.
-  # Increase worker_gpus for tensor-parallel shards within a single worker.
-  worker_cpu:    32
-  worker_memory: 128  # GB
-  worker_gpus:   4    # GPUs per worker (e.g. 4× A100 for tensor parallelism)
+  # ── Worker node resources (simple single-group config) ────────────────────
+  # Used only when worker_groups is absent.  Ignored when worker_groups is set.
+  worker_cpu:         32
+  worker_memory:      128   # GB
+  worker_gpus:        4
+  worker_node_type:   "gpu-worker"   # default label; overridden by worker_groups
+
+  # ── Worker groups (advanced heterogeneous config) ─────────────────────────
+  # When present, takes priority over num_workers / worker_cpu / worker_gpus.
+  # Each group becomes its own set of CAI applications.  The node_type value
+  # is registered as a Ray resource "node_type:<node_type>" at ray start time,
+  # which coordinator._detect_node_type() reads without any static registry.
+  #
+  # Free-form node_type labels — name them to reflect hardware or role:
+  #   "cpu-worker"            — CPU-only inference or preprocessing
+  #   "t4_gpu_node_single"    — single NVIDIA T4
+  #   "l40_gpu_node_2_gpus"   — dual NVIDIA L40
+  #   "a100_80g_node_4_gpus"  — 4× A100 80 GB
+  worker_groups:
+    - name:         "t4-inference"
+      node_type:    "t4_gpu_node_single"
+      count:        2
+      cpu:          16
+      memory:       64    # GB
+      gpus:         1
+      # runtime_identifier: "..."   # optional override; defaults to worker runtime
+
+    - name:         "l40-training"
+      node_type:    "l40_gpu_node_2_gpus"
+      count:        2
+      cpu:          32
+      memory:       128   # GB
+      gpus:         2
 
   # ── Ray daemon ports ──────────────────────────────────────────────────────
   ray_port:       6379

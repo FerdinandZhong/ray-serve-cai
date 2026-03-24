@@ -6,10 +6,14 @@ Cloudera Machine Learning (CML) Applications as cluster nodes.
 
 Architecture:
 - Head node: One CAI application running Ray head
-- Worker nodes: Multiple CAI applications connecting to head
+- Worker nodes: Multiple CAI applications connecting to head, organised into
+  one or more WorkerGroupConfig groups (e.g. CPU workers, T4 GPU workers,
+  L40 GPU workers).  Each group registers a "node_type:<label>" Ray resource
+  so that coordinator._detect_node_type() and scheduling strategies can
+  identify and target specific node types.
 
 Usage:
-    from ray_serve_cai.cai_cluster import CAIClusterManager
+    from ray_serve_cai.cai_cluster import CAIClusterManager, WorkerGroupConfig
 
     manager = CAIClusterManager(
         cml_host="https://ml.example.com",
@@ -17,16 +21,17 @@ Usage:
         project_id="project-123"
     )
 
-    # Start cluster with 1 head + 2 workers
-    cluster_info = manager.start_cluster(
-        num_workers=2,
-        cpu=16,
-        memory=64,
-        num_gpus=1
-    )
+    worker_groups = [
+        WorkerGroupConfig(name="t4-workers",  node_type="t4_gpu_node_single",   count=2, cpu=16, memory=64,  gpus=1),
+        WorkerGroupConfig(name="l40-workers", node_type="l40_gpu_node_2_gpus",  count=1, cpu=32, memory=128, gpus=2),
+    ]
 
-    # Get cluster address for Ray client
-    address = cluster_info['head_address']
+    cluster_info = manager.start_cluster(
+        worker_groups=worker_groups,
+        head_script_path="/home/cdsw/ray_head_launcher.py",
+        head_runtime_identifier="...",
+        worker_runtime_identifier="...",
+    )
 """
 
 import logging
@@ -46,6 +51,30 @@ class ApplicationInfo:
     status: str
     subdomain: Optional[str] = None
     metadata: Optional[Dict[str, Any]] = None
+
+
+@dataclass
+class WorkerGroupConfig:
+    """Configuration for a homogeneous group of Ray worker nodes.
+
+    Each group self-registers a custom Ray resource label
+    ("node_type:<node_type>") via --resources at ray start time.
+    coordinator._detect_node_type() reads this label to classify nodes
+    without needing a static registry — any label suffix is valid.
+
+    Examples:
+        WorkerGroupConfig(name="cpu-workers",  node_type="cpu-worker",          count=4, cpu=8,  memory=32,  gpus=0)
+        WorkerGroupConfig(name="t4-workers",   node_type="t4_gpu_node_single",  count=2, cpu=16, memory=64,  gpus=1)
+        WorkerGroupConfig(name="l40-workers",  node_type="l40_gpu_node_2_gpus", count=1, cpu=32, memory=128, gpus=2)
+    """
+    name: str                              # used as part of CAI application names
+    node_type: str                         # label registered as "node_type:<node_type>"
+    count: int                             # number of workers in this group
+    cpu: int                               # CPU cores per worker
+    memory: int                            # memory in GB per worker
+    gpus: int = 0                          # GPUs per worker  (0 = CPU-only)
+    runtime_identifier: Optional[str] = None   # Docker runtime; None = cluster default
+    script_path: Optional[str] = None     # set by create_ray_launcher_scripts()
 
 
 class CMLAPIClient:
@@ -215,6 +244,7 @@ class CAIClusterManager:
         # Cluster state
         self.head_app_id: Optional[str] = None
         self.worker_app_ids: List[str] = []
+        self.worker_groups: List[WorkerGroupConfig] = []
         self.head_address: Optional[str] = None
         self.head_url: Optional[str] = None  # public CAI application URL
 
@@ -230,127 +260,106 @@ class CAIClusterManager:
 
     def start_cluster(
         self,
-        num_workers: int = 1,
-        cpu: int = 16,
-        memory: int = 64,
-        num_gpus: int = 0,
-        head_cpu: Optional[int] = None,
-        head_memory: Optional[int] = None,
+        worker_groups: List[WorkerGroupConfig],
+        head_cpu: int = 8,
+        head_memory: int = 32,
         ray_port: int = 6379,
         dashboard_port: int = 8265,
-        runtime_identifier: Optional[str] = None,
         head_runtime_identifier: Optional[str] = None,
         worker_runtime_identifier: Optional[str] = None,
         head_script_path: Optional[str] = None,
-        worker_script_path: Optional[str] = None,
         wait_ready: bool = True,
-        timeout: int = 300
+        timeout: int = 300,
     ) -> Dict[str, Any]:
         """
         Start Ray cluster using CAI applications.
 
-        The head node is created WITHOUT GPUs (GPUs are only for workers).
-        This is the recommended Ray cluster architecture.
+        The head node is CPU-only.  Workers are organised into one or more
+        WorkerGroupConfig groups — each group registers a unique
+        "node_type:<node_type>" Ray resource label so coordinator._detect_node_type()
+        and NodeAffinitySchedulingStrategy can target specific node types.
 
         Args:
-            num_workers: Number of worker nodes to create
-            cpu: CPU cores per worker node
-            memory: Memory in GB per worker node
-            num_gpus: GPUs per worker node (head node always has 0 GPUs)
-            head_cpu: CPU cores for head node (defaults to same as workers)
-            head_memory: Memory in GB for head node (defaults to same as workers)
-            ray_port: Ray GCS server port
-            dashboard_port: Ray dashboard port
-            runtime_identifier: Docker runtime identifier (DEPRECATED - use head_runtime_identifier and worker_runtime_identifier)
-            head_runtime_identifier: Docker runtime identifier for head node (overrides runtime_identifier)
-            worker_runtime_identifier: Docker runtime identifier for worker nodes (overrides runtime_identifier)
-            head_script_path: Path to head node launcher script (REQUIRED - must be created before calling)
-            worker_script_path: Path to worker node launcher script (REQUIRED - must be created before calling)
-            wait_ready: Wait for cluster to be ready
-            timeout: Maximum wait time in seconds
+            worker_groups: One or more WorkerGroupConfig objects describing
+                worker node pools.  Each group's script_path must already be
+                set by create_ray_launcher_scripts().
+            head_cpu: CPU cores for the head node.
+            head_memory: Memory in GB for the head node.
+            ray_port: Ray GCS server port.
+            dashboard_port: Ray dashboard port.
+            head_runtime_identifier: Docker runtime for the head node. Required.
+            worker_runtime_identifier: Default Docker runtime for worker groups
+                that do not specify their own runtime_identifier.
+            head_script_path: Path to head node launcher script. Required.
+            wait_ready: Wait for all applications to reach running state.
+            timeout: Maximum seconds to wait per application.
 
         Returns:
-            Dictionary with cluster information
+            Dictionary with cluster information including worker_groups metadata.
 
         Raises:
-            RuntimeError: If runtime_identifier(s), head_script_path, or worker_script_path not provided
+            RuntimeError: If required parameters are missing or a node fails to start.
         """
-        # Determine runtime identifiers
-        # Priority: specific head/worker identifiers > generic runtime_identifier > error
-        head_rt = head_runtime_identifier or runtime_identifier
-        worker_rt = worker_runtime_identifier or runtime_identifier
-
-        if not head_rt or not worker_rt:
+        if not head_runtime_identifier:
+            raise RuntimeError("head_runtime_identifier is required")
+        if not head_script_path:
             raise RuntimeError(
-                "Runtime identifiers are required for applications in this project.\n"
-                "Please provide either:\n"
-                "  - head_runtime_identifier and worker_runtime_identifier, or\n"
-                "  - runtime_identifier (used for both head and workers)\n"
-                "Example:\n"
-                'head_runtime_identifier="docker.repository.cloudera.com/cloudera/cdsw/ml-runtime-pbj-jupyterlab-python3.11-standard:2025.09.1-b5"\n'
-                'worker_runtime_identifier="docker.repository.cloudera.com/cloudera/cdsw/ml-runtime-pbj-jupyterlab-python3.11-cuda:2025.09.1-b5"'
+                "head_script_path is required. "
+                "Run create_ray_launcher_scripts() before calling start_cluster()."
             )
+        if not worker_groups:
+            raise RuntimeError("worker_groups must be a non-empty list of WorkerGroupConfig")
 
-        # Set head node resources (default to worker resources if not specified)
-        head_cpu = head_cpu or cpu
-        head_memory = head_memory or memory
-
-        logger.info("🚀 Starting Ray cluster on CAI...")
-        logger.info(f"   Head node: {head_cpu}CPU, {head_memory}GB RAM, 0GPU")
-        logger.info(f"   Workers: {num_workers} nodes, {cpu}CPU, {memory}GB RAM, {num_gpus}GPU each")
-
-        try:
-            # Step 1: Create head node application
-            # Head node always gets 0 GPUs - it's for cluster coordination only
-            logger.info("🎯 Creating head node application...")
-
-            # Validate head script path is provided (required)
-            if not head_script_path:
+        for group in worker_groups:
+            if not group.script_path:
                 raise RuntimeError(
-                    "head_script_path is required for head node application.\n"
-                    "This should be created by launch_ray_cluster.py before calling this method."
+                    f"Worker group '{group.name}' has no script_path. "
+                    "Run create_ray_launcher_scripts() before calling start_cluster()."
+                )
+            if not (group.runtime_identifier or worker_runtime_identifier):
+                raise RuntimeError(
+                    f"Worker group '{group.name}' has no runtime_identifier and "
+                    "no default worker_runtime_identifier was provided."
                 )
 
-            logger.info(f"   Using head script: {head_script_path}")
+        self.worker_groups = worker_groups
+        total_workers = sum(g.count for g in worker_groups)
 
+        logger.info("🚀 Starting Ray cluster on CAI...")
+        logger.info(f"   Head node : {head_cpu}CPU, {head_memory}GB RAM, 0GPU")
+        for g in worker_groups:
+            logger.info(
+                f"   Group '{g.name}' [{g.node_type}]: "
+                f"{g.count} × {g.cpu}CPU, {g.memory}GB RAM, {g.gpus}GPU"
+            )
+
+        try:
+            # ── Head node ────────────────────────────────────────────────────
+            logger.info("🎯 Creating head node application...")
             head_app = self.cml_client.create_application(
                 project_id=self.project_id,
                 name="ray-cluster-head",
                 script=head_script_path,
                 cpu=head_cpu,
                 memory=head_memory,
-                runtime_identifier=head_rt,
+                runtime_identifier=head_runtime_identifier,
                 subdomain="ray-cluster-head",
-                bypass_authentication=True
+                bypass_authentication=True,
             )
             self.head_app_id = head_app.id
             logger.info(f"✅ Head node application created: {head_app.id}")
 
-            # Step 3: Wait for head node to be running
             if wait_ready:
                 logger.info("⏳ Waiting for head node to start...")
-                head_ready = self._wait_for_application(
-                    head_app.id,
-                    timeout=timeout
-                )
-                if not head_ready:
+                if not self._wait_for_application(head_app.id, timeout=timeout):
                     raise RuntimeError("Head node failed to start")
 
-                # Get head node details
-                head_app = self.cml_client.get_application(
-                    self.project_id,
-                    head_app.id
-                )
-
-                # Extract head address and public URL from application metadata
+                head_app = self.cml_client.get_application(self.project_id, head_app.id)
                 head_url = head_app.metadata.get('url') or head_app.subdomain
                 if head_url:
-                    # Normalise to a bare https:// URL (strip trailing slash/path)
                     if not head_url.startswith('http'):
                         head_url = f"https://{head_url}"
                     self.head_url = head_url.rstrip('/')
-
-                    # Derive the internal Ray GCS address from the hostname
                     hostname = head_url.split('://', 1)[-1].split(':')[0].split('/')[0]
                     self.head_address = f"{hostname}:{ray_port}"
                     logger.info(f"✅ Head node ready: {self.head_address}")
@@ -359,89 +368,79 @@ class CAIClusterManager:
                     logger.warning("Could not determine head node address from application URL")
                     self.head_address = f"ray-cluster-head:{ray_port}"
 
-            # Step 4: Create worker nodes
-            if num_workers > 0 and self.head_address:
-                logger.info(f"🔧 Creating {num_workers} worker node(s)...")
-
-                # Create worker applications
-                # Validate worker script path is provided (required)
-                if not worker_script_path:
-                    raise RuntimeError(
-                        "worker_script_path is required for worker node applications.\n"
-                        "This should be created by launch_ray_cluster.py before calling this method."
+            # ── Worker groups ─────────────────────────────────────────────────
+            if total_workers > 0 and self.head_address:
+                logger.info(
+                    f"🔧 Creating {total_workers} worker(s) across "
+                    f"{len(worker_groups)} group(s)..."
+                )
+                for group in worker_groups:
+                    rt = group.runtime_identifier or worker_runtime_identifier
+                    logger.info(
+                        f"   Group '{group.name}' [node_type:{group.node_type}] "
+                        f"— {group.count} worker(s)"
                     )
+                    for i in range(group.count):
+                        app_name = f"ray-{group.name}-{i + 1}"
+                        subdomain = app_name.replace("_", "-").lower()
+                        worker_app = self.cml_client.create_application(
+                            project_id=self.project_id,
+                            name=app_name,
+                            script=group.script_path,
+                            cpu=group.cpu,
+                            memory=group.memory,
+                            runtime_identifier=rt,
+                            subdomain=subdomain,
+                            bypass_authentication=True,
+                            num_gpus=group.gpus,
+                        )
+                        self.worker_app_ids.append(worker_app.id)
+                        logger.info(f"      ✅ {app_name} created: {worker_app.id}")
 
-                for i in range(num_workers):
-                    logger.info(f"   Creating worker {i+1}/{num_workers}...")
-
-                    if i == 0:
-                        logger.info(f"      Using worker script: {worker_script_path}")
-
-                    worker_app = self.cml_client.create_application(
-                        project_id=self.project_id,
-                        name=f"ray-cluster-worker-{i+1}",
-                        script=worker_script_path,
-                        cpu=cpu,
-                        memory=memory,
-                        runtime_identifier=worker_rt,
-                        subdomain=f"ray-cluster-worker-{i+1}",
-                        bypass_authentication=True,
-                        num_gpus=num_gpus
-                    )
-                    self.worker_app_ids.append(worker_app.id)
-                    logger.info(f"   ✅ Worker {i+1} created: {worker_app.id}")
-
-                # Wait for workers to be ready
                 if wait_ready:
                     logger.info("⏳ Waiting for workers to start...")
                     for i, worker_id in enumerate(self.worker_app_ids):
-                        worker_ready = self._wait_for_application(
-                            worker_id,
-                            timeout=timeout
-                        )
-                        if worker_ready:
-                            logger.info(f"   ✅ Worker {i+1} ready")
+                        if self._wait_for_application(worker_id, timeout=timeout):
+                            logger.info(f"   ✅ Worker {i + 1} ready")
                         else:
-                            logger.warning(f"   ⚠️  Worker {i+1} may not be ready")
+                            logger.warning(f"   ⚠️  Worker {i + 1} may not be ready")
 
-            # Return cluster info
             cluster_info = {
                 'status': 'running',
                 'head_app_id': self.head_app_id,
                 'head_address': self.head_address,
-                'head_url': self.head_url,          # public CAI application URL
+                'head_url': self.head_url,
                 'worker_app_ids': self.worker_app_ids,
                 'num_workers': len(self.worker_app_ids),
+                'worker_groups': [
+                    {
+                        'name': g.name,
+                        'node_type': g.node_type,
+                        'count': g.count,
+                        'cpu': g.cpu,
+                        'memory': g.memory,
+                        'gpus': g.gpus,
+                    }
+                    for g in worker_groups
+                ],
                 'configuration': {
-                    'head': {
-                        'cpu': head_cpu,
-                        'memory': head_memory,
-                        'num_gpus': 0  # Head node never has GPUs
-                    },
-                    'workers': {
-                        'cpu': cpu,
-                        'memory': memory,
-                        'num_gpus': num_gpus
-                    },
+                    'head': {'cpu': head_cpu, 'memory': head_memory, 'num_gpus': 0},
                     'ray_port': ray_port,
-                    'dashboard_port': dashboard_port
-                }
+                    'dashboard_port': dashboard_port,
+                },
             }
 
-            logger.info("="*60)
+            logger.info("=" * 60)
             logger.info("✅ Ray cluster started successfully!")
-            logger.info(f"   Head address: {self.head_address}")
-            logger.info(f"   Head resources: {head_cpu}CPU, {head_memory}GB RAM, 0GPU")
-            logger.info(f"   Workers: {len(self.worker_app_ids)} nodes")
-            logger.info(f"   Worker resources: {cpu}CPU, {memory}GB RAM, {num_gpus}GPU each")
-            logger.info(f"   Total nodes: {1 + len(self.worker_app_ids)}")
-            logger.info("="*60)
+            logger.info(f"   Head: {self.head_address}")
+            logger.info(f"   Total workers: {len(self.worker_app_ids)}")
+            logger.info(f"   Total nodes  : {1 + len(self.worker_app_ids)}")
+            logger.info("=" * 60)
 
             return cluster_info
 
         except Exception as e:
             logger.error(f"Failed to start cluster: {e}")
-            # Cleanup on failure
             self.stop_cluster()
             raise
 
@@ -526,6 +525,7 @@ class CAIClusterManager:
         self.head_address = None
         self.head_url = None
         self.worker_app_ids = []
+        self.worker_groups = []
 
         if errors:
             logger.warning(f"⚠️  Cluster stopped with {len(errors)} error(s)")

@@ -33,13 +33,14 @@ from jinja2 import Environment, FileSystemLoader
 script_dir = Path(__file__).parent
 sys.path.insert(0, str(script_dir.parent))
 
-from ray_serve_cai.cai_cluster import CAIClusterManager
+from ray_serve_cai.cai_cluster import CAIClusterManager, WorkerGroupConfig
 
 # Jinja2 templates for generated launcher scripts
 TEMPLATE_DIR = script_dir / "templates"
 
 
 def create_ray_launcher_scripts(
+    worker_groups: list,
     head_address: str = None,
     ray_port: int = 6379,
     dashboard_port: int = 8265,
@@ -47,22 +48,28 @@ def create_ray_launcher_scripts(
     mgmt_memory_gb: int = 8,
 ) -> tuple:
     """
-    Render and write the head and worker launcher scripts from Jinja2 templates.
+    Render and write the head launcher and one worker launcher per group.
 
     Templates live in cai_integration/templates/:
         ray_head_launcher.py.j2   -- full startup: Ray + Management API + nginx
-        ray_worker_launcher.py.j2 -- connects to head GCS
+        ray_worker_launcher.py.j2 -- connects to head GCS, registers node_type label
+
+    Each WorkerGroupConfig in worker_groups gets its own launcher script so
+    that each group's node_type label is baked in at render time.  The
+    group's script_path field is updated in-place.
 
     Args:
-        head_address:    Ray GCS address of head (baked into worker script).
-                         If None, worker reads RAY_HEAD_ADDRESS at runtime.
-        ray_port:        Ray GCS port.
-        dashboard_port:  Ray Dashboard port (internal).
-        mgmt_cpu:        CPUs allocated to the Management API Ray Serve deployment.
-        mgmt_memory_gb:  Memory (GB) allocated to the Management API deployment.
+        worker_groups:  List of WorkerGroupConfig; script_path is set here.
+        head_address:   Ray GCS address of head (baked into worker scripts).
+                        If None, workers read RAY_HEAD_ADDRESS at runtime.
+        ray_port:       Ray GCS port.
+        dashboard_port: Ray Dashboard port (internal).
+        mgmt_cpu:       CPUs for the Management API Ray Serve deployment.
+        mgmt_memory_gb: Memory (GB) for the Management API deployment.
 
     Returns:
-        Tuple of (head_script_path, worker_script_path) as strings.
+        Tuple of (head_script_path: str, worker_groups: list) where each
+        group's script_path has been populated.
     """
     project_dir = Path("/home/cdsw")
     venv_python = project_dir / ".venv" / "bin" / "python"
@@ -86,24 +93,27 @@ def create_ray_launcher_scripts(
         env.get_template("ray_head_launcher.py.j2").render(**head_context)
     )
     head_script_path.chmod(0o755)
-
-    # -- Worker launcher -----------------------------------------------------
-    worker_context = {
-        "venv_python":  str(venv_python),
-        "head_address": head_address,   # None -> worker reads env var at runtime
-        "ray_port":     ray_port,
-    }
-    worker_script_path = project_dir / "ray_worker_launcher.py"
-    worker_script_path.write_text(
-        env.get_template("ray_worker_launcher.py.j2").render(**worker_context)
-    )
-    worker_script_path.chmod(0o755)
-
     print(f"Created head launcher   : {head_script_path}")
     print(f"  mgmt_cpu={mgmt_cpu}, mgmt_memory_gb={mgmt_memory_gb}")
-    print(f"Created worker launcher : {worker_script_path}")
 
-    return str(head_script_path), str(worker_script_path)
+    # -- Worker launchers (one per group) ------------------------------------
+    worker_template = env.get_template("ray_worker_launcher.py.j2")
+    for group in worker_groups:
+        worker_context = {
+            "venv_python":  str(venv_python),
+            "head_address": head_address,   # None → reads RAY_HEAD_ADDRESS at runtime
+            "ray_port":     ray_port,
+            "node_type":    group.node_type,
+        }
+        # Sanitise group name for use as a filename component.
+        safe_name = group.name.replace("-", "_").replace(" ", "_")
+        script_path = project_dir / f"ray_worker_{safe_name}_launcher.py"
+        script_path.write_text(worker_template.render(**worker_context))
+        script_path.chmod(0o755)
+        group.script_path = str(script_path)   # write back into the dataclass
+        print(f"Created worker launcher : {script_path}  [node_type:{group.node_type}]")
+
+    return str(head_script_path), worker_groups
 
 
 
@@ -121,21 +131,27 @@ def load_config():
     Head node has no GPUs — only workers carry GPU resources.
     """
     config = {
-        # Cluster topology
-        'num_workers':   int(os.environ.get('RAY_NUM_WORKERS', 1)),
+        # Cluster topology (simple single-group config)
+        'num_workers':      int(os.environ.get('RAY_NUM_WORKERS', 1)),
         # Head node — CPU + memory only, no GPUs
-        'head_cpu':      int(os.environ.get('RAY_HEAD_CPU', 8)),
-        'head_memory':   int(os.environ.get('RAY_HEAD_MEMORY', 32)),
-        # Worker nodes — may carry GPUs
-        'worker_cpu':    int(os.environ.get('RAY_WORKER_CPU', 16)),
-        'worker_memory': int(os.environ.get('RAY_WORKER_MEMORY', 32)),
-        'worker_gpus':   int(os.environ.get('RAY_WORKER_GPUS', 0)),
+        'head_cpu':         int(os.environ.get('RAY_HEAD_CPU', 8)),
+        'head_memory':      int(os.environ.get('RAY_HEAD_MEMORY', 32)),
+        # Worker nodes — may carry GPUs (used when worker_groups is absent)
+        'worker_cpu':       int(os.environ.get('RAY_WORKER_CPU', 16)),
+        'worker_memory':    int(os.environ.get('RAY_WORKER_MEMORY', 32)),
+        'worker_gpus':      int(os.environ.get('RAY_WORKER_GPUS', 0)),
+        # Optional explicit node-type label for the simple worker config.
+        # If omitted, defaults to "gpu-worker" when worker_gpus > 0, else "cpu-worker".
+        'worker_node_type': os.environ.get('RAY_WORKER_NODE_TYPE', None),
         # Ray daemon ports
-        'ray_port':       int(os.environ.get('RAY_PORT', 6379)),
-        'dashboard_port': int(os.environ.get('RAY_DASHBOARD_PORT', 8265)),
+        'ray_port':         int(os.environ.get('RAY_PORT', 6379)),
+        'dashboard_port':   int(os.environ.get('RAY_DASHBOARD_PORT', 8265)),
         # Management API resources (None = derive from head resources in main())
         'management_api_cpu':    None,
         'management_api_memory': None,
+        # Advanced multi-group config — list of dicts from YAML, or None.
+        # When present, takes priority over num_workers / worker_cpu / etc.
+        'worker_groups': None,
     }
 
     # Override with values from the YAML config file
@@ -244,18 +260,50 @@ def main():
     mgmt_cpu    = ray_config['management_api_cpu']    or max(1, head_cpu // 2)
     mgmt_memory = ray_config['management_api_memory'] or max(4, head_memory // 2)
 
+    # ── Build worker groups ───────────────────────────────────────────────────
+    # Advanced: explicit worker_groups list from YAML takes priority.
+    # Simple:   build one group from the flat num_workers / worker_* params.
+    if ray_config.get('worker_groups'):
+        worker_groups = [
+            WorkerGroupConfig(
+                name=g['name'],
+                node_type=g['node_type'],
+                count=g['count'],
+                cpu=g['cpu'],
+                memory=g['memory'],
+                gpus=g.get('gpus', 0),
+                runtime_identifier=g.get('runtime_identifier'),
+            )
+            for g in ray_config['worker_groups']
+        ]
+    else:
+        node_type = (
+            ray_config['worker_node_type']
+            or ("gpu-worker" if ray_config['worker_gpus'] > 0 else "cpu-worker")
+        )
+        worker_groups = [WorkerGroupConfig(
+            name="workers",
+            node_type=node_type,
+            count=ray_config['num_workers'],
+            cpu=ray_config['worker_cpu'],
+            memory=ray_config['worker_memory'],
+            gpus=ray_config['worker_gpus'],
+        )]
+
     print("\n🎯 Ray Cluster Configuration:")
     print(f"   Head Node     : {head_cpu} CPU, {head_memory} GB RAM  (no GPU)")
     print(f"   Management API: {mgmt_cpu} CPU, {mgmt_memory} GB RAM  (subset of head)")
-    print(f"   Workers       : {ray_config['num_workers']} × {ray_config['worker_cpu']} CPU, "
-          f"{ray_config['worker_memory']} GB RAM, {ray_config['worker_gpus']} GPU")
+    for g in worker_groups:
+        print(f"   Worker group '{g.name}' [{g.node_type}]: "
+              f"{g.count} × {g.cpu} CPU, {g.memory} GB RAM, {g.gpus} GPU")
     print(f"   Ray Port      : {ray_config['ray_port']}")
     print(f"   Dashboard Port: {ray_config['dashboard_port']}")
 
     try:
-        # Render launcher scripts from Jinja2 templates
+        # Render launcher scripts from Jinja2 templates (one per worker group)
         print("\n📝 Rendering Ray launcher scripts from templates...")
-        head_script_path, worker_script_path = create_ray_launcher_scripts(
+        head_script_path, worker_groups = create_ray_launcher_scripts(
+            worker_groups=worker_groups,
             ray_port=ray_config['ray_port'],
             dashboard_port=ray_config['dashboard_port'],
             mgmt_cpu=mgmt_cpu,
@@ -272,17 +320,15 @@ def main():
         )
         print("✅ Manager initialized")
 
-        # Start Ray cluster with script paths
+        # Start Ray cluster
         print("\n🚀 Starting Ray cluster...")
         print("   (This may take 2-5 minutes)")
         print(f"   Head script: {head_script_path}")
-        print(f"   Worker script: {worker_script_path}")
+        for g in worker_groups:
+            print(f"   Worker script [{g.node_type}]: {g.script_path}")
 
         cluster_info = manager.start_cluster(
-            num_workers=ray_config['num_workers'],
-            cpu=ray_config['worker_cpu'],
-            memory=ray_config['worker_memory'],
-            num_gpus=ray_config['worker_gpus'],
+            worker_groups=worker_groups,
             head_cpu=ray_config['head_cpu'],
             head_memory=ray_config['head_memory'],
             ray_port=ray_config['ray_port'],
@@ -290,9 +336,8 @@ def main():
             head_runtime_identifier=head_runtime,
             worker_runtime_identifier=worker_runtime,
             head_script_path=head_script_path,
-            worker_script_path=worker_script_path,
             wait_ready=True,
-            timeout=600
+            timeout=600,
         )
 
         # The head node launcher starts the Management API + nginx automatically.
@@ -323,10 +368,9 @@ def main():
         print(f"   Head Address: {cluster_info['head_address']}")
         print(f"   Dashboard: http://{cluster_info['head_address'].split(':')[0]}:{ray_config['dashboard_port']}")
         print(f"   Workers: {cluster_info['num_workers']} nodes")
-        if cluster_info['worker_app_ids']:
-            print(f"   Worker IDs:")
-            for i, worker_id in enumerate(cluster_info['worker_app_ids'], 1):
-                print(f"      {i}. {worker_id}")
+        for g in cluster_info.get('worker_groups', []):
+            print(f"   Group '{g['name']}' [{g['node_type']}]: "
+                  f"{g['count']} × {g['cpu']}CPU, {g['memory']}GB, {g['gpus']}GPU")
 
         print(f"\n🔗 Connection Details:")
         print(f"   Ray Address: ray://{cluster_info['head_address']}")
