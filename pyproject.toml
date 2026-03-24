@@ -48,6 +48,7 @@ dependencies = [
     "pydantic>=2.0.0",
     "httpx>=0.27.0",
     "starlette>=0.36.0",
+    "jinja2>=3.1.0",
 ]
 
 [project.optional-dependencies]
@@ -89,7 +90,7 @@ include = ["ray_serve_cai*"]
 exclude = ["tests*", "docs*", "examples*"]
 
 [tool.setuptools.package-data]
-ray_serve_cai = ["configs/*.yaml"]
+ray_serve_cai = ["configs/*.yaml", "configs/nginx/*.j2", "configs/nginx/conf.d/*.j2", "configs/nginx/snippets/*.j2"]
 
 # Black configuration
 [tool.black]
