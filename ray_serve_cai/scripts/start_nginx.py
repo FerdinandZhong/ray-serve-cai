@@ -75,22 +75,51 @@ def find_mime_types() -> str:
 
 
 def build_context(runtime_dir: Path, static_root: Path) -> dict:
-    """Build the Jinja2 template context from environment + defaults."""
+    """
+    Build the Jinja2 template context from environment variables and defaults.
+
+    Every value here is overridable via the corresponding env var so users can
+    tune nginx without touching the templates.  See the table below.
+
+    Env var                         Default   Description
+    ──────────────────────────────────────────────────────────────────────────
+    CDSW_APP_PORT                   8080      External-facing port (nginx listen)
+    RAY_SERVE_PORT                  8000      Internal Management API port
+    RAY_DASHBOARD_PORT              8265      Internal Ray Dashboard port
+    NGINX_WORKER_PROCESSES          auto      nginx worker_processes directive
+    NGINX_WORKER_CONNECTIONS        1024      worker_connections per process
+    NGINX_KEEPALIVE_TIMEOUT         65        keepalive_timeout (seconds)
+    NGINX_CLIENT_MAX_BODY_SIZE      100M      client_max_body_size
+    NGINX_GZIP                      on        gzip on|off
+    NGINX_TCP_NOPUSH                on        tcp_nopush on|off
+    NGINX_TCP_NODELAY               on        tcp_nodelay on|off
+    NGINX_API_TIMEOUT               300       proxy read/send timeout for /api/
+    NGINX_DASHBOARD_TIMEOUT         86400     proxy read timeout for /dashboard/
+    ──────────────────────────────────────────────────────────────────────────
+    """
     return {
-        # External-facing port — the only port exposed outside the container
+        # ── External port ──────────────────────────────────────────────────
         "app_port": int(os.environ.get("CDSW_APP_PORT", 8080)),
-        # Internal Ray service ports
+        # ── Internal Ray service ports ────────────────────────────────────
         "ray_dashboard_port": int(os.environ.get("RAY_DASHBOARD_PORT", 8265)),
         "ray_serve_port": int(os.environ.get("RAY_SERVE_PORT", 8000)),
-        # Runtime directory paths (used inside nginx config for includes)
+        # ── Runtime directory paths ────────────────────────────────────────
         "conf_dir": str(runtime_dir),
         "log_dir": str(runtime_dir / "logs"),
         "run_dir": str(runtime_dir / "run"),
         "static_root": str(static_root),
-        # mime.types — location differs between system and source-compiled nginx
+        # ── mime.types: location differs between system and source builds ──
         "mime_types_path": find_mime_types(),
-        # Tunables with sensible defaults
+        # ── Worker / process tuning ────────────────────────────────────────
+        "worker_processes": os.environ.get("NGINX_WORKER_PROCESSES", "auto"),
         "worker_connections": int(os.environ.get("NGINX_WORKER_CONNECTIONS", 1024)),
+        "keepalive_timeout": int(os.environ.get("NGINX_KEEPALIVE_TIMEOUT", 65)),
+        # ── TCP performance ────────────────────────────────────────────────
+        "tcp_nopush": os.environ.get("NGINX_TCP_NOPUSH", "on"),
+        "tcp_nodelay": os.environ.get("NGINX_TCP_NODELAY", "on"),
+        # ── Compression ────────────────────────────────────────────────────
+        "gzip": os.environ.get("NGINX_GZIP", "on"),
+        # ── Body / timeout limits ──────────────────────────────────────────
         "client_max_body_size": os.environ.get("NGINX_CLIENT_MAX_BODY_SIZE", "100M"),
         "api_timeout": int(os.environ.get("NGINX_API_TIMEOUT", 300)),
         "dashboard_timeout": int(os.environ.get("NGINX_DASHBOARD_TIMEOUT", 86400)),
@@ -235,11 +264,12 @@ def main() -> int:
 
     # 2. Build Jinja2 context
     context = build_context(runtime_dir, static_root)
-    print(f"app_port     : {context['app_port']}")
-    print(f"ray_serve    : 127.0.0.1:{context['ray_serve_port']}")
-    print(f"ray_dashboard: 127.0.0.1:{context['ray_dashboard_port']}")
-    print(f"mime_types   : {context['mime_types_path']}")
-    print(f"runtime_dir  : {runtime_dir}")
+    print(f"app_port        : {context['app_port']}")
+    print(f"ray_serve       : 127.0.0.1:{context['ray_serve_port']}")
+    print(f"ray_dashboard   : 127.0.0.1:{context['ray_dashboard_port']}")
+    print(f"worker_processes: {context['worker_processes']}")
+    print(f"mime_types      : {context['mime_types_path']}")
+    print(f"runtime_dir     : {runtime_dir}")
 
     # 3. Create directories
     create_runtime_dirs(runtime_dir, static_root)
