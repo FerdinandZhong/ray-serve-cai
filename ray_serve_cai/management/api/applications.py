@@ -3,7 +3,7 @@
 from fastapi import APIRouter, HTTPException, Depends
 from typing import Dict, Any
 
-from ..models.requests import DeployApplicationRequest
+from ..models.requests import DeployApplicationRequest, DeployModelRequest
 from ..models.responses import ApplicationInfo, ApplicationsListResponse
 from ..services.coordinator import CoordinatorService
 
@@ -36,6 +36,74 @@ async def deploy_application(
             ray_actor_options=request.ray_actor_options
         )
         return result
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@router.post("/model", response_model=Dict[str, Any])
+async def deploy_model(
+    request: DeployModelRequest,
+    coordinator: CoordinatorService = Depends(get_coordinator)
+):
+    """
+    Deploy a vLLM or SGLang model as a Ray Serve application.
+
+    The model is loaded by the chosen inference engine and served via
+    OpenAI-compatible endpoints under `route_prefix`:
+
+    - `POST {route_prefix}/v1/completions`
+    - `POST {route_prefix}/v1/chat/completions`
+    - `GET  {route_prefix}/v1/models`
+    - `GET  {route_prefix}/health`
+
+    Use `tensor_parallel_size > 1` to split a large model across multiple GPUs
+    on a single worker node.  To spread replicas across multiple worker nodes,
+    increase `num_replicas` and ensure enough GPU-equipped nodes are registered
+    in the cluster.
+
+    The application name must be unique within Ray Serve.  To update a running
+    model, call this endpoint again with the same name — Ray Serve will perform
+    a rolling update.
+    """
+    try:
+        result = coordinator.ray_service.deploy_model(
+            name=request.name,
+            engine_type=request.engine_type,
+            model=request.model,
+            route_prefix=request.route_prefix,
+            num_replicas=request.num_replicas,
+            tensor_parallel_size=request.tensor_parallel_size,
+            use_cpu=request.use_cpu,
+            engine_config=request.engine_config,
+        )
+        return result
+    except ValueError as e:
+        raise HTTPException(status_code=400, detail=str(e))
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@router.get("/engines", response_model=Dict[str, Any])
+async def list_engines(coordinator: CoordinatorService = Depends(get_coordinator)):
+    """
+    List available inference engines and their registration status.
+
+    Returns the engines that are installed and available for model deployment
+    (e.g., 'vllm', 'sglang').  Only registered engines can be used with the
+    POST /applications/model endpoint.
+    """
+    try:
+        import ray_serve_cai.engines  # noqa: F401 — triggers registration
+        from ray_serve_cai.engines.registry import get_registry
+
+        registry = get_registry()
+        engines = registry.list_engines()
+        default = registry.get_default_engine()
+        return {
+            "engines": engines,
+            "default_engine": default,
+            "total": len(engines),
+        }
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
 

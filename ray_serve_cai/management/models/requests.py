@@ -43,3 +43,56 @@ class DeployApplicationRequest(BaseModel):
                 "ray_actor_options": {"num_cpus": 1}
             }
         }
+
+
+class DeployModelRequest(BaseModel):
+    """Request to deploy a vLLM or SGLang model as a Ray Serve application."""
+
+    name: str = Field(..., description="Application name (used as the Ray Serve app name)")
+    engine_type: str = Field(
+        default="vllm",
+        description="Inference engine to use: 'vllm' or 'sglang'",
+    )
+    model: str = Field(
+        ...,
+        description="HuggingFace model ID or local path (e.g., 'meta-llama/Llama-3.1-8B-Instruct')",
+    )
+    route_prefix: str = Field(
+        default="/",
+        description="HTTP route prefix — all OpenAI-compatible endpoints are served under this prefix",
+    )
+    num_replicas: int = Field(default=1, ge=1, description="Number of Ray Serve replicas")
+    tensor_parallel_size: int = Field(
+        default=1,
+        ge=1,
+        description="Number of GPUs to use for tensor parallelism within each replica",
+    )
+    use_cpu: bool = Field(
+        default=False,
+        description="Run inference on CPU (no GPU required; slower, for testing only)",
+    )
+    engine_config: Optional[Dict[str, Any]] = Field(
+        default=None,
+        description=(
+            "Extra engine-specific parameters passed to the config builder. "
+            "vLLM examples: dtype, gpu_memory_utilization, max_model_len, "
+            "trust_remote_code, enable_prefix_caching, download_dir."
+        ),
+    )
+
+    class Config:
+        json_schema_extra = {
+            "example": {
+                "name": "llama3-8b",
+                "engine_type": "vllm",
+                "model": "meta-llama/Llama-3.1-8B-Instruct",
+                "route_prefix": "/llama3",
+                "num_replicas": 1,
+                "tensor_parallel_size": 1,
+                "engine_config": {
+                    "dtype": "bfloat16",
+                    "gpu_memory_utilization": 0.9,
+                    "max_model_len": 8192,
+                },
+            }
+        }

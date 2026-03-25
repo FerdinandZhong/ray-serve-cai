@@ -112,7 +112,8 @@ class CMLAPIClient:
         runtime_identifier: str,
         subdomain: str,
         bypass_authentication: bool = True,
-        num_gpus: int = 0
+        num_gpus: int = 0,
+        environment: Optional[Dict[str, str]] = None,
     ) -> ApplicationInfo:
         """
         Create a CML application.
@@ -127,6 +128,7 @@ class CMLAPIClient:
             subdomain: Application subdomain
             bypass_authentication: Allow unauthenticated access
             num_gpus: Number of GPUs (0 for no GPU)
+            environment: Optional env vars injected into the application at start
 
         Returns:
             ApplicationInfo with created application details
@@ -140,11 +142,13 @@ class CMLAPIClient:
             'memory': memory,
             'runtime_identifier': runtime_identifier,
             'subdomain': subdomain,
-            'bypass_authentication': bypass_authentication
+            'bypass_authentication': bypass_authentication,
         }
 
         if num_gpus > 0:
             payload['nvidia_gpu'] = num_gpus
+        if environment:
+            payload['environment'] = environment
 
         if self.verbose:
             logger.debug(f"Creating application: POST {url}")
@@ -161,6 +165,38 @@ class CMLAPIClient:
             subdomain=data.get('subdomain'),
             metadata=data
         )
+
+    def list_applications(self, project_id: str) -> List[ApplicationInfo]:
+        """
+        List all applications in a project.
+
+        Args:
+            project_id: Project ID
+
+        Returns:
+            List of ApplicationInfo
+        """
+        url = f"{self.base_url}/projects/{project_id}/applications"
+
+        if self.verbose:
+            logger.debug(f"Listing applications: GET {url}")
+
+        response = self.session.get(url)
+        response.raise_for_status()
+
+        data = response.json()
+        # CML API v2 returns {"applications": [...], "next_page_token": "..."}
+        items = data.get('applications', data) if isinstance(data, dict) else data
+        return [
+            ApplicationInfo(
+                id=a.get('id'),
+                name=a.get('name'),
+                status=a.get('status', 'unknown'),
+                subdomain=a.get('subdomain'),
+                metadata=a,
+            )
+            for a in items
+        ]
 
     def get_application(self, project_id: str, app_id: str) -> ApplicationInfo:
         """
@@ -208,6 +244,28 @@ class CMLAPIClient:
 
         response = self.session.delete(url)
         return response.status_code in [200, 204]
+
+    def restart_application(self, project_id: str, app_id: str) -> bool:
+        """
+        Restart an existing CML application via the CML restart endpoint.
+
+        Use this to revive a stopped/failed application without recreating it.
+        The application must already exist (not deleted).
+
+        Args:
+            project_id: Project ID
+            app_id: Application ID
+
+        Returns:
+            True if the API accepted the restart request (200/202).
+        """
+        url = f"{self.base_url}/projects/{project_id}/applications/{app_id}/restart"
+
+        if self.verbose:
+            logger.debug(f"Restarting application: POST {url}")
+
+        response = self.session.post(url)
+        return response.status_code in [200, 202]
 
 
 class CAIClusterManager:
@@ -414,12 +472,14 @@ class CAIClusterManager:
                 'num_workers': len(self.worker_app_ids),
                 'worker_groups': [
                     {
-                        'name': g.name,
-                        'node_type': g.node_type,
-                        'count': g.count,
-                        'cpu': g.cpu,
-                        'memory': g.memory,
-                        'gpus': g.gpus,
+                        'name':               g.name,
+                        'node_type':          g.node_type,
+                        'count':              g.count,
+                        'cpu':                g.cpu,
+                        'memory':             g.memory,
+                        'gpus':               g.gpus,
+                        'script_path':        g.script_path,
+                        'runtime_identifier': g.runtime_identifier,
                     }
                     for g in worker_groups
                 ],
@@ -500,24 +560,24 @@ class CAIClusterManager:
         stopped_apps = []
         errors = []
 
-        # Stop all worker nodes
+        # Delete all worker nodes
         for worker_id in self.worker_app_ids:
             try:
-                logger.info(f"   Stopping worker: {worker_id}")
-                # CML API doesn't have explicit stop, would need to delete
-                # For now, just track the ID
+                logger.info(f"   Deleting worker: {worker_id}")
+                self.cml_client.delete_application(self.project_id, worker_id)
                 stopped_apps.append(worker_id)
             except Exception as e:
-                logger.error(f"   Error stopping worker {worker_id}: {e}")
+                logger.error(f"   Error deleting worker {worker_id}: {e}")
                 errors.append(str(e))
 
-        # Stop head node
+        # Delete head node
         if self.head_app_id:
             try:
-                logger.info(f"   Stopping head node: {self.head_app_id}")
+                logger.info(f"   Deleting head node: {self.head_app_id}")
+                self.cml_client.delete_application(self.project_id, self.head_app_id)
                 stopped_apps.append(self.head_app_id)
             except Exception as e:
-                logger.error(f"   Error stopping head node: {e}")
+                logger.error(f"   Error deleting head node: {e}")
                 errors.append(str(e))
 
         # Clear state
@@ -595,3 +655,139 @@ class CAIClusterManager:
                 'status': 'error',
                 'error': str(e)
             }
+
+    # ── Per-application helpers ───────────────────────────────────────────────
+
+    def launch_worker(
+        self,
+        group: WorkerGroupConfig,
+        name: str = None,
+        environment: Optional[Dict[str, str]] = None,
+    ) -> Dict[str, Any]:
+        """
+        Launch a single worker application from a WorkerGroupConfig.
+
+        The group's script_path and runtime_identifier must already be set
+        (populated by create_ray_launcher_scripts() or loaded from
+        ray_cluster_info.json).  Pass environment to inject RAY_HEAD_ADDRESS
+        when the worker script was rendered without a baked-in head address.
+
+        Args:
+            group: Worker group configuration (node_type, cpu, memory, gpus, …).
+            name: CAI application name; defaults to "ray-<group.name>-<timestamp>".
+            environment: Optional env vars for the application (e.g. RAY_HEAD_ADDRESS).
+
+        Returns:
+            Dict with keys: id, name, status.
+        """
+        if not group.script_path:
+            raise RuntimeError(
+                f"Worker group '{group.name}' has no script_path. "
+                "Ensure create_ray_launcher_scripts() was called and "
+                "the result saved to ray_cluster_info.json."
+            )
+        rt = group.runtime_identifier
+        if not rt:
+            raise RuntimeError(
+                f"Worker group '{group.name}' has no runtime_identifier."
+            )
+
+        app_name = name or f"ray-{group.name}-{int(time.time())}"
+        subdomain = app_name.replace("_", "-").lower()
+
+        app = self.cml_client.create_application(
+            project_id=self.project_id,
+            name=app_name,
+            script=group.script_path,
+            cpu=group.cpu,
+            memory=group.memory,
+            runtime_identifier=rt,
+            subdomain=subdomain,
+            bypass_authentication=True,
+            num_gpus=group.gpus,
+            environment=environment,
+        )
+        self.worker_app_ids.append(app.id)
+        logger.info(f"✅ Launched worker '{app_name}': {app.id}  [node_type:{group.node_type}]")
+        return {"id": app.id, "name": app_name, "status": app.status}
+
+    def stop_application(self, app_id: str) -> bool:
+        """
+        Delete a single CAI application and remove it from tracked workers.
+
+        Note: CML has no explicit "pause" — stop means delete.  To bring the
+        application back without recreating from scratch, use restart_application()
+        while it is still in a stopped/failed (not yet deleted) state.
+
+        Args:
+            app_id: CML application ID to delete.
+
+        Returns:
+            True if the API returned 200/204.
+        """
+        success = self.cml_client.delete_application(self.project_id, app_id)
+        if app_id in self.worker_app_ids:
+            self.worker_app_ids.remove(app_id)
+        if success:
+            logger.info(f"✅ Application deleted: {app_id}")
+        else:
+            logger.warning(f"⚠️  delete_application returned False for {app_id}")
+        return success
+
+    def restart_application(self, app_id: str) -> bool:
+        """
+        Restart an existing (stopped/failed) CAI application without recreating it.
+
+        This is the counterpart to stop_application() when the application has
+        not been deleted — e.g. after a crash or a manual stop via the CML UI.
+        To add a brand-new worker use launch_worker() instead.
+
+        Args:
+            app_id: CML application ID to restart.
+
+        Returns:
+            True if the CML restart API accepted the request.
+        """
+        success = self.cml_client.restart_application(self.project_id, app_id)
+        if success:
+            logger.info(f"✅ Application restart requested: {app_id}")
+        else:
+            logger.warning(f"⚠️  restart_application returned False for {app_id}")
+        return success
+
+    def list_applications(self) -> List[Dict[str, Any]]:
+        """
+        List all CAI applications in the project.
+
+        Returns:
+            List of dicts with keys: id, name, status, subdomain.
+        """
+        apps = self.cml_client.list_applications(self.project_id)
+        return [
+            {
+                "id":        a.id,
+                "name":      a.name,
+                "status":    a.status,
+                "subdomain": a.subdomain,
+            }
+            for a in apps
+        ]
+
+    def get_application(self, app_id: str) -> Dict[str, Any]:
+        """
+        Get a single CAI application by ID (uses self.project_id).
+
+        Args:
+            app_id: CML application ID.
+
+        Returns:
+            Dict with keys: id, name, status, subdomain, metadata.
+        """
+        app = self.cml_client.get_application(self.project_id, app_id)
+        return {
+            "id":        app.id,
+            "name":      app.name,
+            "status":    app.status,
+            "subdomain": app.subdomain,
+            "metadata":  app.metadata,
+        }

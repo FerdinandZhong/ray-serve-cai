@@ -72,7 +72,7 @@ class RayService:
         ray_actor_options: Optional[Dict[str, Any]] = None
     ) -> Dict[str, Any]:
         """
-        Deploy a Ray Serve application.
+        Deploy a Ray Serve application from an import path.
 
         Args:
             name: Application name
@@ -87,43 +87,115 @@ class RayService:
         self.connect()
 
         try:
-            # Start Ray Serve if not already running
-            try:
-                serve.start(detached=True, http_options={"host": "0.0.0.0"})
-            except Exception:
-                # Already running
-                pass
+            # Parse import path (module.submodule:ClassName or module:app_handle)
+            module_path, attr_name = import_path.rsplit(":", 1)
 
-            # Parse import path
-            module_path, deployment_name = import_path.rsplit(":", 1)
-
-            # Import the deployment
             import importlib
             module = importlib.import_module(module_path)
-            deployment = getattr(module, deployment_name)
+            obj = getattr(module, attr_name)
 
-            # Configure and deploy
-            deployment_config = {
-                "name": name,
-                "num_replicas": num_replicas,
-                "route_prefix": route_prefix,
-            }
+            # obj may be an already-bound serve.Application or an unbound
+            # @serve.deployment class — handle both.
+            if isinstance(obj, serve.Application):
+                app = obj
+            else:
+                # Unbound deployment class: apply options then bind.
+                opts: Dict[str, Any] = {"num_replicas": num_replicas}
+                if ray_actor_options:
+                    opts["ray_actor_options"] = ray_actor_options
+                app = obj.options(**opts).bind()
 
-            if ray_actor_options:
-                deployment_config["ray_actor_options"] = ray_actor_options
-
-            deployment.options(**deployment_config).deploy()
+            serve.run(app, name=name, route_prefix=route_prefix)
 
             logger.info(f"Deployed application: {name}")
             return {
-                "status": "success",
+                "status": "deployed",
                 "name": name,
-                "route_prefix": route_prefix
+                "route_prefix": route_prefix,
             }
 
         except Exception as e:
             logger.error(f"Failed to deploy application {name}: {e}")
             raise
+
+    def deploy_model(
+        self,
+        name: str,
+        engine_type: str,
+        model: str,
+        route_prefix: str = "/",
+        num_replicas: int = 1,
+        tensor_parallel_size: int = 1,
+        use_cpu: bool = False,
+        engine_config: Optional[Dict[str, Any]] = None,
+    ) -> Dict[str, Any]:
+        """
+        Deploy a vLLM or SGLang model as a Ray Serve application.
+
+        Uses the engine registry to build the correct deployment for the
+        requested engine type, then calls serve.run() with the application.
+
+        Args:
+            name: Ray Serve application name.
+            engine_type: Engine identifier — "vllm" or "sglang".
+            model: HuggingFace model ID or local path.
+            route_prefix: HTTP route prefix for the deployment.
+            num_replicas: Number of Ray Serve replicas.
+            tensor_parallel_size: GPUs for intra-replica tensor parallelism.
+            use_cpu: Run in CPU-only mode (no GPU required).
+            engine_config: Extra engine-specific kwargs (dtype,
+                gpu_memory_utilization, max_model_len, etc.).
+
+        Returns:
+            Dict with status, name, engine_type, model, route_prefix.
+        """
+        self.connect()
+
+        # Import triggers engine registration in engines/__init__.py
+        import ray_serve_cai.engines  # noqa: F401
+        from ray_serve_cai.engines.registry import get_registry
+
+        registry = get_registry()
+        if not registry.is_registered(engine_type):
+            available = registry.list_engines()
+            raise ValueError(
+                f"Engine '{engine_type}' is not registered. "
+                f"Available engines: {available}"
+            )
+
+        user_config: Dict[str, Any] = {
+            "model": model,
+            "tensor_parallel_size": tensor_parallel_size,
+            "use_cpu": use_cpu,
+            **(engine_config or {}),
+        }
+
+        config_builder = registry.get_config_builder(engine_type)
+        built_config = config_builder.build_config(user_config)
+
+        deployment_factory = registry.get_deployment_factory(engine_type)
+        app = deployment_factory.create_deployment(
+            engine_config=built_config,
+            num_replicas=num_replicas,
+            tensor_parallel_size=tensor_parallel_size,
+            use_cpu=use_cpu,
+        )
+
+        serve.run(app, name=name, route_prefix=route_prefix)
+
+        logger.info(
+            f"Deployed model application: {name}  "
+            f"[engine:{engine_type}  model:{model}  tp:{tensor_parallel_size}]"
+        )
+        return {
+            "status": "deployed",
+            "name": name,
+            "engine_type": engine_type,
+            "model": model,
+            "route_prefix": route_prefix,
+            "num_replicas": num_replicas,
+            "tensor_parallel_size": tensor_parallel_size,
+        }
 
     def delete_application(self, name: str) -> Dict[str, Any]:
         """
@@ -155,12 +227,6 @@ class RayService:
         self.connect()
 
         try:
-            # Start Ray Serve if not running (read-only operation)
-            try:
-                serve.start(detached=True, http_options={"host": "0.0.0.0"})
-            except Exception:
-                pass
-
             apps = serve.status().applications
             return [
                 {
