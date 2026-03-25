@@ -17,7 +17,7 @@ import os
 import sys
 import time
 import requests
-from typing import Dict, Optional
+from typing import Dict, List, Optional
 
 
 class JobTrigger:
@@ -166,13 +166,87 @@ class JobTrigger:
         print(f"   ❌ Job timeout ({elapsed}s / {timeout}s)\n")
         return False
 
+    def _topological_order(self, job_configs: Dict) -> List[str]:
+        """Return job keys sorted so each parent appears before its children."""
+        jobs = job_configs.get("jobs", {})
+        order: List[str] = []
+        remaining = set(jobs.keys())
+
+        while remaining:
+            # Keys whose parent is already placed (or has no parent)
+            ready = sorted(
+                k for k in remaining
+                if jobs[k].get("parent_job_key") is None
+                or jobs[k].get("parent_job_key") not in remaining
+            )
+            if not ready:
+                # Circular or unresolvable — append the rest in arbitrary order
+                order.extend(sorted(remaining))
+                break
+            order.extend(ready)
+            remaining -= set(ready)
+
+        return order
+
+    def _wait_for_new_run(
+        self,
+        project_id: str,
+        job_id: str,
+        job_name: str,
+        trigger_epoch: float,
+        timeout: int,
+    ) -> Optional[str]:
+        """
+        Poll until a run appears for job_id that was created after trigger_epoch.
+        CML auto-triggers child jobs; we just wait for the run to show up.
+
+        Returns the run_id, or None on timeout.
+        """
+        print(f"   Waiting for CML to auto-trigger: {job_name} ...")
+        start = time.time()
+
+        while time.time() - start < timeout:
+            result = self.make_request(
+                "GET",
+                f"projects/{project_id}/jobs/{job_id}/runs",
+                params={"page_size": 5},
+            )
+            if result:
+                for run in result.get("runs", []):
+                    run_id = run.get("id")
+                    created_at = run.get("created_at", "")
+                    if not run_id or not created_at:
+                        continue
+
+                    # Parse ISO-8601 timestamp and compare with trigger time
+                    try:
+                        from datetime import datetime, timezone
+                        ts = created_at.rstrip("Z")
+                        fmt = "%Y-%m-%dT%H:%M:%S.%f" if "." in ts else "%Y-%m-%dT%H:%M:%S"
+                        dt = datetime.strptime(ts, fmt).replace(tzinfo=timezone.utc)
+                        if dt.timestamp() > trigger_epoch:
+                            elapsed = int(time.time() - start)
+                            print(f"   [{elapsed}s] New run detected: {run_id}")
+                            return run_id
+                    except Exception:
+                        # If we cannot parse the timestamp, optimistically accept
+                        # the most-recent run (first in the list)
+                        return run_id
+
+            time.sleep(15)
+
+        print(f"   ❌ Timed out waiting for {job_name} to be auto-triggered ({timeout}s)")
+        return None
+
     def run(
         self, project_id: str, job_ids: Dict[str, str], job_configs: Dict
     ) -> bool:
-        """Execute job triggering and monitoring.
+        """
+        Trigger the root job and wait for the entire chain to complete.
 
-        Note: Jobs with parent_job_key dependencies are automatically triggered
-        by CML when the parent succeeds. We only need to trigger the root job.
+        CML auto-triggers child jobs when their parent succeeds; this method
+        waits for each step in topological order so GitHub Actions only reports
+        success once the cluster is fully deployed.
         """
         print("=" * 70)
         print("🚀 Trigger Ray Cluster Deployment")
@@ -183,54 +257,72 @@ class JobTrigger:
         else:
             print(f"   Force rebuild: ❌ DISABLED (skip already-successful jobs)\n")
 
-        # Find root job (job with no parent)
-        root_job_key = None
-        for job_key, job_config in job_configs.get("jobs", {}).items():
-            if job_config.get("parent_job_key") is None:
-                root_job_key = job_key
-                break
+        # Determine execution order
+        ordered_keys = self._topological_order(job_configs)
+        jobs = job_configs.get("jobs", {})
 
+        # Find root job (first in order, has no parent)
+        root_job_key = ordered_keys[0] if ordered_keys else None
         if not root_job_key or root_job_key not in job_ids:
-            print(f"❌ Root job not found")
+            print("❌ Root job not found")
             return False
 
         root_job_id = job_ids[root_job_key]
-        root_job_config = job_configs.get("jobs", {}).get(root_job_key, {})
+        root_job_config = jobs.get(root_job_key, {})
         root_job_name = root_job_config.get("name", root_job_key)
 
         print(f"🔷 Triggering root job: {root_job_name}")
-        print(f"   (Child jobs will auto-trigger via CML dependencies)\n")
 
-        # Check if root already succeeded
+        # Skip root if it already succeeded (and force_rebuild is off)
         if (
             not self.force_rebuild
             and self.job_succeeded_recently(project_id, root_job_id)
         ):
-            print(f"   ✅ Root job already succeeded")
-            print(f"   Note: Child jobs may have already run as well\n")
-            # Still return success - jobs completed previously
-            return True
+            print(f"   ✅ Root job already succeeded — skipping trigger\n")
+        else:
+            run_id = self.trigger_job(project_id, root_job_id)
+            if not run_id:
+                print(f"   ❌ Failed to trigger root job\n")
+                return False
 
-        # Trigger root job only
-        run_id = self.trigger_job(project_id, root_job_id)
-        if not run_id:
-            print(f"   ❌ Failed to trigger root job\n")
-            return False
+            print(f"   ✅ Root job triggered: {run_id}\n")
+            trigger_epoch = time.time()
 
-        print(f"   ✅ Root job triggered: {run_id}\n")
+            timeout = root_job_config.get("timeout", 600)
+            if not self.wait_for_job_completion(project_id, root_job_id, run_id, timeout):
+                print(f"❌ Root job failed: {root_job_name}")
+                return False
 
-        # Wait for root job completion
-        timeout = root_job_config.get("timeout", 1800)
-        if not self.wait_for_job_completion(project_id, root_job_id, run_id, timeout):
-            print(f"❌ Root job failed: {root_job_name}")
-            return False
+            print(f"✅ {root_job_name} complete\n")
+
+        # Wait for every child job in order (CML auto-triggers them)
+        for job_key in ordered_keys[1:]:
+            job_id = job_ids.get(job_key)
+            if not job_id:
+                print(f"⚠️  No job_id for '{job_key}' — skipping")
+                continue
+
+            job_config = jobs.get(job_key, {})
+            job_name = job_config.get("name", job_key)
+            timeout = job_config.get("timeout", 1800)
+
+            print(f"🔷 {job_name}")
+            # Give CML up to timeout seconds to auto-trigger + complete this job
+            new_run_id = self._wait_for_new_run(
+                project_id, job_id, job_name, trigger_epoch, timeout
+            )
+            if not new_run_id:
+                return False
+
+            if not self.wait_for_job_completion(project_id, job_id, new_run_id, timeout):
+                print(f"❌ {job_name} failed")
+                return False
+
+            print(f"✅ {job_name} complete\n")
 
         print("=" * 70)
-        print("✅ Root Job Complete!")
+        print("✅ Full deployment chain complete!")
         print("=" * 70)
-        print("\n💡 Note: Child jobs with dependencies will auto-trigger.")
-        print("   Monitor them in the CML UI: Jobs > Job Runs\n")
-
         return True
 
 

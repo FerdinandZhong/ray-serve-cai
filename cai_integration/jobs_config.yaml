@@ -16,19 +16,25 @@ jobs:
     name: "Git Repository Sync"
     script: ".git_sync.py"
     parent_job_key: null
-    timeout: 600
-    description: "Clone/sync repository from GitHub"
+    timeout: 300       # git fetch + reset; should finish in < 2 min
+    cpu: 1
+    memory: 4
+    description: "Pull latest code from GitHub into the CML project"
 
   setup_environment:
     name: "Setup Python Environment"
     script: "cai_integration/setup_environment.py"
     parent_job_key: "git_sync"
-    timeout: 1800  # 30 minutes
-    description: "Create Python venv and install Ray dependencies"
+    timeout: 1800      # 30 min: uv venv + ray[serve] + vLLM install + nginx compile
+    cpu: 4
+    memory: 16
+    description: "Create Python venv and install Ray/vLLM/SGLang dependencies"
 
   launch_ray_cluster:
     name: "Launch Ray Cluster"
     script: "cai_integration/launch_ray_cluster_job.py"
     parent_job_key: "setup_environment"
-    timeout: 600
-    description: "Start Ray cluster with configured head and worker nodes (calls bash wrapper via Python subprocess)"
+    timeout: 1200      # start_cluster(600s) + management API health-check(300s) + buffer
+    cpu: 2
+    memory: 8
+    description: "Start Ray cluster with configured head and worker nodes"
