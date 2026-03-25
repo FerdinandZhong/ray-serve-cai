@@ -1,0 +1,14 @@
+# Upstream definitions for Ray services running on the head node.
+# All upstreams bind to 127.0.0.1 — only nginx is externally exposed.
+
+# Ray Dashboard (internal only)
+upstream ray_dashboard {
+    server 127.0.0.1:{{ ray_dashboard_port }};
+    keepalive 4;
+}
+
+# Ray Serve / Management API (internal only)
+upstream ray_serve {
+    server 127.0.0.1:{{ ray_serve_port }};
+    keepalive 8;
+}

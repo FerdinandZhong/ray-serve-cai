@@ -1,50 +1,52 @@
-# Ray Cluster Configuration for CML Deployment
+# Ray Cluster Configuration for CML/CAI Deployment
 #
-# This file defines the configuration for Ray cluster deployment on CML.
-# Adjust these values based on your requirements and available resources.
+# All resource values are picked up by load_config() in
+# cai_integration/launch_ray_cluster.py.  Environment variables override
+# anything set here (RAY_HEAD_CPU, RAY_WORKER_GPUS, etc.).
 
-# Ray cluster resources and configuration
 ray_cluster:
-  # Number of Ray worker nodes to create
+
+  # ── Cluster topology ──────────────────────────────────────────────────────
   num_workers: 1
 
-  # Head node resources (coordinator node + management API)
-  # Head node always has 0 GPUs (used for coordination only)
-  head_cpu: 8
-  head_memory: 32  # in GB
+  # ── Head node resources ───────────────────────────────────────────────────
+  # The head node runs Ray GCS, the Ray Dashboard, the Management API, and
+  # nginx.  It is CPU-only — GPUs are reserved for worker nodes.
+  head_cpu:    8
+  head_memory: 32   # GB
 
-  # Worker node resources per node
-  worker_cpu: 16
-  worker_memory: 32  # in GB
-  worker_gpus: 2   # GPUs per worker (0 for CPU-only)
+  # ── Management API resources (Ray Serve deployment on the head node) ──────
+  # Defaults: half of head_cpu / head_memory when omitted.
+  # Must not exceed head_cpu / head_memory.
+  management_api_cpu:    4   # = head_cpu // 2
+  management_api_memory: 16  # GB  = head_memory // 2
 
-  # Ray daemon ports
-  ray_port: 6379
+  # ── Worker node resources ─────────────────────────────────────────────────
+  worker_cpu:    16
+  worker_memory: 32   # GB
+  worker_gpus:   2    # GPUs per worker node (0 for CPU-only workers)
+
+  # ── Worker node-type label ────────────────────────────────────────────────
+  # Registered as a Ray custom resource: "node_type:<worker_node_type>".
+  # Used by coordinator._detect_node_type() and scheduling strategies to
+  # identify this node type without knowing node IDs.
+  # Defaults to "gpu-worker" when worker_gpus > 0, else "cpu-worker".
+  # Override here or via RAY_WORKER_NODE_TYPE env var.
+  #
+  # For heterogeneous fleets (e.g. T4 + L40 workers), replace this block
+  # with a worker_groups list — see ray_serve_cai/configs/multi_node_example.yaml.
+  worker_node_type: "gpu-worker"
+
+  # ── Ray daemon ports ──────────────────────────────────────────────────────
+  ray_port:       6379
   dashboard_port: 8265
-  management_api_port: 8080  # Management API port
 
-# CML/CAI Application configuration
+# ── CAI / CML Application configuration ──────────────────────────────────────
 cai:
-  # Docker runtime image to use
-  # Check your CML instance for available runtimes
+  # Docker runtime image.  Use a CUDA image for worker nodes if worker_gpus > 0.
   runtime_identifier: "docker.repository.cloudera.com/cloudera/cdsw/ml-runtime-pbj-jupyterlab-python3.11-standard:2025.09.1-b5"
 
-  # Project name (will be created if not exists)
   project_name: "ray-cluster"
 
-  # GitHub repository to clone (optional)
-  # Format: "owner/repo"
-  # If provided, code will be cloned from this repository
-  # repository: "owner/ray-serve-cai"
-
-  # Management API application resources (deployed as Ray Serve app on head node)
-  # These are informational - actual resources allocated via Ray Serve deployment
-  management_api_cpu: 4  # CPU cores for Ray Serve deployment
-  management_api_memory: 8  # GB for Ray Serve deployment
-
-# Environment variables for jobs (optional)
-environment:
-  # Add custom environment variables that will be passed to jobs
-  # Example:
-  # CUSTOM_VAR: "value"
-  # PYTHON_VERSION: "3.11"
+# ── Optional per-job environment variables ────────────────────────────────────
+environment: {}

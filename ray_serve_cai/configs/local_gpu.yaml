@@ -1,39 +1,51 @@
-# Local Ray Cluster Configuration for GPU Workloads
-# Optimized for vLLM deployments with GPU acceleration
+# CAI Ray Cluster Configuration — GPU Workloads
+# Optimised for vLLM deployments with GPU acceleration.
+# One CPU-only head node + one GPU worker.
+#
+# All resource values are picked up by load_config() in
+# cai_integration/launch_ray_cluster.py.  Environment variables override
+# anything set here (RAY_HEAD_CPU, RAY_WORKER_GPUS, etc.).
 
-cluster:
-  # Ray head node port
-  port: 6379
+ray_cluster:
 
-  # Dashboard configuration
-  dashboard:
-    enabled: true
-    port: 8265
+  # ── Cluster topology ──────────────────────────────────────────────────────
+  num_workers: 1
 
-  # Resource configuration for GPU workloads
-  resources:
-    # Number of CPUs (set based on your system)
-    num_cpus: 16
+  # ── Head node resources ───────────────────────────────────────────────────
+  # The head node runs Ray GCS, the Ray Dashboard, the Management API, and
+  # nginx.  It is CPU-only — GPUs are reserved for worker nodes.
+  head_cpu:    8
+  head_memory: 32   # GB
 
-    # Number of GPUs (set based on your system)
-    # For multi-GPU tensor parallelism, set this to the number of GPUs
-    num_gpus: 2
+  # ── Management API resources (Ray Serve deployment on the head node) ──────
+  # Defaults: half of head_cpu / head_memory when omitted.
+  management_api_cpu:    4   # = head_cpu // 2
+  management_api_memory: 16  # GB  = head_memory // 2
 
-    # Object store memory (for storing model weights and KV cache)
-    # Set to ~30% of system RAM for large models
-    # Example: 32GB RAM -> 10GB for object store
-    object_store_memory: 10737418240  # 10 GB
+  # ── Worker node resources ─────────────────────────────────────────────────
+  # Increase num_workers for multi-GPU tensor parallelism across nodes.
+  # For multi-GPU on a single node, keep num_workers: 1 and raise worker_gpus.
+  worker_cpu:    16
+  worker_memory: 64   # GB  — leave room for model weights + KV cache
+  worker_gpus:   2    # GPUs per worker node (e.g. 1, 2, 4, or 8)
 
-  # Keep terminal open
-  block: false
+  # ── Ray daemon ports ──────────────────────────────────────────────────────
+  ray_port:       6379
+  dashboard_port: 8265
 
-# Usage Notes:
-# - This config explicitly sets GPU resources for Ray
-# - num_gpus should match the number of GPUs available
-# - object_store_memory is critical for large model inference
-# - Adjust based on your hardware capabilities
+# ── CAI / CML Application configuration ──────────────────────────────────────
+cai:
+  # Use a CUDA runtime for worker nodes so vLLM can access the GPUs.
+  # The head node uses the standard (non-CUDA) runtime — see launch_ray_cluster.py
+  # which sets HEAD_RUNTIME_IDENTIFIER and WORKER_RUNTIME_IDENTIFIER separately.
+  runtime_identifier: "docker.repository.cloudera.com/cloudera/cdsw/ml-runtime-pbj-jupyterlab-python3.11-cuda:2025.09.1-b5"
 
-# Example for different GPU setups:
-# - Single GPU: num_gpus: 1, num_cpus: 8
-# - 4x GPU: num_gpus: 4, num_cpus: 32
-# - 8x GPU: num_gpus: 8, num_cpus: 64
+  project_name: "ray-cluster"
+
+# ── Optional per-job environment variables ────────────────────────────────────
+environment: {}
+
+# GPU setup examples:
+#   Single GPU  : worker_gpus: 1, worker_cpu: 8,  worker_memory: 32
+#   4x GPU node : worker_gpus: 4, worker_cpu: 32, worker_memory: 128
+#   8x GPU node : worker_gpus: 8, worker_cpu: 64, worker_memory: 256

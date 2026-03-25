@@ -205,9 +205,9 @@ class ProjectSetup:
         print("=" * 70)
         print(f"\nProject ID: {project_id}")
 
-        # Output for GitHub Actions
-        print(f"\n::set-output name=project_id::{project_id}")
-        # Also write to file for shell access
+        # Write project_id to file; the workflow shell step reads this into
+        # $GITHUB_OUTPUT.  The old ::set-output annotation is intentionally
+        # absent — it was removed from GitHub Actions runners in 2024.
         with open("/tmp/project_id.txt", "w") as f:
             f.write(project_id)
 

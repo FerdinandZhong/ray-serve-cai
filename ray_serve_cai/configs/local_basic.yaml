@@ -1,25 +1,43 @@
-# Basic Local Ray Cluster Configuration
-# For simple single-node deployments with default resources
+# Basic CAI Ray Cluster Configuration
+# Single-node deployment with minimal resources for quick testing and development.
+# Resources are kept small — head node only, no separate workers.
+#
+# All resource values are picked up by load_config() in
+# cai_integration/launch_ray_cluster.py.  Environment variables override
+# anything set here (RAY_HEAD_CPU, RAY_WORKER_GPUS, etc.).
 
-cluster:
-  # Ray head node port
-  port: 6379
+ray_cluster:
 
-  # Dashboard configuration
-  dashboard:
-    enabled: true
-    port: 8265
+  # ── Cluster topology ──────────────────────────────────────────────────────
+  num_workers: 0   # head-only deployment
 
-  # Resource limits (optional - Ray will auto-detect if not specified)
-  # resources:
-  #   num_cpus: 8
-  #   num_gpus: 1
+  # ── Head node resources ───────────────────────────────────────────────────
+  # The head node runs Ray GCS, the Ray Dashboard, the Management API, and
+  # nginx.  It is CPU-only — GPUs are reserved for worker nodes.
+  head_cpu:    4
+  head_memory: 8    # GB
 
-  # Block the terminal (keep running in foreground)
-  block: false
+  # ── Management API resources (Ray Serve deployment on the head node) ──────
+  # Omitted here — defaults to head_cpu // 2 and head_memory // 2.
+  # management_api_cpu:    2
+  # management_api_memory: 4
 
-# Notes:
-# - This config starts a basic local cluster
-# - Resources are auto-detected from the system
-# - Dashboard is available at http://localhost:8265
-# - Use this for quick testing and development
+  # ── Worker node resources ─────────────────────────────────────────────────
+  # No workers in this config; values are ignored when num_workers is 0.
+  worker_cpu:    4
+  worker_memory: 8    # GB
+  worker_gpus:   0    # CPU-only
+
+  # ── Ray daemon ports ──────────────────────────────────────────────────────
+  ray_port:       6379
+  dashboard_port: 8265
+
+# ── CAI / CML Application configuration ──────────────────────────────────────
+cai:
+  # CPU-only standard runtime (no CUDA needed for a basic deployment).
+  runtime_identifier: "docker.repository.cloudera.com/cloudera/cdsw/ml-runtime-pbj-jupyterlab-python3.11-standard:2025.09.1-b5"
+
+  project_name: "ray-cluster"
+
+# ── Optional per-job environment variables ────────────────────────────────────
+environment: {}

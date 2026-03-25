@@ -10,6 +10,36 @@ from .cai_service import CAIService
 
 logger = logging.getLogger(__name__)
 
+# Ray 2.x automatically assigns "node:__internal_head__" to the head node.
+# Worker nodes self-register a free-form "node_type:<label>" custom resource
+# via --resources at ray start time (see ray_worker_launcher.py.j2).
+# The label suffix is defined in WorkerGroupConfig.node_type and flows from
+# the cluster YAML — no static registry is needed here.
+#
+# Examples of worker labels that are detected automatically:
+#   "node_type:cpu-worker"
+#   "node_type:gpu-worker"
+#   "node_type:t4_gpu_node_single"
+#   "node_type:l40_gpu_node_2_gpus"
+_HEAD_NODE_LABEL    = "node:__internal_head__"
+_WORKER_LABEL_PREFIX = "node_type:"
+
+
+def _detect_node_type(resources: Dict[str, Any]) -> str:
+    """Return the logical node type for a Ray node based on its resource labels.
+
+    Detection order:
+      1. "node:__internal_head__"  → "head"      (Ray built-in, head only)
+      2. "node_type:<label>"       → "<label>"   (set by worker launcher)
+      3. fallback                  → "worker"
+    """
+    if _HEAD_NODE_LABEL in resources:
+        return "head"
+    for key in resources:
+        if key.startswith(_WORKER_LABEL_PREFIX):
+            return key[len(_WORKER_LABEL_PREFIX):]
+    return "worker"
+
 
 class CoordinatorService:
     """Coordinates operations between Ray cluster and CML/CAI platform."""
@@ -100,7 +130,7 @@ class CoordinatorService:
             node_info = {
                 "node_id": node_id,
                 "node_name": node.get("NodeName", ""),
-                "node_type": "head" if node.get("NodeManagerAddress") == node.get("RayletSocketName") else "worker",
+                "node_type": _detect_node_type(node.get("Resources", {})),
                 "alive": node.get("Alive", False),
                 "resources": node.get("Resources", {}),
                 "resources_used": node.get("ResourcesUsed", {}),

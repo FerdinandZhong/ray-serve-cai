@@ -1,0 +1,100 @@
+# Virtual server — the single external-facing entry point.
+# Binds to CDSW_APP_PORT and routes traffic to internal Ray services.
+
+server {
+    listen {{ app_port }};
+    server_name _;
+
+    # ------------------------------------------------------------------ #
+    # Management API  (Ray Serve, route_prefix=/api)                      #
+    # ------------------------------------------------------------------ #
+    location /api/ {
+        include {{ conf_dir }}/snippets/proxy_params.conf;
+        proxy_pass http://ray_serve/api/;
+        # WebSocket / SSE support for streaming responses
+        proxy_set_header Upgrade    $http_upgrade;
+        proxy_set_header Connection "upgrade";
+        proxy_buffering    off;
+        proxy_read_timeout {{ api_timeout }}s;
+        proxy_send_timeout {{ api_timeout }}s;
+    }
+
+    # API interactive docs
+    location = /docs {
+        include {{ conf_dir }}/snippets/proxy_params.conf;
+        proxy_pass http://ray_serve/api/docs;
+    }
+
+    location = /redoc {
+        include {{ conf_dir }}/snippets/proxy_params.conf;
+        proxy_pass http://ray_serve/api/redoc;
+    }
+
+    location = /openapi.json {
+        include {{ conf_dir }}/snippets/proxy_params.conf;
+        proxy_pass http://ray_serve/api/openapi.json;
+    }
+
+    # ------------------------------------------------------------------ #
+    # Ray Dashboard                                                        #
+    # ------------------------------------------------------------------ #
+    location /dashboard/ {
+        include {{ conf_dir }}/snippets/proxy_params.conf;
+        proxy_pass http://ray_dashboard/;
+        # WebSocket support required by the dashboard
+        proxy_set_header Upgrade    $http_upgrade;
+        proxy_set_header Connection "upgrade";
+        proxy_buffering    off;
+        proxy_read_timeout {{ dashboard_timeout }}s;
+    }
+
+    # ------------------------------------------------------------------ #
+    # Health check (no access log to avoid noise)                         #
+    # ------------------------------------------------------------------ #
+    location = /health {
+        include {{ conf_dir }}/snippets/proxy_params.conf;
+        proxy_pass http://ray_serve/api/health;
+        access_log off;
+    }
+
+    # ------------------------------------------------------------------ #
+    # Static landing page                                                  #
+    # ------------------------------------------------------------------ #
+    location = / {
+        root  {{ static_root }};
+        try_files /index.html =404;
+        add_header Cache-Control "no-cache, no-store, must-revalidate";
+        add_header Pragma         "no-cache";
+        add_header Expires        0;
+    }
+
+    location /static/ {
+        alias {{ static_root }}/;
+        expires 1d;
+        add_header Cache-Control "public, immutable";
+    }
+
+    # ------------------------------------------------------------------ #
+    # Model inference endpoints (catch-all)                               #
+    #                                                                      #
+    # Ray Serve applications deployed via POST /api/v1/applications/model  #
+    # register arbitrary route_prefix values (e.g. /llama3, /phi3).      #
+    # This block proxies any path not matched above to Ray Serve so those  #
+    # deployments are reachable externally.                                #
+    #                                                                      #
+    # nginx location priority ensures specific prefixes above win:         #
+    #   /api/ (len 5) > /dashboard/ (len 11) > /static/ (len 8)          #
+    #   > = /docs, = /redoc, = /health (exact match)                      #
+    #   > / (len 1, this block)                                            #
+    # ------------------------------------------------------------------ #
+    location / {
+        include {{ conf_dir }}/snippets/proxy_params.conf;
+        proxy_pass http://ray_serve/;
+        # SSE / streaming support for token-by-token generation
+        proxy_buffering    off;
+        proxy_read_timeout {{ api_timeout }}s;
+        proxy_send_timeout {{ api_timeout }}s;
+        proxy_set_header Upgrade    $http_upgrade;
+        proxy_set_header Connection "upgrade";
+    }
+}
