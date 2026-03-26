@@ -20,10 +20,6 @@ from pathlib import Path
 VENV_PYTHON = Path("{{ venv_python }}")
 RAY_BIN     = VENV_PYTHON.parent / "ray"   # /home/cdsw/.venv/bin/ray
 
-# Re-exec under venv Python so that all venv packages are importable.
-if Path(sys.executable).resolve() != VENV_PYTHON.resolve():
-    os.execv(str(VENV_PYTHON), [str(VENV_PYTHON)] + sys.argv)
-
 if not VENV_PYTHON.exists():
     print(f"ERROR: venv not found at {VENV_PYTHON}")
     sys.exit(1)
