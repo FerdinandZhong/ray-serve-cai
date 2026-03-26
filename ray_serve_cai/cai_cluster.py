@@ -418,13 +418,13 @@ class CAIClusterManager:
                     if not head_url.startswith('http'):
                         head_url = f"https://{head_url}"
                     self.head_url = head_url.rstrip('/')
-                    hostname = head_url.split('://', 1)[-1].split(':')[0].split('/')[0]
-                    self.head_address = f"{hostname}:{ray_port}"
-                    logger.info(f"✅ Head node ready: {self.head_address}")
-                    logger.info(f"   Public URL: {self.head_url}")
-                else:
-                    logger.warning("Could not determine head node address from application URL")
-                    self.head_address = f"ray-cluster-head:{ray_port}"
+                    logger.info(f"✅ Head node ready. Public URL: {self.head_url}")
+
+                # Query the Management API for the real GCS address (pod IP + port).
+                # The public domain only exposes port 443; workers need direct
+                # TCP access to the GCS port on the pod's internal IP.
+                self.head_address = self._get_gcs_address(ray_port)
+                logger.info(f"   GCS address (internal): {self.head_address}")
 
             # ── Worker groups ─────────────────────────────────────────────────
             if total_workers > 0 and self.head_address:
@@ -451,6 +451,7 @@ class CAIClusterManager:
                             subdomain=subdomain,
                             bypass_authentication=True,
                             num_gpus=group.gpus,
+                            environment={"RAY_HEAD_ADDRESS": self.head_address},
                         )
                         self.worker_app_ids.append(worker_app.id)
                         logger.info(f"      ✅ {app_name} created: {worker_app.id}")
@@ -503,6 +504,51 @@ class CAIClusterManager:
             logger.error(f"Failed to start cluster: {e}")
             self.stop_cluster()
             raise
+
+    def _get_gcs_address(self, ray_port: int, timeout: int = 120) -> str:
+        """
+        Query the head node's Management API for its internal GCS address.
+
+        The Management API returns the pod's CDSW_IP_ADDRESS which is
+        reachable directly on non-HTTPS ports from within the CML cluster.
+        Falls back to the public hostname if the endpoint is unavailable.
+
+        Args:
+            ray_port: Ray GCS port.
+            timeout:  Maximum seconds to wait for the endpoint.
+
+        Returns:
+            "IP:port" string suitable for `ray start --address`.
+        """
+        import time
+        import urllib.request
+        import json as _json
+
+        if not self.head_url:
+            logger.warning("head_url not set — cannot query GCS address endpoint")
+            return f"ray-cluster-head:{ray_port}"
+
+        url = f"{self.head_url}/api/v1/cluster/gcs-address"
+        start = time.time()
+        while time.time() - start < timeout:
+            try:
+                with urllib.request.urlopen(url, timeout=10) as resp:
+                    data = _json.loads(resp.read())
+                    addr = data.get("gcs_address", "")
+                    if addr:
+                        return addr
+            except Exception:
+                pass
+            time.sleep(10)
+
+        # Fallback: extract hostname from public URL (may not work for GCS port)
+        hostname = self.head_url.split('://', 1)[-1].split('/')[0]
+        fallback = f"{hostname}:{ray_port}"
+        logger.warning(
+            f"Could not retrieve GCS address from Management API — "
+            f"falling back to {fallback} (workers may fail to connect)"
+        )
+        return fallback
 
     def _wait_for_application(
         self,

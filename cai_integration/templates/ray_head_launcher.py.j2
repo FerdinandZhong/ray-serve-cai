@@ -40,6 +40,15 @@ print("=" * 70)
 print("Ray Head Node — startup")
 print("=" * 70)
 
+# ── Write GCS address file ────────────────────────────────────────────────────
+# CDSW_IP_ADDRESS is the pod's internal IP set by CML.  Workers must connect
+# to this IP on the GCS port — the public CAI domain only exposes port 443.
+_pod_ip = os.environ.get("CDSW_IP_ADDRESS", "127.0.0.1")
+_gcs_address = f"{_pod_ip}:{{ ray_port }}"
+_gcs_file = PROJECT_DIR / "ray_gcs_address"
+_gcs_file.write_text(_gcs_address)
+print(f"GCS address     : {_gcs_address}  (written to {_gcs_file})")
+
 
 # ── [1/4] Start Ray head ─────────────────────────────────────────────────────
 print("\n[1/4] Starting Ray head node...")
