@@ -18,9 +18,13 @@ import time
 from pathlib import Path
 
 VENV_PYTHON = Path("{{ venv_python }}")
+RAY_BIN     = VENV_PYTHON.parent / "ray"   # /home/cdsw/.venv/bin/ray
 
 if not VENV_PYTHON.exists():
     print(f"ERROR: venv not found at {VENV_PYTHON}")
+    sys.exit(1)
+if not RAY_BIN.exists():
+    print(f"ERROR: ray binary not found at {RAY_BIN}")
     sys.exit(1)
 
 print("=" * 70)
@@ -49,7 +53,8 @@ NODE_TYPE = "{{ node_type }}"
 node_resources = json.dumps({f"node_type:{NODE_TYPE}": 1})
 
 cmd = [
-    str(VENV_PYTHON), "-m", "ray.scripts.ray_start",
+    str(RAY_BIN),
+    "start",
     "--address", HEAD_ADDRESS,
     "--resources", node_resources,
 ]

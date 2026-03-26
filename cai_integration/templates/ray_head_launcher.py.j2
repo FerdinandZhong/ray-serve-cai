@@ -24,11 +24,15 @@ import time
 from pathlib import Path
 
 VENV_PYTHON = Path("{{ venv_python }}")
+RAY_BIN     = VENV_PYTHON.parent / "ray"   # /home/cdsw/.venv/bin/ray
 PROJECT_DIR  = Path("{{ project_dir }}")
 sys.path.insert(0, str(PROJECT_DIR))
 
 if not VENV_PYTHON.exists():
     print(f"ERROR: venv not found at {VENV_PYTHON}")
+    sys.exit(1)
+if not RAY_BIN.exists():
+    print(f"ERROR: ray binary not found at {RAY_BIN}")
     sys.exit(1)
 
 print("=" * 70)
@@ -40,8 +44,8 @@ print("=" * 70)
 print("\n[1/4] Starting Ray head node...")
 result = subprocess.run(
     [
-        str(VENV_PYTHON), "-m", "ray.scripts.ray_start",
-        "--head",
+        str(RAY_BIN),
+        "start", "--head",
         "--port", "{{ ray_port }}",
         "--dashboard-host", "127.0.0.1",  # internal only
         "--dashboard-port", "{{ dashboard_port }}",  # internal only
