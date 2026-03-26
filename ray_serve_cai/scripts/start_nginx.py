@@ -84,7 +84,7 @@ def build_context(runtime_dir: Path, static_root: Path) -> dict:
     Env var                         Default   Description
     ──────────────────────────────────────────────────────────────────────────
     CDSW_APP_PORT                   8080      External-facing port (nginx listen)
-    RAY_SERVE_PORT                  8000      Internal Management API port
+    RAY_SERVE_PORT                  5000      Internal Management API port
     RAY_DASHBOARD_PORT              8265      Internal Ray Dashboard port
     NGINX_WORKER_PROCESSES          auto      nginx worker_processes directive
     NGINX_WORKER_CONNECTIONS        1024      worker_connections per process
@@ -102,7 +102,7 @@ def build_context(runtime_dir: Path, static_root: Path) -> dict:
         "app_port": int(os.environ.get("CDSW_APP_PORT", 8080)),
         # ── Internal Ray service ports ────────────────────────────────────
         "ray_dashboard_port": int(os.environ.get("RAY_DASHBOARD_PORT", 8265)),
-        "ray_serve_port": int(os.environ.get("RAY_SERVE_PORT", 8000)),
+        "ray_serve_port": int(os.environ.get("RAY_SERVE_PORT", 5000)),
         # ── Runtime directory paths ────────────────────────────────────────
         "conf_dir": str(runtime_dir),
         "log_dir": str(runtime_dir / "logs"),

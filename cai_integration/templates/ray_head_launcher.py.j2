@@ -103,6 +103,7 @@ result = subprocess.run(
         "--route-prefix", "/api",
         "--num-cpus",     "{{ mgmt_cpu }}",
         "--memory-gb",    "{{ mgmt_memory_gb }}",
+        "--serve-port",   "5000",
         "--pin-to-head",
     ],
     env={**os.environ, "PYTHONPATH": str(PROJECT_DIR)},
@@ -110,7 +111,7 @@ result = subprocess.run(
 if result.returncode != 0:
     print(f"ERROR: Management API deployment failed (exit {result.returncode})")
     sys.exit(result.returncode)
-print("  Management API live at http://127.0.0.1:8000/api/*")
+print("  Management API live at http://127.0.0.1:5000/api/*")
 
 
 # ── [4/4] Start nginx ─────────────────────────────────────────────────────────
@@ -135,7 +136,7 @@ print("\n" + "=" * 70)
 print("Ray Head Node — all services running")
 print("=" * 70)
 print(f"  External  : :{app_port}  (nginx, public)")
-print(f"  API       : http://127.0.0.1:8000/api/*  (Ray Serve, internal)")
+print(f"  API       : http://127.0.0.1:5000/api/*  (Ray Serve, internal)")
 print(f"  Dashboard : http://127.0.0.1:{{ dashboard_port }}/  (internal)")
 print(f"  GCS       : 127.0.0.1:{{ ray_port }}  (internal)")
 print("\nProcess staying alive — stop the CAI application to shut down.")

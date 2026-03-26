@@ -16,7 +16,7 @@ Usage:
         --memory-gb   16 \\
         [--pin-to-head] \\
         [--serve-host 127.0.0.1] \\
-        [--serve-port 8000]
+        [--serve-port 5000]
 
 The script exits with 0 on success.  Because Ray Serve is started with
 detached=True the deployment persists after this process exits.
@@ -41,7 +41,7 @@ def main() -> int:
         help="Pin the deployment to the Ray head node using NodeAffinitySchedulingStrategy",
     )
     parser.add_argument("--serve-host", default="127.0.0.1", help="Ray Serve HTTP host (default: 127.0.0.1)")
-    parser.add_argument("--serve-port", type=int, default=8000, help="Ray Serve HTTP port (default: 8000)")
+    parser.add_argument("--serve-port", type=int, default=5000, help="Ray Serve HTTP port (default: 5000)")
     args = parser.parse_args()
 
     import ray
