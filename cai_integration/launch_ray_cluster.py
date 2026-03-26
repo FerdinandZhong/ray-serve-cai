@@ -130,31 +130,23 @@ def load_config():
     they default to half of the head node resources (computed in main()).
     Head node has no GPUs — only workers carry GPU resources.
     """
+    # ── Step 1: built-in defaults ────────────────────────────────────────────
     config = {
-        # Cluster topology (simple single-group config)
-        'num_workers':      int(os.environ.get('RAY_NUM_WORKERS', 1)),
-        # Head node — CPU + memory only, no GPUs
-        'head_cpu':         int(os.environ.get('RAY_HEAD_CPU', 8)),
-        'head_memory':      int(os.environ.get('RAY_HEAD_MEMORY', 32)),
-        # Worker nodes — may carry GPUs (used when worker_groups is absent)
-        'worker_cpu':       int(os.environ.get('RAY_WORKER_CPU', 16)),
-        'worker_memory':    int(os.environ.get('RAY_WORKER_MEMORY', 32)),
-        'worker_gpus':      int(os.environ.get('RAY_WORKER_GPUS', 0)),
-        # Optional explicit node-type label for the simple worker config.
-        # If omitted, defaults to "gpu-worker" when worker_gpus > 0, else "cpu-worker".
-        'worker_node_type': os.environ.get('RAY_WORKER_NODE_TYPE', None),
-        # Ray daemon ports
-        'ray_port':         int(os.environ.get('RAY_PORT', 6379)),
-        'dashboard_port':   int(os.environ.get('RAY_DASHBOARD_PORT', 8265)),
-        # Management API resources (None = derive from head resources in main())
+        'num_workers':           1,
+        'head_cpu':              8,
+        'head_memory':           32,
+        'worker_cpu':            16,
+        'worker_memory':         32,
+        'worker_gpus':           0,
+        'worker_node_type':      None,
+        'ray_port':              6379,
+        'dashboard_port':        8265,
         'management_api_cpu':    None,
         'management_api_memory': None,
-        # Advanced multi-group config — list of dicts from YAML, or None.
-        # When present, takes priority over num_workers / worker_cpu / etc.
-        'worker_groups': None,
+        'worker_groups':         None,
     }
 
-    # Override with values from the YAML config file
+    # ── Step 2: YAML overrides defaults ─────────────────────────────────────
     config_path = Path(__file__).parent.parent / "ray_cluster_config.yaml"
     if config_path.exists():
         try:
@@ -164,6 +156,28 @@ def load_config():
             print(f"Loaded configuration from {config_path}")
         except Exception as e:
             print(f"Warning: could not load config file: {e}")
+
+    # ── Step 3: env vars override everything (highest priority) ─────────────
+    # Only apply when the variable is actually set so that an absent env var
+    # does not silently zero-out a value supplied by the YAML.
+    _env_int = [
+        ('RAY_NUM_WORKERS',    'num_workers'),
+        ('RAY_HEAD_CPU',       'head_cpu'),
+        ('RAY_HEAD_MEMORY',    'head_memory'),
+        ('RAY_WORKER_CPU',     'worker_cpu'),
+        ('RAY_WORKER_MEMORY',  'worker_memory'),
+        ('RAY_WORKER_GPUS',    'worker_gpus'),
+        ('RAY_PORT',           'ray_port'),
+        ('RAY_DASHBOARD_PORT', 'dashboard_port'),
+    ]
+    for env_var, key in _env_int:
+        val = os.environ.get(env_var)
+        if val is not None:
+            config[key] = int(val)
+
+    val = os.environ.get('RAY_WORKER_NODE_TYPE')
+    if val is not None:
+        config['worker_node_type'] = val
 
     return config
 
