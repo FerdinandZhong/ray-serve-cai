@@ -346,7 +346,7 @@ To use a different Docker runtime, edit `ray_cluster_config.yaml`:
 
 ```yaml
 cai:
-  runtime_identifier: "docker.repository.cloudera.com/cloudera/cdsw/ml-runtime-pbj-jupyterlab-python3.11-gpu:2025.09.1-b5"
+  runtime_identifier: "docker.repository.cloudera.com/cloudera/cdsw/ml-runtime-pbj-jupyterlab-python3.11-cuda:2026.01.1-b6"
 ```
 
 ### Force Rebuild

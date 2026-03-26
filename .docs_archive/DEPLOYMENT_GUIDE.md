@@ -175,7 +175,7 @@ ray_cluster:
 ### Use Different Docker Runtime
 
 ```bash
-export RUNTIME_IDENTIFIER="docker.repository.cloudera.com/cloudera/cdsw/ml-runtime-pbj-jupyterlab-python3.11-gpu:2025.09.1-b5"
+export RUNTIME_IDENTIFIER="docker.repository.cloudera.com/cloudera/cdsw/ml-runtime-pbj-jupyterlab-python3.11-cuda:2026.01.1-b6"
 python cai_integration/deploy_to_cml.py
 ```
 

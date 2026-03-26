@@ -415,7 +415,7 @@ except Exception as e:
                 num_gpus=self.args.gpu,
                 head_cpu=self.args.head_cpu,
                 head_memory=self.args.head_memory,
-                runtime_identifier="docker.repository.cloudera.com/cloudera/cdsw/ml-runtime-pbj-jupyterlab-python3.11-standard:2025.09.1-b5",
+                runtime_identifier="docker.repository.cloudera.com/cloudera/cdsw/ml-runtime-pbj-jupyterlab-python3.11-standard:2026.01.1-b6",
                 head_script_path=head_script_path,
                 worker_script_path=worker_script_path,
                 wait_ready=True,
