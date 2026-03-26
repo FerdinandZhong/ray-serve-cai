@@ -180,7 +180,7 @@ jobs:
 **Solution**:
 Provide valid runtime_identifier:
 ```bash
-export RUNTIME_IDENTIFIER="docker.repository.cloudera.com/cloudera/cdsw/ml-runtime-pbj-jupyterlab-python3.11-standard:2025.09.1-b5"
+export RUNTIME_IDENTIFIER="docker.repository.cloudera.com/cloudera/cdsw/ml-runtime-pbj-jupyterlab-python3.11-standard:2026.01.1-b6"
 ```
 
 Check available runtimes in CML UI or try different versions.

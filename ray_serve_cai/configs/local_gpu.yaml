@@ -38,7 +38,7 @@ cai:
   # Use a CUDA runtime for worker nodes so vLLM can access the GPUs.
   # The head node uses the standard (non-CUDA) runtime — see launch_ray_cluster.py
   # which sets HEAD_RUNTIME_IDENTIFIER and WORKER_RUNTIME_IDENTIFIER separately.
-  runtime_identifier: "docker.repository.cloudera.com/cloudera/cdsw/ml-runtime-pbj-jupyterlab-python3.11-cuda:2025.09.1-b5"
+  runtime_identifier: "docker.repository.cloudera.com/cloudera/cdsw/ml-runtime-pbj-jupyterlab-python3.11-cuda:2026.01.1-b6"
 
   project_name: "ray-cluster"
 

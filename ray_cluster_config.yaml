@@ -44,7 +44,7 @@ ray_cluster:
 # ── CAI / CML Application configuration ──────────────────────────────────────
 cai:
   # Docker runtime image.  Use a CUDA image for worker nodes if worker_gpus > 0.
-  runtime_identifier: "docker.repository.cloudera.com/cloudera/cdsw/ml-runtime-pbj-jupyterlab-python3.11-standard:2025.09.1-b5"
+  runtime_identifier: "docker.repository.cloudera.com/cloudera/cdsw/ml-runtime-pbj-jupyterlab-python3.11-standard:2026.01.1-b6"
 
   project_name: "ray-cluster"
 

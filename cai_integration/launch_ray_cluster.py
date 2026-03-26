@@ -232,11 +232,11 @@ def main():
     # Runtime identifiers
     head_runtime = os.environ.get(
         "HEAD_RUNTIME_IDENTIFIER",
-        "docker.repository.cloudera.com/cloudera/cdsw/ml-runtime-pbj-jupyterlab-python3.11-standard:2025.09.1-b5"
+        "docker.repository.cloudera.com/cloudera/cdsw/ml-runtime-pbj-jupyterlab-python3.11-standard:2026.01.1-b6"
     )
     worker_runtime = os.environ.get(
         "WORKER_RUNTIME_IDENTIFIER",
-        "docker.repository.cloudera.com/cloudera/cdsw/ml-runtime-pbj-jupyterlab-python3.11-cuda:2025.09.1-b5"
+        "docker.repository.cloudera.com/cloudera/cdsw/ml-runtime-pbj-jupyterlab-python3.11-cuda:2026.01.1-b6"
     )
 
     print("\n📋 Configuration:")
