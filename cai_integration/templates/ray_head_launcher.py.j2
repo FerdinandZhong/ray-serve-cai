@@ -26,6 +26,12 @@ from pathlib import Path
 VENV_PYTHON = Path("{{ venv_python }}")
 RAY_BIN     = VENV_PYTHON.parent / "ray"   # /home/cdsw/.venv/bin/ray
 PROJECT_DIR  = Path("{{ project_dir }}")
+
+# Re-exec under venv Python so that `import ray` and all venv packages work.
+# CML application runners may use the system Python, which won't have Ray.
+if Path(sys.executable).resolve() != VENV_PYTHON.resolve():
+    os.execv(str(VENV_PYTHON), [str(VENV_PYTHON)] + sys.argv)
+
 sys.path.insert(0, str(PROJECT_DIR))
 
 if not VENV_PYTHON.exists():
