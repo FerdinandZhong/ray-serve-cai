@@ -27,6 +27,16 @@ import time
 import yaml
 from pathlib import Path
 
+# ---------------------------------------------------------------------------
+# Re-exec with venv Python if we're not already inside it.
+# This lets the script be invoked directly (e.g. as a CML job entry point)
+# without requiring the caller to activate the venv first.
+# ---------------------------------------------------------------------------
+_VENV_PYTHON = Path("/home/cdsw/.venv/bin/python")
+
+if _VENV_PYTHON.exists() and Path(sys.executable).resolve() != _VENV_PYTHON.resolve():
+    os.execv(str(_VENV_PYTHON), [str(_VENV_PYTHON)] + sys.argv)
+
 from jinja2 import Environment, FileSystemLoader
 
 # Add parent directory to path for imports

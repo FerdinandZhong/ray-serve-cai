@@ -145,8 +145,8 @@ def install_nginx():
                 f"--error-log-path={nginx_prefix}/logs/error.log",
                 f"--http-log-path={nginx_prefix}/logs/access.log",
                 "--without-http_rewrite_module",  # no libpcre-dev
-                "--without-http_ssl_module",      # no libssl-dev
-                "--without-http_v2_module",       # no libssl-dev
+                # "--without-http_ssl_module",      # no libssl-dev
+                # "--without-http_v2_module",       # no libssl-dev
                 "--without-http_gzip_module",     # no zlib-dev
                 "--without-mail_smtp_module",
                 "--without-mail_imap_module",
