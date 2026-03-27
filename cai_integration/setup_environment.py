@@ -209,6 +209,17 @@ def install_nginx():
 
 def main():
     """Main setup function."""
+    import argparse
+    parser = argparse.ArgumentParser()
+    parser.add_argument(
+        "--force", action="store_true",
+        help="Delete and recreate the venv even if it already exists "
+             "(also honoured via SETUP_FORCE_RECREATE=1)"
+    )
+    args = parser.parse_args()
+
+    force = args.force or os.environ.get("SETUP_FORCE_RECREATE", "").strip() in ("1", "true", "yes")
+
     print("=" * 70)
     print("🔧 Setting up Python environment for Ray cluster")
     print("=" * 70)
@@ -222,8 +233,12 @@ def main():
 
     venv_dir = "/home/cdsw/.venv"
 
+    if force and os.path.exists(venv_dir):
+        print(f"⚠️  --force: removing existing venv at {venv_dir}")
+        run_command(f"rm -rf {venv_dir}")
+
     # Check if environment is already properly configured
-    if is_venv_ready(venv_dir):
+    if not force and is_venv_ready(venv_dir):
         print(f"✅ Virtual environment already exists at: {venv_dir}")
         print("   Verifying Ray installation...")
 
