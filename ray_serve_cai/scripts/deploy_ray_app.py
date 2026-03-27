@@ -50,20 +50,6 @@ def main() -> int:
     print(f"  Connecting to Ray cluster (address=auto)...")
     ray.init(address="auto", ignore_reinit_error=True)
 
-    # ── Optionally locate head node for pinning ──────────────────────────────
-    scheduling_strategy = None
-    if args.pin_to_head:
-        from ray.util.scheduling_strategies import NodeAffinitySchedulingStrategy
-        head_node_id = None
-        for node in ray.nodes():
-            if node.get("Alive") and "node:__internal_head__" in node.get("Resources", {}):
-                head_node_id = node["NodeID"]
-                break
-        if head_node_id is None:
-            head_node_id = ray.get_runtime_context().get_node_id()
-        print(f"  Pinning to head node: {head_node_id}")
-        scheduling_strategy = NodeAffinitySchedulingStrategy(node_id=head_node_id, soft=False)
-
     # ── Start Ray Serve (idempotent) ─────────────────────────────────────────
     try:
         serve.start(
@@ -87,12 +73,15 @@ def main() -> int:
     fastapi_app = getattr(module, attr)
 
     # ── Build actor options ──────────────────────────────────────────────────
+    # Pin to head node via the built-in `node:__internal_head__` resource
+    # (Ray Serve does not allow scheduling_strategy in ray_actor_options).
     ray_actor_options = {
         "num_cpus": args.num_cpus,
         "memory": int(args.memory_gb * 1024 ** 3),
     }
-    if scheduling_strategy is not None:
-        ray_actor_options["scheduling_strategy"] = scheduling_strategy
+    if args.pin_to_head:
+        ray_actor_options["resources"] = {"node:__internal_head__": 0.001}
+        print("  Pinning to head node via node:__internal_head__ resource")
 
     # ── Deploy ───────────────────────────────────────────────────────────────
     # Dynamically create the deployment class; using a fixed class name avoids
