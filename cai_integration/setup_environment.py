@@ -13,6 +13,7 @@ Run this as a CML job to prepare the environment for Ray cluster deployment.
 import os
 import sys
 import subprocess
+from pathlib import Path
 
 
 def run_command(cmd, cwd=None):
@@ -69,9 +70,10 @@ def install_nginx():
     """
     print("\n Setting up Nginx (no-root install)...")
 
-    nginx_bin = "/home/cdsw/.local/bin/nginx"
+    home = Path.home()
+    nginx_bin = str(home / ".local" / "bin" / "nginx")
 
-    os.makedirs("/home/cdsw/.local/bin", exist_ok=True)
+    os.makedirs(str(home / ".local" / "bin"), exist_ok=True)
 
     # ------------------------------------------------------------------ #
     # Step 1: already installed?                                           #
@@ -113,7 +115,7 @@ def install_nginx():
         "NGINX_SOURCE_URL",
         f"https://nginx.org/download/nginx-{nginx_version}.tar.gz",
     )
-    nginx_prefix = "/home/cdsw/.local/nginx"
+    nginx_prefix = str(home / ".local" / "nginx")
 
     print(f"   No system nginx found — compiling from source (nginx {nginx_version})...")
 

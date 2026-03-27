@@ -43,7 +43,7 @@ DEFAULT_STATIC_ROOT = Path("/home/cdsw/ray_serve_cai/static")
 
 # Nginx binary search order
 NGINX_CANDIDATES = [
-    "/home/cdsw/.local/bin/nginx",
+    str(Path.home() / ".local" / "bin" / "nginx"),
     "/usr/sbin/nginx",
     "/usr/bin/nginx",
 ]
@@ -191,9 +191,7 @@ def find_nginx() -> str:
         if os.path.isfile(candidate) and os.access(candidate, os.X_OK):
             return candidate
 
-    result = subprocess.run(
-        ["which", "nginx"], capture_output=True, text=True
-    )
+    result = subprocess.run(["which", "nginx"], capture_output=True, text=True)
     if result.returncode == 0 and result.stdout.strip():
         return result.stdout.strip()
 
