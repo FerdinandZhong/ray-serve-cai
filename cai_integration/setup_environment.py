@@ -216,7 +216,7 @@ def main():
         help="Delete and recreate the venv even if it already exists "
              "(also honoured via SETUP_FORCE_RECREATE=1)"
     )
-    args = parser.parse_args()
+    args, _ = parser.parse_known_args()
 
     force = args.force or os.environ.get("SETUP_FORCE_RECREATE", "").strip() in ("1", "true", "yes")
 
