@@ -32,6 +32,8 @@ def run_command(cmd, cwd=None):
         return True
     except subprocess.CalledProcessError as e:
         print(f"Error running command: {e}")
+        if e.stdout:
+            print(f"Output: {e.stdout}")
         if e.stderr:
             print(f"Error output: {e.stderr}")
         return False
@@ -162,6 +164,7 @@ def install_nginx():
                 "--without-http_ssl_module",       # no libssl-dev needed (TLS
                                                    # is terminated by CAI/CML)
                 "--without-http_v2_module",        # no libssl-dev needed
+                "--without-http_gzip_module",      # no zlib-dev needed
                 # Excluded modules not needed for local proxying:
                 "--without-mail_smtp_module",
                 "--without-mail_imap_module",
