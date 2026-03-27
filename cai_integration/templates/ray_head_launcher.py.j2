@@ -9,6 +9,7 @@ Configuration:
   Management API    : {{ mgmt_cpu }} CPU, {{ mgmt_memory_gb }} GB RAM (pinned to this node)
 
 Full startup sequence:
+  [0/4] Ensure nginx installed    run setup_environment.py if missing
   [1/4] ray start --head          GCS :{{ ray_port }}, dashboard 127.0.0.1:{{ dashboard_port }}
   [2/4] Wait for GCS              poll 127.0.0.1:{{ ray_port }}
   [3/4] Deploy Management API     subprocess → deploy_ray_app.py (venv Python)
@@ -39,6 +40,26 @@ if not RAY_BIN.exists():
 print("=" * 70)
 print("Ray Head Node — startup")
 print("=" * 70)
+
+# ── [0/4] Ensure nginx is installed ──────────────────────────────────────────
+_nginx_bin = Path("/home/cdsw/.local/bin/nginx")
+if not _nginx_bin.exists():
+    print("\n[0/4] nginx not found — running setup_environment.py ...")
+    _setup_script = PROJECT_DIR / "cai_integration" / "setup_environment.py"
+    if not _setup_script.exists():
+        print(f"ERROR: setup script not found: {_setup_script}")
+        sys.exit(1)
+    _r = subprocess.run(
+        [str(VENV_PYTHON), str(_setup_script)],
+        env={**os.environ, "PYTHONPATH": str(PROJECT_DIR)},
+    )
+    if _r.returncode != 0:
+        print(f"ERROR: setup_environment.py failed (exit {_r.returncode})")
+        sys.exit(_r.returncode)
+    if not _nginx_bin.exists():
+        print("ERROR: nginx still not found after setup_environment.py")
+        sys.exit(1)
+    print("  nginx installed successfully")
 
 # ── Write GCS address file ────────────────────────────────────────────────────
 # CDSW_IP_ADDRESS is the pod's internal IP set by CML.  Workers must connect

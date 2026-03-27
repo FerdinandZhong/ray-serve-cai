@@ -59,8 +59,8 @@ sglang = [
     "sglang>=0.5.7",
 ]
 all = [
-    "vllm>=0.13.0",
-    "sglang>=0.5.7",
+    # vllm and sglang cannot be installed together — they require conflicting
+    # versions of llguidance.  Install one via the [vllm] or [sglang] extra.
 ]
 dev = [
     "pytest>=7.0",

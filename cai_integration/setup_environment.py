@@ -267,39 +267,43 @@ def main():
     # Install the package itself first (includes all dependencies from pyproject.toml)
     print("🚀 Installing ray-serve-cai package and dependencies...")
 
-    # Install package in editable mode with all extras (includes vLLM and sglang)
-    print("\n📦 Installing ray-serve-cai package with all extras (vLLM, sglang)...")
-    if run_command("uv pip install -e '/home/cdsw[all]'"):
-        print("✅ ray-serve-cai package installed with all dependencies and extras")
+    # Install core package (no inference-engine extras — vllm and sglang
+    # require conflicting llguidance versions and cannot be co-installed).
+    print("\n📦 Installing ray-serve-cai core package...")
+    if run_command("uv pip install -e '/home/cdsw'"):
+        print("✅ ray-serve-cai core package installed")
     else:
         print("⚠️  Failed to install via package, installing dependencies manually...")
 
-        # Fallback: Install dependencies manually
-        # These match pyproject.toml dependencies
+        # Fallback: Install core dependencies manually (matches pyproject.toml)
         ray_packages = [
-            # Core dependencies from pyproject.toml
             "ray[serve]>=2.53.0",
             "pyyaml>=6.0.3",
             "aiohttp>=3.13.3",
-            # Management API dependencies
             "fastapi>=0.110.0",
             "uvicorn[standard]>=0.27.0",
             "pydantic>=2.0.0",
             "httpx>=0.27.0",
             "starlette>=0.36.0",
-            "jinja2>=3.1.0",      # nginx config template rendering
-            # Common ML libraries (optional but useful)
-            "numpy>=1.24.0",
-            "pandas>=2.0.0",
-            # LLM inference engines
-            "vllm>=0.13.0",
-            "sglang>=0.5.7",
+            "jinja2>=3.1.0",
         ]
 
         for package in ray_packages:
             print(f"\n📦 Installing {package}...")
             if not run_command(f"uv pip install {package}"):
                 print(f"⚠️  Warning: Could not install {package}")
+
+    # Install inference engines independently — they conflict with each other
+    # so we install whichever succeeds (vllm takes precedence).
+    print("\n📦 Installing inference engine (vllm)...")
+    if run_command("uv pip install 'vllm>=0.13.0'"):
+        print("✅ vllm installed")
+    else:
+        print("⚠️  vllm failed — trying sglang...")
+        if run_command("uv pip install 'sglang>=0.5.7'"):
+            print("✅ sglang installed")
+        else:
+            print("⚠️  Neither vllm nor sglang could be installed — inference workers will fail")
 
     # Verify Ray installation
     print("\n🔍 Verifying Ray installation...")
