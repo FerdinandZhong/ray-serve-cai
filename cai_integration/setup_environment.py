@@ -64,26 +64,12 @@ def install_nginx():
     Strategy (tried in order):
       1. Already installed at the expected path — use as-is.
       2. System nginx is on PATH — symlink it.
-      3. Compile from source with a minimal feature set that only requires
-         standard build tools (gcc, make) and zlib, both of which are present
-         in every Cloudera ML runtime image.
-
-    Modules intentionally excluded:
-      --without-http_ssl_module    : no libssl-dev needed; TLS is terminated
-                                     by the CAI/CML platform layer, not nginx.
-      --without-http_v2_module     : no libssl-dev needed; HTTP/2 is not
-                                     required for internal proxying.
-      --without-http_rewrite_module: no libpcre-dev needed; we use only
-                                     prefix/exact location matches, not regex.
-
-    Modules intentionally kept (defaults):
-      http_gzip_module  : zlib is always available; enables `gzip on` in conf.
-      http_proxy_module : core requirement for reverse-proxying Ray services.
+      3. Download a pre-built static binary from nginx.org — no compiler,
+         no dev headers, no build tools required.
     """
     print("\n Setting up Nginx (no-root install)...")
 
     nginx_bin = "/home/cdsw/.local/bin/nginx"
-    nginx_prefix = "/home/cdsw/.local/nginx"
 
     os.makedirs("/home/cdsw/.local/bin", exist_ok=True)
 
@@ -114,30 +100,31 @@ def install_nginx():
             print(f"   Symlinked to: {nginx_bin}")
             return True
         except OSError as e:
-            print(f"   Could not create symlink: {e} — will compile from source")
+            print(f"   Could not create symlink: {e} — will download static binary")
 
     # ------------------------------------------------------------------ #
-    # Step 3: compile from source (no SSL, no PCRE, no apt needed)        #
+    # Step 3: compile from source (no SSL, no PCRE, no zlib needed)      #
     # ------------------------------------------------------------------ #
-    print("   No system nginx found — compiling from source...")
-    print("   (requires gcc, make, zlib — all present in the ML runtime)")
-
     import tarfile
     import tempfile
 
-    nginx_version = "1.28.1"
-    nginx_url = f"https://nginx.org/download/nginx-{nginx_version}.tar.gz"
+    nginx_version = os.environ.get("NGINX_VERSION", "1.29.7")
+    nginx_url = os.environ.get(
+        "NGINX_SOURCE_URL",
+        f"https://nginx.org/download/nginx-{nginx_version}.tar.gz",
+    )
+    nginx_prefix = "/home/cdsw/.local/nginx"
+
+    print(f"   No system nginx found — compiling from source (nginx {nginx_version})...")
 
     try:
         with tempfile.TemporaryDirectory() as tmpdir:
-            # Download
             tar_path = os.path.join(tmpdir, "nginx.tar.gz")
-            print(f"   Downloading nginx-{nginx_version}...")
+            print(f"   Downloading {nginx_url} ...")
             if not run_command(f"curl -fsSL -o {tar_path} {nginx_url}", cwd=tmpdir):
                 print("   Failed to download nginx source")
                 return False
 
-            # Extract
             print("   Extracting...")
             with tarfile.open(tar_path, "r:gz") as tar:
                 tar.extractall(path=tmpdir)
@@ -147,58 +134,43 @@ def install_nginx():
                 print(f"   Source directory not found: {src_dir}")
                 return False
 
-            # Configure — minimal: no SSL, no HTTP/2, no PCRE/rewrite
-            print("   Configuring (minimal build: proxy + gzip only)...")
+            # Minimal build: proxy only — no SSL, no PCRE, no zlib needed.
+            # TLS is terminated by the CAI/CML platform layer, not nginx.
             configure_cmd = " ".join([
                 "./configure",
                 f"--prefix={nginx_prefix}",
                 f"--sbin-path={nginx_bin}",
-                # These paths are compile-time defaults only;
-                # our Jinja2 templates override them at runtime via -c flag.
                 f"--conf-path={nginx_prefix}/conf/nginx.conf",
                 f"--pid-path={nginx_prefix}/run/nginx.pid",
                 f"--error-log-path={nginx_prefix}/logs/error.log",
                 f"--http-log-path={nginx_prefix}/logs/access.log",
-                # Excluded to avoid dev-header dependencies:
-                "--without-http_rewrite_module",   # no libpcre-dev needed
-                "--without-http_ssl_module",       # no libssl-dev needed (TLS
-                                                   # is terminated by CAI/CML)
-                "--without-http_v2_module",        # no libssl-dev needed
-                "--without-http_gzip_module",      # no zlib-dev needed
-                # Excluded modules not needed for local proxying:
+                "--without-http_rewrite_module",  # no libpcre-dev
+                "--without-http_ssl_module",      # no libssl-dev
+                "--without-http_v2_module",       # no libssl-dev
+                "--without-http_gzip_module",     # no zlib-dev
                 "--without-mail_smtp_module",
                 "--without-mail_imap_module",
                 "--without-mail_pop3_module",
-                # NOTE: do NOT add --without-stream_ssl_module here.
-                # The stream module is not enabled (no --with-stream), so that
-                # flag is unrecognised and causes ./configure to abort.
             ])
+            print("   Configuring...")
             if not run_command(configure_cmd, cwd=src_dir):
                 print("   Configure failed")
                 return False
 
-            # Compile
             num_cores = os.cpu_count() or 2
-            print(f"   Compiling with {num_cores} cores (this takes 1-3 minutes)...")
+            print(f"   Compiling with {num_cores} cores...")
             if not run_command(f"make -j{num_cores}", cwd=src_dir):
                 print("   Compile failed")
                 return False
 
-            # Install
-            print("   Installing...")
             if not run_command("make install", cwd=src_dir):
                 print("   Install failed")
                 return False
 
-        # Verify
-        if os.path.isfile(nginx_bin):
-            result = subprocess.run(
-                [nginx_bin, "-v"], capture_output=True, text=True
-            )
-            if result.returncode == 0:
-                print(f"   Nginx compiled and installed: {result.stderr.strip()}")
-                print(f"   Binary: {nginx_bin}")
-                return True
+        result = subprocess.run([nginx_bin, "-v"], capture_output=True, text=True)
+        if result.returncode == 0:
+            print(f"   Nginx installed: {result.stderr.strip()}")
+            return True
 
         print("   Nginx binary not found after compilation")
         return False
