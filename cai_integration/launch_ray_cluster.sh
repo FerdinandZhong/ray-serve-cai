@@ -19,18 +19,13 @@ echo "="
 echo "Project root: $PROJECT_ROOT"
 echo ""
 
-# Activate virtual environment
-if [ -f ".venv/bin/activate" ]; then
-    echo "📦 Activating virtual environment..."
-    source .venv/bin/activate
-    echo "✅ Virtual environment activated"
-    echo ""
-else
-    echo "❌ Virtual environment not found at .venv/bin/activate"
+VENV_PYTHON="$PROJECT_ROOT/.venv/bin/python"
+
+if [ ! -f "$VENV_PYTHON" ]; then
+    echo "❌ Virtual environment not found at $VENV_PYTHON"
     echo "Please run setup_environment.py first"
     exit 1
 fi
 
-# Run the Python launcher
 echo "🔧 Starting Ray cluster launcher..."
-python cai_integration/launch_ray_cluster.py "$@"
+"$VENV_PYTHON" cai_integration/launch_ray_cluster.py "$@"

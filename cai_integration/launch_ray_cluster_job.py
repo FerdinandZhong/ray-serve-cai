@@ -49,12 +49,17 @@ def main():
     print(f"   Project root: {project_root}")
     print()
 
+    venv_python = project_root / ".venv" / "bin" / "python"
+    if not venv_python.exists():
+        print(f"❌ Error: venv not found at {venv_python}")
+        print("Please run setup_environment.py first")
+        return 1
+
     try:
-        # Execute bash wrapper script
-        # Pass through any command line arguments
         result = subprocess.run(
-            ["bash", str(bash_wrapper)] + sys.argv[1:],
-            cwd=str(project_root)
+            [str(venv_python), str(project_root / "cai_integration" / "launch_ray_cluster.py")]
+            + sys.argv[1:],
+            cwd=str(project_root),
         )
 
         return result.returncode
