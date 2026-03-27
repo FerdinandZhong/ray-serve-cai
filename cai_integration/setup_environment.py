@@ -257,10 +257,14 @@ def main():
     # Install the package itself first (includes all dependencies from pyproject.toml)
     print("🚀 Installing ray-serve-cai package and dependencies...")
 
+    # Always target the venv explicitly so packages land in the right place
+    # regardless of whether the caller has activated the venv.
+    uv_install = f"uv pip install --python {venv_dir}/bin/python"
+
     # Install core package (no inference-engine extras — vllm and sglang
     # require conflicting llguidance versions and cannot be co-installed).
     print("\n📦 Installing ray-serve-cai core package...")
-    if run_command("uv pip install -e '/home/cdsw'"):
+    if run_command(f"{uv_install} -e '/home/cdsw'"):
         print("✅ ray-serve-cai core package installed")
     else:
         print("⚠️  Failed to install via package, installing dependencies manually...")
@@ -280,17 +284,17 @@ def main():
 
         for package in ray_packages:
             print(f"\n📦 Installing {package}...")
-            if not run_command(f"uv pip install {package}"):
+            if not run_command(f"{uv_install} {package}"):
                 print(f"⚠️  Warning: Could not install {package}")
 
     # Install inference engines independently — they conflict with each other
     # so we install whichever succeeds (vllm takes precedence).
     print("\n📦 Installing inference engine (vllm)...")
-    if run_command("uv pip install 'vllm>=0.13.0'"):
+    if run_command(f"{uv_install} 'vllm>=0.13.0'"):
         print("✅ vllm installed")
     else:
         print("⚠️  vllm failed — trying sglang...")
-        if run_command("uv pip install 'sglang>=0.5.7'"):
+        if run_command(f"{uv_install} 'sglang>=0.5.7'"):
             print("✅ sglang installed")
         else:
             print("⚠️  Neither vllm nor sglang could be installed — inference workers will fail")
