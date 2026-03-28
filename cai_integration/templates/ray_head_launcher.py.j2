@@ -81,6 +81,11 @@ result = subprocess.run(
         "--dashboard-host", "127.0.0.1",
         "--dashboard-port", "{{ dashboard_port }}",
         "--include-dashboard", "true",
+        # Kill idle worker processes after 60 s instead of the default
+        # (several minutes).  This directly reduces the ray::IDLE actor count
+        # visible in the dashboard between bursts of work.
+        "--system-config",
+        '{"idle_worker_killing_time_threshold_ms": 60000}',
     ],
     capture_output=True,
     text=True,
@@ -115,6 +120,14 @@ if not deploy_script.exists():
     print(f"ERROR: deploy script not found: {deploy_script}")
     sys.exit(1)
 
+# Ray Serve proxy tuning — set only the values that were explicitly configured;
+# absent values fall through to Ray's built-in defaults.
+_serve_env = {**os.environ, "PYTHONPATH": str(PROJECT_DIR)}
+{% if proxy_health_check_period_s is not none %}_serve_env["RAY_SERVE_PROXY_HEALTH_CHECK_PERIOD_S"]  = "{{ proxy_health_check_period_s }}"
+{% endif %}{% if proxy_health_check_timeout_s is not none %}_serve_env["RAY_SERVE_PROXY_HEALTH_CHECK_TIMEOUT_S"] = "{{ proxy_health_check_timeout_s }}"
+{% endif %}{% if proxy_ready_check_timeout_s is not none %}_serve_env["RAY_SERVE_PROXY_READY_CHECK_TIMEOUT_S"]  = "{{ proxy_ready_check_timeout_s }}"
+{% endif %}{% if proxy_min_draining_period_s is not none %}_serve_env["RAY_SERVE_PROXY_MIN_DRAINING_PERIOD_S"]  = "{{ proxy_min_draining_period_s }}"
+{% endif %}
 result = subprocess.run(
     [
         str(VENV_PYTHON),
@@ -127,7 +140,7 @@ result = subprocess.run(
         "--serve-port",   "5000",
         "--pin-to-head",
     ],
-    env={**os.environ, "PYTHONPATH": str(PROJECT_DIR)},
+    env=_serve_env,
 )
 if result.returncode != 0:
     print(f"ERROR: Management API deployment failed (exit {result.returncode})")

@@ -7,9 +7,10 @@ from pydantic import BaseModel, Field
 class AddNodeRequest(BaseModel):
     """Request to add a new worker node to the cluster."""
 
-    cpu: int = Field(default=4, ge=1, le=32, description="CPU cores for the worker")
-    memory: int = Field(default=16, ge=4, le=128, description="Memory in GB for the worker")
     node_type: str = Field(default="worker", description="Type of node (worker, gpu-worker)")
+    cpu: Optional[int] = Field(default=None, ge=1, le=256, description="CPU cores override (uses group default when omitted)")
+    memory: Optional[int] = Field(default=None, ge=4, le=1024, description="Memory in GB override (uses group default when omitted)")
+    gpus: Optional[int] = Field(default=None, ge=0, description="GPU count override (uses group default when omitted)")
 
     class Config:
         json_schema_extra = {

@@ -365,8 +365,8 @@ class CAIClusterManager:
                 "head_script_path is required. "
                 "Run create_ray_launcher_scripts() before calling start_cluster()."
             )
-        if not worker_groups:
-            raise RuntimeError("worker_groups must be a non-empty list of WorkerGroupConfig")
+        if worker_groups is None:
+            worker_groups = []
 
         for group in worker_groups:
             if not group.script_path:
@@ -381,7 +381,6 @@ class CAIClusterManager:
                 )
 
         self.worker_groups = worker_groups
-        total_workers = sum(g.count for g in worker_groups)
 
         logger.info("🚀 Starting Ray cluster on CAI...")
         logger.info(f"   Head node : {head_cpu}CPU, {head_memory}GB RAM, 0GPU")
@@ -426,43 +425,8 @@ class CAIClusterManager:
                 self.head_address = self._get_gcs_address(ray_port)
                 logger.info(f"   GCS address (internal): {self.head_address}")
 
-            # ── Worker groups ─────────────────────────────────────────────────
-            if total_workers > 0 and self.head_address:
-                logger.info(
-                    f"🔧 Creating {total_workers} worker(s) across "
-                    f"{len(worker_groups)} group(s)..."
-                )
-                for group in worker_groups:
-                    rt = group.runtime_identifier or worker_runtime_identifier
-                    logger.info(
-                        f"   Group '{group.name}' [node_type:{group.node_type}] "
-                        f"— {group.count} worker(s)"
-                    )
-                    for i in range(group.count):
-                        app_name = f"ray-{group.name}-{i + 1}"
-                        subdomain = app_name.replace("_", "-").lower()
-                        worker_app = self.cml_client.create_application(
-                            project_id=self.project_id,
-                            name=app_name,
-                            script=group.script_path,
-                            cpu=group.cpu,
-                            memory=group.memory,
-                            runtime_identifier=rt,
-                            subdomain=subdomain,
-                            bypass_authentication=True,
-                            num_gpus=group.gpus,
-                            environment={"RAY_HEAD_ADDRESS": self.head_address},
-                        )
-                        self.worker_app_ids.append(worker_app.id)
-                        logger.info(f"      ✅ {app_name} created: {worker_app.id}")
-
-                if wait_ready:
-                    logger.info("⏳ Waiting for workers to start...")
-                    for i, worker_id in enumerate(self.worker_app_ids):
-                        if self._wait_for_application(worker_id, timeout=timeout):
-                            logger.info(f"   ✅ Worker {i + 1} ready")
-                        else:
-                            logger.warning(f"   ⚠️  Worker {i + 1} may not be ready")
+            # Workers are launched by the caller via Management API
+            # (POST /api/v1/resources/nodes/add) once the head is healthy.
 
             cluster_info = {
                 'status': 'running',

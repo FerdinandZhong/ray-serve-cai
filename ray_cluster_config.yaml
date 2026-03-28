@@ -48,5 +48,22 @@ cai:
 
   project_name: "ray-cluster"
 
+# ── Ray Serve proxy tuning ────────────────────────────────────────────────────
+# These become RAY_SERVE_PROXY_* environment variables read by Ray Serve.
+# Omit a key to keep Ray's built-in default.
+ray_serve:
+  # How often (s) the Serve controller checks each proxy's health.
+  # proxy_health_check_period_s: 10.0
+
+  # How long (s) to wait for a health-check response before counting a failure.
+  # Three consecutive failures trigger a proxy restart.
+  # proxy_health_check_timeout_s: 10.0
+
+  # How long (s) to wait for a proxy to become ready on startup.
+  # proxy_ready_check_timeout_s: 5.0
+
+  # Minimum time (s) a proxy must drain before it is forcibly removed.
+  # proxy_min_draining_period_s: 30.0
+
 # ── Optional per-job environment variables ────────────────────────────────────
 environment: {}

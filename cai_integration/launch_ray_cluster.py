@@ -56,6 +56,10 @@ def create_ray_launcher_scripts(
     dashboard_port: int = 8265,
     mgmt_cpu: int = 2,
     mgmt_memory_gb: int = 8,
+    proxy_health_check_period_s: float = None,
+    proxy_health_check_timeout_s: float = None,
+    proxy_ready_check_timeout_s: float = None,
+    proxy_min_draining_period_s: float = None,
 ) -> tuple:
     """
     Render and write the head launcher and one worker launcher per group.
@@ -97,6 +101,10 @@ def create_ray_launcher_scripts(
         "dashboard_port": dashboard_port,
         "mgmt_cpu":       mgmt_cpu,
         "mgmt_memory_gb": mgmt_memory_gb,
+        "proxy_health_check_period_s":  proxy_health_check_period_s,
+        "proxy_health_check_timeout_s": proxy_health_check_timeout_s,
+        "proxy_ready_check_timeout_s":  proxy_ready_check_timeout_s,
+        "proxy_min_draining_period_s":  proxy_min_draining_period_s,
     }
     head_script_path = project_dir / "ray_head_launcher.py"
     head_script_path.write_text(
@@ -154,6 +162,11 @@ def load_config():
         'management_api_cpu':    None,
         'management_api_memory': None,
         'worker_groups':         None,
+        # Ray Serve proxy tuning — None means "use Ray's built-in default"
+        'proxy_health_check_period_s':  None,
+        'proxy_health_check_timeout_s': None,
+        'proxy_ready_check_timeout_s':  None,
+        'proxy_min_draining_period_s':  None,
     }
 
     # ── Step 2: YAML overrides defaults ─────────────────────────────────────
@@ -163,6 +176,11 @@ def load_config():
             with open(config_path) as f:
                 file_config = yaml.safe_load(f) or {}
             config.update(file_config.get('ray_cluster', {}))
+            ray_serve_section = file_config.get('ray_serve', {}) or {}
+            for key in ('proxy_health_check_period_s', 'proxy_health_check_timeout_s',
+                        'proxy_ready_check_timeout_s', 'proxy_min_draining_period_s'):
+                if key in ray_serve_section:
+                    config[key] = float(ray_serve_section[key])
             print(f"Loaded configuration from {config_path}")
         except Exception as e:
             print(f"Warning: could not load config file: {e}")
@@ -188,6 +206,17 @@ def load_config():
     val = os.environ.get('RAY_WORKER_NODE_TYPE')
     if val is not None:
         config['worker_node_type'] = val
+
+    _env_float = [
+        ('RAY_SERVE_PROXY_HEALTH_CHECK_PERIOD_S',  'proxy_health_check_period_s'),
+        ('RAY_SERVE_PROXY_HEALTH_CHECK_TIMEOUT_S', 'proxy_health_check_timeout_s'),
+        ('RAY_SERVE_PROXY_READY_CHECK_TIMEOUT_S',  'proxy_ready_check_timeout_s'),
+        ('RAY_SERVE_PROXY_MIN_DRAINING_PERIOD_S',  'proxy_min_draining_period_s'),
+    ]
+    for env_var, key in _env_float:
+        val = os.environ.get(env_var)
+        if val is not None:
+            config[key] = float(val)
 
     return config
 
@@ -332,6 +361,10 @@ def main():
             dashboard_port=ray_config['dashboard_port'],
             mgmt_cpu=mgmt_cpu,
             mgmt_memory_gb=mgmt_memory,
+            proxy_health_check_period_s=ray_config['proxy_health_check_period_s'],
+            proxy_health_check_timeout_s=ray_config['proxy_health_check_timeout_s'],
+            proxy_ready_check_timeout_s=ray_config['proxy_ready_check_timeout_s'],
+            proxy_min_draining_period_s=ray_config['proxy_min_draining_period_s'],
         )
 
         # Initialize CAI cluster manager
@@ -344,15 +377,14 @@ def main():
         )
         print("✅ Manager initialized")
 
-        # Start Ray cluster
-        print("\n🚀 Starting Ray cluster...")
-        print("   (This may take 2-5 minutes)")
+        # ── Step 1: start head node only ──────────────────────────────────────
+        # Worker group definitions are passed so they are saved into cluster_info
+        # and the Management API can look them up when adding workers later.
+        print("\n🚀 Starting Ray head node...")
         print(f"   Head script: {head_script_path}")
-        for g in worker_groups:
-            print(f"   Worker script [{g.node_type}]: {g.script_path}")
 
         cluster_info = manager.start_cluster(
-            worker_groups=worker_groups,
+            worker_groups=worker_groups,   # definitions only — not launched here
             head_cpu=ray_config['head_cpu'],
             head_memory=ray_config['head_memory'],
             ray_port=ray_config['ray_port'],
@@ -364,8 +396,7 @@ def main():
             timeout=600,
         )
 
-        # The head node launcher starts the Management API + nginx automatically.
-        # Poll /health until the API responds so we can record the final URL.
+        # ── Step 2: wait for Management API ───────────────────────────────────
         print("\n⏳ Waiting for Management API to become healthy on head node...")
         management_url = _wait_for_management_api(cluster_info, timeout=300)
 
@@ -373,9 +404,39 @@ def main():
             cluster_info['management_api_url'] = management_url
             print(f"✅ Management API: {management_url}")
         else:
-            # Best-effort: record the head URL even if health check timed out
             cluster_info['management_api_url'] = cluster_info.get('head_url', '')
             print("⚠️  Management API health check timed out (may still be starting)")
+
+        # ── Step 3: add worker nodes via Management API ────────────────────────
+        total_workers = sum(g.count for g in worker_groups)
+        if total_workers > 0 and management_url:
+            import urllib.request as _urlreq
+            import json as _json
+            print(f"\n🔧 Adding {total_workers} worker(s) via Management API...")
+            add_url = f"{management_url}/api/v1/resources/nodes/add"
+            for g in worker_groups:
+                for i in range(g.count):
+                    payload = _json.dumps({
+                        "node_type": g.node_type,
+                        "cpu":       g.cpu,
+                        "memory":    g.memory,
+                        "gpus":      g.gpus,
+                    }).encode()
+                    req = _urlreq.Request(
+                        add_url,
+                        data=payload,
+                        headers={"Content-Type": "application/json"},
+                        method="POST",
+                    )
+                    try:
+                        with _urlreq.urlopen(req, timeout=30) as resp:
+                            result = _json.loads(resp.read())
+                            print(f"   ✅ [{g.node_type}] worker {i+1}/{g.count} — "
+                                  f"app: {result.get('app_name', '?')}")
+                    except Exception as exc:
+                        print(f"   ⚠️  [{g.node_type}] worker {i+1}/{g.count} failed: {exc}")
+        elif total_workers > 0:
+            print("⚠️  Skipping worker launch — Management API not reachable")
 
         # Save cluster info to file for reference
         info_file = Path("/home/cdsw/ray_cluster_info.json")

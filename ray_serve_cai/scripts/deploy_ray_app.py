@@ -55,6 +55,10 @@ def main() -> int:
         serve.start(
             detached=True,
             http_options={"host": args.serve_host, "port": args.serve_port},
+            # Only run one HTTP proxy on the head node instead of one per node.
+            # The default "EveryNode" spawns a ProxyActor on every worker node,
+            # adding idle actors that serve no purpose for internal proxying.
+            proxy_location="HeadOnly",
         )
         print(f"  Ray Serve started on {args.serve_host}:{args.serve_port}")
     except Exception as exc:

@@ -25,9 +25,10 @@ async def add_node(request: AddNodeRequest, coordinator: CoordinatorService = De
     """
     try:
         result = coordinator.add_worker_node(
+            node_type=request.node_type,
             cpu=request.cpu,
             memory=request.memory,
-            node_type=request.node_type
+            gpus=request.gpus,
         )
         return result
     except Exception as e:

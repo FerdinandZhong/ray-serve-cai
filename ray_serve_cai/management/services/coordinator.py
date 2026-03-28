@@ -191,7 +191,7 @@ class CoordinatorService:
             }
         }
 
-    def add_worker_node(self, cpu: int, memory: int, node_type: str = "worker") -> Dict[str, Any]:
+    def add_worker_node(self, node_type: str = "worker", cpu: int = None, memory: int = None, gpus: int = None) -> Dict[str, Any]:
         """
         Add a new worker node and track the mapping.
 
@@ -204,7 +204,9 @@ class CoordinatorService:
             Worker creation result
         """
         # Create worker via CAI
-        result = self.cai_service.create_worker_node(cpu, memory, node_type)
+        result = self.cai_service.create_worker_node(
+            node_type=node_type, cpu=cpu, memory=memory, gpus=gpus
+        )
 
         # Note: We'll add the mapping when the Ray node appears
         # This is because there's a delay between CML app creation and Ray node registration
