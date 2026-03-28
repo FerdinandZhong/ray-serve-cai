@@ -2,7 +2,7 @@
 # Binds to CDSW_APP_PORT and routes traffic to internal Ray services.
 
 server {
-    listen {{ app_port }};
+    listen 127.0.0.1:{{ app_port }};
     server_name _;
 
     # ------------------------------------------------------------------ #
