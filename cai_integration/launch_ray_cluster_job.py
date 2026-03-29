@@ -72,4 +72,6 @@ def main():
 
 
 if __name__ == "__main__":
-    sys.exit(main())
+    _rc = main()
+    if _rc:
+        sys.exit(_rc)
