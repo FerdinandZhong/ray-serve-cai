@@ -18,8 +18,16 @@ _VENV_PYTHON = Path("/home/cdsw/.venv/bin/python")
 if _VENV_PYTHON.exists() and Path(sys.executable).resolve() != _VENV_PYTHON.resolve():
     os.execv(str(_VENV_PYTHON), [str(_VENV_PYTHON)] + sys.argv)
 
-sys.path.insert(0, str(Path(__file__).parent.parent))
-from ray_serve_cai.cai_cluster import CMLAPIClient
+# Load cai_cluster.py directly to avoid triggering ray_serve_cai/__init__.py,
+# which eagerly imports Ray and Starlette (not available in the launcher venv).
+import importlib.util as _ilu
+_spec = _ilu.spec_from_file_location(
+    "cai_cluster",
+    Path(__file__).parent.parent / "ray_serve_cai" / "cai_cluster.py",
+)
+_mod = _ilu.module_from_spec(_spec)
+_spec.loader.exec_module(_mod)
+CMLAPIClient = _mod.CMLAPIClient
 
 # ── Read env vars ─────────────────────────────────────────────────────────────
 cml_host = os.environ.get("CML_HOST")
