@@ -8,10 +8,12 @@ Serves two purposes:
      node type, and Ray connection details without querying the Ray GCS directly.
 
 Endpoints:
-  GET /health  — liveness probe used by CML / Management API
-  GET /info    — node metadata (IP, node_type, head_address, hostname, resources)
+  GET /       — root health probe (CML probes this path; returns 200)
+  GET /health — liveness probe used by CML / Management API
+  GET /info   — node metadata (IP, node_type, head_address, hostname, resources)
 """
 
+import logging
 import os
 import socket
 
@@ -26,6 +28,12 @@ _HEAD_ADDR   = os.environ.get("RAY_HEAD_ADDRESS",     "unknown")
 _WORKER_CPUS = os.environ.get("RAY_WORKER_CPUS",      "unknown")
 _WORKER_MEM  = os.environ.get("RAY_WORKER_MEMORY_GB", "unknown")
 _WORKER_GPUS = os.environ.get("RAY_WORKER_GPUS",      "0")
+
+
+@app.get("/")
+def root():
+    """Root probe — CML hits this path; return 200 so it never logs a 404."""
+    return {"status": "ok"}
 
 
 @app.get("/health")
@@ -59,6 +67,58 @@ def _resolve_ip() -> str:
         return socket.gethostbyname(socket.gethostname())
 
 
+class _SuppressHealthProbe(logging.Filter):
+    """Drop access-log lines for GET / and GET /health to silence CML probe noise."""
+
+    _PATHS = ('"GET / ', '"GET /health ')
+
+    def filter(self, record: logging.LogRecord) -> bool:
+        msg = record.getMessage()
+        return not any(p in msg for p in self._PATHS)
+
+
+# Uvicorn log config — same as the built-in default but with the health-probe
+# filter on the access handler so repeated CML probes don't flood pod logs.
+LOG_CONFIG = {
+    "version": 1,
+    "disable_existing_loggers": False,
+    "filters": {
+        "suppress_health_probe": {
+            "()": "ray_serve_cai.worker_app._SuppressHealthProbe",
+        },
+    },
+    "formatters": {
+        "default": {
+            "()": "uvicorn.logging.DefaultFormatter",
+            "fmt": "%(levelprefix)s %(message)s",
+            "use_colors": None,
+        },
+        "access": {
+            "()": "uvicorn.logging.AccessFormatter",
+            "fmt": '%(levelprefix)s %(client_addr)s - "%(request_line)s" %(status_code)s',
+        },
+    },
+    "handlers": {
+        "default": {
+            "formatter": "default",
+            "class": "logging.StreamHandler",
+            "stream": "ext://sys.stderr",
+        },
+        "access": {
+            "formatter": "access",
+            "class": "logging.StreamHandler",
+            "stream": "ext://sys.stdout",
+            "filters": ["suppress_health_probe"],
+        },
+    },
+    "loggers": {
+        "uvicorn":        {"handlers": ["default"], "level": "INFO", "propagate": False},
+        "uvicorn.error":  {"handlers": ["default"], "level": "INFO", "propagate": False},
+        "uvicorn.access": {"handlers": ["access"],  "level": "INFO", "propagate": False},
+    },
+}
+
+
 if __name__ == "__main__":
     port = int(os.environ.get("CDSW_APP_PORT", 8100))
-    uvicorn.run(app, host="127.0.0.1", port=port, log_level="info")
+    uvicorn.run(app, host="127.0.0.1", port=port, log_config=LOG_CONFIG)

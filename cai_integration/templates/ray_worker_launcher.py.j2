@@ -14,6 +14,7 @@ import json
 import os
 import subprocess
 import sys
+import threading
 import time
 from pathlib import Path
 
@@ -42,49 +43,17 @@ if not HEAD_ADDRESS:
 
 print(f"\nConnecting to head node: {HEAD_ADDRESS}")
 
-# Brief wait so the head node has time to fully initialise its GCS
-print("Waiting 30 s for head node to be ready...")
-time.sleep(30)
-
-# Register this node's type as a custom Ray resource label so that
-# coordinator.py (_detect_node_type) and deployment scheduling strategies
-# can identify and target specific node types without knowing node IDs.
 NODE_TYPE = "{{ node_type }}"
 node_resources = json.dumps({f"node_type:{NODE_TYPE}": 1})
-
-cmd = [
-    str(RAY_BIN),
-    "start",
-    "--address", HEAD_ADDRESS,
-    "--resources", node_resources,
-]
 print(f"Node type label: node_type:{NODE_TYPE}")
-print("Command:", " ".join(cmd))
 
-# Retry up to 5 times — GCS may not accept connections immediately even
-# after the management API health check passes.
-MAX_RETRIES = 5
-for attempt in range(1, MAX_RETRIES + 1):
-    result = subprocess.run(cmd)
-    if result.returncode == 0:
-        break
-    if attempt < MAX_RETRIES:
-        wait = attempt * 15
-        print(f"Attempt {attempt}/{MAX_RETRIES} failed (exit {result.returncode}). "
-              f"Retrying in {wait}s...")
-        time.sleep(wait)
-    else:
-        print(f"All {MAX_RETRIES} attempts failed. Exiting.")
-        sys.exit(result.returncode)
-
-print("\n✅ Joined Ray cluster")
-
-# ── Start worker info server ──────────────────────────────────────────────────
-# CML requires a live process on CDSW_APP_PORT to keep the application in
-# "running" state. Run uvicorn in-process (same Python process, no subprocess)
-# so that CML restarts can never leave an orphaned server holding the port.
+# ── Start worker info server (daemon thread) ──────────────────────────────────
+# CML requires a live process on CDSW_APP_PORT to mark the application as
+# "running".  Start uvicorn as a daemon thread before the Ray retry loop so
+# the port is bound immediately.  When the main process exits the daemon dies
+# automatically — no orphaned process can hold the port on a pod restart.
 _app_port = int(os.environ.get("CDSW_APP_PORT", 8100))
-print(f"\nStarting worker info server on port {_app_port} ...")
+print(f"\nStarting worker info server on port {_app_port} (daemon thread) ...")
 print(f"  node_type   : {NODE_TYPE}")
 print(f"  head_address: {HEAD_ADDRESS}")
 
@@ -98,8 +67,49 @@ os.environ["RAY_WORKER_GPUS"]      = str(os.environ.get("WORKER_GPUS", "0"))
 
 sys.path.insert(0, "{{ project_dir }}")
 
-import uvicorn as _uvicorn                          # noqa: E402
-from ray_serve_cai.worker_app import app as _app   # noqa: E402
+import uvicorn as _uvicorn                                           # noqa: E402
+from ray_serve_cai.worker_app import app as _app, LOG_CONFIG as _LC  # noqa: E402
 
-# Blocks until the server exits — keeps the CML application in "running" state.
-_uvicorn.run(_app, host="127.0.0.1", port=_app_port, log_level="info")
+_server_thread = threading.Thread(
+    target=lambda: _uvicorn.run(_app, host="127.0.0.1", port=_app_port, log_config=_LC),
+    daemon=True,
+)
+_server_thread.start()
+print(f"Worker info server listening on 127.0.0.1:{_app_port}")
+
+# ── Join Ray cluster (with --block) ──────────────────────────────────────────
+# `ray start --block` stays alive for as long as the raylet runs, then exits.
+# This ties the CML pod lifetime to the Ray node lifetime — when the raylet
+# stops, this process exits, CML restarts the pod cleanly, and no stale node
+# ID lingers in GCS.
+#
+# Brief wait so the head GCS has time to fully initialise.
+print("\nWaiting 30 s for head node to be ready...")
+time.sleep(30)
+
+cmd = [
+    str(RAY_BIN),
+    "start",
+    "--address",   HEAD_ADDRESS,
+    "--resources", node_resources,
+    "--block",
+]
+print("Command:", " ".join(cmd))
+
+# Retry up to 5 times — GCS may not accept connections immediately.
+MAX_RETRIES = 5
+for attempt in range(1, MAX_RETRIES + 1):
+    print(f"\nAttempt {attempt}/{MAX_RETRIES}: joining Ray cluster ...")
+    result = subprocess.run(cmd)
+    if result.returncode == 0:
+        # Node joined and then stopped cleanly — exit so CML can restart.
+        print("Ray worker node stopped cleanly.")
+        sys.exit(0)
+    if attempt < MAX_RETRIES:
+        wait = attempt * 15
+        print(f"Attempt {attempt}/{MAX_RETRIES} failed (exit {result.returncode}). "
+              f"Retrying in {wait}s...")
+        time.sleep(wait)
+    else:
+        print(f"All {MAX_RETRIES} attempts failed. Exiting.")
+        sys.exit(result.returncode)
