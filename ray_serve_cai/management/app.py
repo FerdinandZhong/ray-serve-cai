@@ -12,6 +12,7 @@ from fastapi.middleware.cors import CORSMiddleware
 
 from .api import resources_router, applications_router, cluster_router
 from .services import RayService, CAIService, CoordinatorService
+from ..utils.logging import setup_serve_logging
 
 # Configure logging
 logging.basicConfig(
@@ -31,6 +32,7 @@ async def lifespan(app: FastAPI):
     """Application lifespan handler."""
     global ray_service, cai_service, coordinator_service
 
+    setup_serve_logging("management-api")
     logger.info("Initializing Management API services...")
 
     # Initialize Ray service

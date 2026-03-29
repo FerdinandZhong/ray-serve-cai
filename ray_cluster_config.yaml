@@ -26,6 +26,11 @@ ray_cluster:
   worker_memory: 32   # GB
   worker_gpus:   2    # GPUs per worker node (0 for CPU-only workers)
 
+  # ── Worker node storage and shared memory ─────────────────────────────────
+  shared_memory_limit_mb:        10000  # /dev/shm size for CUDA IPC (GPU workers)
+  ephemeral_storage_request_mb:  0
+  ephemeral_storage_limit_mb:    307200
+
   # ── Worker node-type label ────────────────────────────────────────────────
   # Registered as a Ray custom resource: "node_type:<worker_node_type>".
   # Used by coordinator._detect_node_type() and scheduling strategies to

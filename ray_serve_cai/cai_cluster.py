@@ -75,6 +75,9 @@ class WorkerGroupConfig:
     gpus: int = 0                          # GPUs per worker  (0 = CPU-only)
     runtime_identifier: Optional[str] = None   # Docker runtime; None = cluster default
     script_path: Optional[str] = None     # set by create_ray_launcher_scripts()
+    shared_memory_limit_mb: int = 0       # /dev/shm size in MB (0 = platform default)
+    ephemeral_storage_request_mb: int = 0 # ephemeral disk request in MB
+    ephemeral_storage_limit_mb: int = 0   # ephemeral disk limit in MB
 
 
 class CMLAPIClient:
@@ -114,6 +117,9 @@ class CMLAPIClient:
         bypass_authentication: bool = True,
         num_gpus: int = 0,
         environment: Optional[Dict[str, str]] = None,
+        shared_memory_limit_mb: int = 0,
+        ephemeral_storage_request_mb: int = 0,
+        ephemeral_storage_limit_mb: int = 0,
     ) -> ApplicationInfo:
         """
         Create a CML application.
@@ -149,6 +155,12 @@ class CMLAPIClient:
             payload['nvidia_gpu'] = num_gpus
         if environment:
             payload['environment'] = environment
+        if shared_memory_limit_mb > 0:
+            payload['shared_memory_limit'] = shared_memory_limit_mb
+        if ephemeral_storage_request_mb > 0:
+            payload['ephemeral_storage_request_mb'] = ephemeral_storage_request_mb
+        if ephemeral_storage_limit_mb > 0:
+            payload['ephemeral_storage_limit_mb'] = ephemeral_storage_limit_mb
 
         if self.verbose:
             logger.debug(f"Creating application: POST {url}")
@@ -399,6 +411,13 @@ class CAIClusterManager:
                     "no default worker_runtime_identifier was provided."
                 )
 
+        # Ensure every group has a concrete runtime_identifier stored on it so
+        # that the value is preserved when cluster_info is serialised to JSON
+        # and later used by CAIService._group_from_cluster_info() → launch_worker().
+        for g in worker_groups:
+            if not g.runtime_identifier and worker_runtime_identifier:
+                g.runtime_identifier = worker_runtime_identifier
+
         self.worker_groups = worker_groups
 
         logger.info("🚀 Starting Ray cluster on CAI...")
@@ -451,14 +470,17 @@ class CAIClusterManager:
                 'num_workers': len(self.worker_app_ids),
                 'worker_groups': [
                     {
-                        'name':               g.name,
-                        'node_type':          g.node_type,
-                        'count':              g.count,
-                        'cpu':                g.cpu,
-                        'memory':             g.memory,
-                        'gpus':               g.gpus,
-                        'script_path':        g.script_path,
-                        'runtime_identifier': g.runtime_identifier,
+                        'name':                         g.name,
+                        'node_type':                    g.node_type,
+                        'count':                        g.count,
+                        'cpu':                          g.cpu,
+                        'memory':                       g.memory,
+                        'gpus':                         g.gpus,
+                        'script_path':                  g.script_path,
+                        'runtime_identifier':           g.runtime_identifier,
+                        'shared_memory_limit_mb':       g.shared_memory_limit_mb,
+                        'ephemeral_storage_request_mb': g.ephemeral_storage_request_mb,
+                        'ephemeral_storage_limit_mb':   g.ephemeral_storage_limit_mb,
                     }
                     for g in worker_groups
                 ],
@@ -730,6 +752,9 @@ class CAIClusterManager:
             bypass_authentication=True,
             num_gpus=group.gpus,
             environment=environment,
+            shared_memory_limit_mb=group.shared_memory_limit_mb,
+            ephemeral_storage_request_mb=group.ephemeral_storage_request_mb,
+            ephemeral_storage_limit_mb=group.ephemeral_storage_limit_mb,
         )
         self.worker_app_ids.append(app.id)
         logger.info(f"✅ Launched worker '{app_name}': {app.id}  [node_type:{group.node_type}]")

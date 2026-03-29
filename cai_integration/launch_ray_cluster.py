@@ -171,8 +171,11 @@ def load_config():
         'dashboard_port':        8265,
         'management_api_cpu':    None,
         'management_api_memory': None,
-        'worker_groups':         None,
-        'head_app_name':         'ray-cluster-head',
+        'worker_groups':                None,
+        'head_app_name':                'ray-cluster-head',
+        'shared_memory_limit_mb':       0,
+        'ephemeral_storage_request_mb': 0,
+        'ephemeral_storage_limit_mb':   0,
         # Ray Serve proxy tuning — None means "use Ray's built-in default"
         'proxy_health_check_period_s':  None,
         'proxy_health_check_timeout_s': None,
@@ -364,6 +367,9 @@ def main():
             cpu=ray_config['worker_cpu'],
             memory=ray_config['worker_memory'],
             gpus=ray_config['worker_gpus'],
+            shared_memory_limit_mb=ray_config['shared_memory_limit_mb'],
+            ephemeral_storage_request_mb=ray_config['ephemeral_storage_request_mb'],
+            ephemeral_storage_limit_mb=ray_config['ephemeral_storage_limit_mb'],
         )]
 
     print("\n🎯 Ray Cluster Configuration:")
