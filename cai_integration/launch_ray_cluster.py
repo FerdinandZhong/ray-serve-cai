@@ -377,24 +377,55 @@ def main():
         )
         print("✅ Manager initialized")
 
-        # ── Step 1: start head node only ──────────────────────────────────────
-        # Worker group definitions are passed so they are saved into cluster_info
-        # and the Management API can look them up when adding workers later.
-        print("\n🚀 Starting Ray head node...")
-        print(f"   Head script: {head_script_path}")
+        # ── Step 1: start head node (skip if already running) ─────────────────
+        info_file = Path("/home/cdsw/ray_cluster_info.json")
+        existing_info = None
+        if info_file.exists():
+            try:
+                with open(info_file) as f:
+                    existing_info = json.load(f)
+            except Exception:
+                existing_info = None
 
-        cluster_info = manager.start_cluster(
-            worker_groups=worker_groups,   # definitions only — not launched here
-            head_cpu=ray_config['head_cpu'],
-            head_memory=ray_config['head_memory'],
-            ray_port=ray_config['ray_port'],
-            dashboard_port=ray_config['dashboard_port'],
-            head_runtime_identifier=head_runtime,
-            worker_runtime_identifier=worker_runtime,
-            head_script_path=head_script_path,
-            wait_ready=True,
-            timeout=600,
-        )
+        _worker_groups_json = [
+            {
+                "name":               g.name,
+                "node_type":          g.node_type,
+                "count":              g.count,
+                "cpu":                g.cpu,
+                "memory":             g.memory,
+                "gpus":               g.gpus,
+                "script_path":        g.script_path,
+                "runtime_identifier": g.runtime_identifier,
+            }
+            for g in worker_groups
+        ]
+
+        if existing_info and existing_info.get("head_app_id"):
+            print("\n♻️  Reusing existing head node from ray_cluster_info.json")
+            print(f"   head_app_id : {existing_info['head_app_id']}")
+            print(f"   head_url    : {existing_info.get('head_url', 'unknown')}")
+            cluster_info = existing_info
+            # Refresh worker group definitions in case the YAML has changed.
+            cluster_info["worker_groups"] = _worker_groups_json
+            with open(info_file, "w") as f:
+                json.dump(cluster_info, f, indent=2)
+        else:
+            # No saved cluster info — create the head node for the first time.
+            print("\n🚀 Starting Ray head node...")
+            print(f"   Head script: {head_script_path}")
+            cluster_info = manager.start_cluster(
+                worker_groups=worker_groups,
+                head_cpu=ray_config['head_cpu'],
+                head_memory=ray_config['head_memory'],
+                ray_port=ray_config['ray_port'],
+                dashboard_port=ray_config['dashboard_port'],
+                head_runtime_identifier=head_runtime,
+                worker_runtime_identifier=worker_runtime,
+                head_script_path=head_script_path,
+                wait_ready=True,
+                timeout=600,
+            )
 
         # ── Step 2: wait for Management API ───────────────────────────────────
         print("\n⏳ Waiting for Management API to become healthy on head node...")
@@ -406,6 +437,25 @@ def main():
         else:
             cluster_info['management_api_url'] = cluster_info.get('head_url', '')
             print("⚠️  Management API health check timed out (may still be starting)")
+
+        # ── Resolve GCS address if not already in cluster_info ────────────────
+        # Workers need this to connect to Ray GCS. We fetch it from the
+        # Management API (which reads /home/cdsw/ray_gcs_address written by
+        # the head launcher at startup).
+        if management_url and not cluster_info.get("head_address"):
+            import urllib.request as _urlreq2
+            try:
+                with _urlreq2.urlopen(
+                    f"{management_url}/api/v1/cluster/gcs-address", timeout=10
+                ) as _r:
+                    _gcs = json.loads(_r.read()).get("gcs_address", "")
+                    if _gcs:
+                        cluster_info["head_address"] = _gcs
+                        with open(info_file, "w") as f:
+                            json.dump(cluster_info, f, indent=2)
+                        print(f"   GCS address: {_gcs}")
+            except Exception as _exc:
+                print(f"⚠️  Could not fetch GCS address from Management API: {_exc}")
 
         # ── Step 3: add worker nodes via Management API ────────────────────────
         total_workers = sum(g.count for g in worker_groups)
