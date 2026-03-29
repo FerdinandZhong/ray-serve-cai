@@ -434,40 +434,34 @@ def main():
             with open(info_file, "w") as f:
                 json.dump(cluster_info, f, indent=2)
         else:
-            # No saved cluster info — check directly if the head URL responds.
-            # We know the URL deterministically from app name + CDSW_DOMAIN,
-            # so no CML API lookup is needed.  If the URL is healthy → reuse.
-            # If not → start fresh (broken, never started, or wrong domain).
-            import urllib.request as _urlreq0
-            head_url = head_url_from_domain or ""
-            head_running = False
-            if head_url:
-                print(f"\n🔍 Checking head node at {head_url}/health ...")
-                try:
-                    with _urlreq0.urlopen(f"{head_url}/health", timeout=10) as r:
-                        head_running = r.status == 200
-                except Exception as _e:
-                    print(f"   Not reachable: {_e}")
-            else:
-                print("\n⚠️  CDSW_DOMAIN not set — cannot derive head URL, will start fresh.")
-
-            if head_running:
-                print("   ✅ Head node is running — reusing existing cluster.")
-                # Fetch app ID for tracking (best-effort; None is acceptable)
+            # Poll CML API until the head app is running OR timeout expires.
+            # If running within timeout → reuse. Otherwise → start fresh.
+            print(f"\n🔍 Polling CML for '{head_app_name}' (up to 300 s)...")
+            existing_head = None
+            deadline = time.time() + 300
+            while time.time() < deadline:
                 apps = manager.list_applications()
-                existing = next((a for a in apps if a["name"] == head_app_name), None)
+                existing_head = next((a for a in apps if a["name"] == head_app_name), None)
+                if existing_head:
+                    print(f"   status={existing_head['status']}")
+                    if existing_head["status"].lower() == "running":
+                        break
+                time.sleep(10)
+
+            if existing_head and existing_head["status"].lower() == "running":
+                print(f"   ✅ Head app running: {existing_head['id']}")
                 cluster_info = {
                     "status":         "running",
-                    "head_app_id":    existing["id"] if existing else None,
+                    "head_app_id":    existing_head["id"],
                     "head_address":   None,
-                    "head_url":       head_url,
+                    "head_url":       head_url_from_domain or "",
                     "worker_app_ids": [],
                     "num_workers":    0,
                     "worker_groups":  _worker_groups_json,
                 }
                 with open(info_file, "w") as f:
                     json.dump(cluster_info, f, indent=2)
-                print(f"   head_url: {head_url}")
+                print(f"   head_url: {cluster_info['head_url']}")
             else:
                 # Genuinely no head node exists — create one.
                 print("\n🚀 Starting Ray head node...")
