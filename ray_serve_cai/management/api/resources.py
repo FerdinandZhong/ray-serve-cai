@@ -7,7 +7,7 @@ from ..models.requests import AddNodeRequest
 from ..models.responses import NodeInfo, NodesListResponse, ResourceCapacity
 from ..services.coordinator import CoordinatorService
 
-router = APIRouter(prefix="/api/v1/resources", tags=["resources"])
+router = APIRouter(prefix="/v1/resources", tags=["resources"])
 
 
 def get_coordinator() -> CoordinatorService:
