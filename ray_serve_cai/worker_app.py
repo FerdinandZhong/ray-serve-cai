@@ -61,4 +61,4 @@ def _resolve_ip() -> str:
 
 if __name__ == "__main__":
     port = int(os.environ.get("CDSW_APP_PORT", 8100))
-    uvicorn.run(app, host="0.0.0.0", port=port, log_level="info")
+    uvicorn.run(app, host="127.0.0.1", port=port, log_level="info")
