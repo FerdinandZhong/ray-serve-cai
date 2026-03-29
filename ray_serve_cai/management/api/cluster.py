@@ -8,7 +8,7 @@ from fastapi import APIRouter, HTTPException, Depends
 from ..models.responses import ClusterStatus, ClusterInfo
 from ..services.coordinator import CoordinatorService
 
-router = APIRouter(prefix="/v1/cluster", tags=["cluster"])
+router = APIRouter(prefix="/api/v1/cluster", tags=["cluster"])
 
 
 def get_coordinator() -> CoordinatorService:

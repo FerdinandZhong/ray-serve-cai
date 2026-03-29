@@ -257,7 +257,7 @@ def _wait_for_management_api(cluster_info: dict, timeout: int = 300) -> str:
         print("   head_url not available — skipping health check")
         return None
 
-    health_url = f"{head_url}/health"
+    health_url = f"{head_url}/api/health"
     print(f"   Polling {health_url} ...")
 
     start = time.time()
@@ -494,18 +494,23 @@ def main():
         print("\n" + "=" * 70)
         print("✅ Ray Cluster Started Successfully!")
         print("=" * 70)
+        head_address = cluster_info.get('head_address')
         print(f"\n📊 Cluster Information:")
         print(f"   Head Node ID: {cluster_info['head_app_id']}")
-        print(f"   Head Address: {cluster_info['head_address']}")
-        print(f"   Dashboard: http://{cluster_info['head_address'].split(':')[0]}:{ray_config['dashboard_port']}")
+        print(f"   Head Address: {head_address or '(not yet resolved)'}")
+        if head_address:
+            print(f"   Dashboard: http://{head_address.split(':')[0]}:{ray_config['dashboard_port']}")
         print(f"   Workers: {cluster_info['num_workers']} nodes")
         for g in cluster_info.get('worker_groups', []):
             print(f"   Group '{g['name']}' [{g['node_type']}]: "
                   f"{g['count']} × {g['cpu']}CPU, {g['memory']}GB, {g['gpus']}GPU")
 
         print(f"\n🔗 Connection Details:")
-        print(f"   Ray Address: ray://{cluster_info['head_address']}")
-        print(f"   Python API: ray.init(address='ray://{cluster_info['head_address']}')")
+        if head_address:
+            print(f"   Ray Address: ray://{head_address}")
+            print(f"   Python API: ray.init(address='ray://{head_address}')")
+        else:
+            print(f"   Ray Address: (GCS address not resolved — check Management API)")
         if cluster_info.get('management_api_url'):
             print(f"   Management API: {cluster_info['management_api_url']}")
             print(f"   API Docs: {cluster_info['management_api_url']}/docs")

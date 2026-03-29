@@ -7,7 +7,7 @@ from ..models.requests import DeployApplicationRequest, DeployModelRequest
 from ..models.responses import ApplicationInfo, ApplicationsListResponse
 from ..services.coordinator import CoordinatorService
 
-router = APIRouter(prefix="/v1/applications", tags=["applications"])
+router = APIRouter(prefix="/api/v1/applications", tags=["applications"])
 
 
 def get_coordinator() -> CoordinatorService:

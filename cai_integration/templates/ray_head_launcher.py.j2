@@ -134,7 +134,7 @@ result = subprocess.run(
         str(deploy_script),
         "--app-import",   "ray_serve_cai.management.app:app",
         "--name",         "management-api",
-        "--route-prefix", "/api",
+        "--route-prefix", "/",
         "--num-cpus",     "{{ mgmt_cpu }}",
         "--memory-gb",    "{{ mgmt_memory_gb }}",
         "--serve-port",   "5000",
