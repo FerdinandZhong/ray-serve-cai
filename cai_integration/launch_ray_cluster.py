@@ -417,6 +417,11 @@ def main():
             wait_ready=True,
             timeout=600,
         )
+        # CML v2 API does not return a full URL in its response — override
+        # with the deterministic URL derived from app name + CDSW_DOMAIN.
+        if head_url_from_domain:
+            cluster_info['head_url'] = head_url_from_domain
+        print(f"   head_url: {cluster_info.get('head_url', '(unknown)')}")
 
         # ── Step 2: wait for Management API ───────────────────────────────────
         print("\n⏳ Waiting for Management API to become healthy on head node...")
