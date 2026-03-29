@@ -45,7 +45,7 @@ def main():
     print("=" * 70)
     print("🚀 Ray Cluster Launch (CAI Job Entry Point)")
     print("=" * 70)
-    print(f"\n📝 Executing: bash {bash_wrapper.name}")
+    print(f"\n📝 Executing: launch_ray_cluster.py")
     print(f"   Project root: {project_root}")
     print()
 
@@ -57,7 +57,8 @@ def main():
 
     try:
         result = subprocess.run(
-            [str(venv_python), str(project_root / "cai_integration" / "launch_ray_cluster.py")]
+            [str(venv_python), "-u",
+             str(project_root / "cai_integration" / "launch_ray_cluster.py")]
             + sys.argv[1:],
             cwd=str(project_root),
         )
