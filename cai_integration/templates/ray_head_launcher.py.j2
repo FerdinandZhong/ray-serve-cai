@@ -77,7 +77,7 @@ result = subprocess.run(
     [
         str(RAY_BIN),
         "start", "--head",
-        "--node-ip-address", _pod_ip,
+        "--node-ip-address", "0.0.0.0",
         "--port", "{{ ray_port }}",
         "--dashboard-host", "127.0.0.1",
         "--dashboard-port", "{{ dashboard_port }}",
