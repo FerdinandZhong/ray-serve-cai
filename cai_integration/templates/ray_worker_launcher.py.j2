@@ -97,20 +97,10 @@ cmd = [
 ]
 print("Command:", " ".join(cmd))
 
-# Retry up to 5 times — GCS may not accept connections immediately.
-MAX_RETRIES = 5
-for attempt in range(1, MAX_RETRIES + 1):
-    print(f"\nAttempt {attempt}/{MAX_RETRIES}: joining Ray cluster ...")
-    result = subprocess.run(cmd)
-    if result.returncode == 0:
-        # Node joined and then stopped cleanly — exit so CML can restart.
-        print("Ray worker node stopped cleanly.")
-        sys.exit(0)
-    if attempt < MAX_RETRIES:
-        wait = attempt * 15
-        print(f"Attempt {attempt}/{MAX_RETRIES} failed (exit {result.returncode}). "
-              f"Retrying in {wait}s...")
-        time.sleep(wait)
-    else:
-        print(f"All {MAX_RETRIES} attempts failed. Exiting.")
-        sys.exit(result.returncode)
+# Clean up any stale Ray session so we start fresh.
+subprocess.run([str(RAY_BIN), "stop", "--force"], capture_output=True)
+
+print("Running:", " ".join(cmd))
+result = subprocess.run(cmd)
+print(f"Ray worker node exited (code {result.returncode}).")
+sys.exit(result.returncode)
