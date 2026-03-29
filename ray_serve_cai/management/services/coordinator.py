@@ -7,6 +7,7 @@ import logging
 
 from .ray_service import RayService
 from .cai_service import CAIService
+from .resource_map import ResourceMap
 
 logger = logging.getLogger(__name__)
 
@@ -54,6 +55,7 @@ class CoordinatorService:
         """
         self.ray_service = ray_service
         self.cai_service = cai_service
+        self.resource_map = ResourceMap()
         self.state_file = Path("/home/cdsw/cluster_state.json")
 
     def load_state(self) -> Dict[str, Any]:
@@ -191,57 +193,92 @@ class CoordinatorService:
             }
         }
 
-    def add_worker_node(self, node_type: str = "worker", cpu: int = None, memory: int = None, gpus: int = None) -> Dict[str, Any]:
-        """
-        Add a new worker node and track the mapping.
-
-        Args:
-            cpu: CPU cores
-            memory: Memory in GB
-            node_type: Type of node
-
-        Returns:
-            Worker creation result
-        """
-        # Create worker via CAI
+    def add_worker_node(
+        self,
+        node_type: str = "worker",
+        cpu: int = None,
+        memory: int = None,
+        gpus: int = None,
+    ) -> Dict[str, Any]:
+        """Add a new worker node, register it in the resource map, and track the mapping."""
         result = self.cai_service.create_worker_node(
             node_type=node_type, cpu=cpu, memory=memory, gpus=gpus
         )
-
-        # Note: We'll add the mapping when the Ray node appears
-        # This is because there's a delay between CML app creation and Ray node registration
-        # The mapping should ideally be done by polling or via a callback
-
-        logger.info(f"Worker node creation initiated: {result.get('app_name')}")
+        self.resource_map.register_worker(
+            app_id=result["app_id"],
+            app_name=result["app_name"],
+            node_type=result["node_type"],
+            cpu=result["cpu"],
+            memory=result["memory"],
+            gpus=result["gpus"],
+        )
+        logger.info(f"Worker node created and registered: {result.get('app_name')}")
         return result
 
     def remove_worker_node(self, app_id: str) -> Dict[str, Any]:
-        """
-        Remove a worker node and clean up mapping.
-
-        Args:
-            app_id: CML application ID
-
-        Returns:
-            Removal result
-        """
-        # Find the node mapping
+        """Remove a worker node, unregister it from the resource map, and clean up mapping."""
         state = self.load_state()
         node_mapping = state.get("node_mapping", {})
 
-        # Find Ray node ID by CML app ID
         ray_node_id = None
         for nid, mapping in node_mapping.items():
             if mapping.get("cml_app_id") == app_id:
                 ray_node_id = nid
                 break
 
-        # Delete worker via CAI
         result = self.cai_service.delete_worker_node(app_id)
+        self.resource_map.unregister_worker(app_id)
 
-        # Remove mapping if found
         if ray_node_id:
             self.remove_node_mapping(ray_node_id)
             logger.info(f"Removed node mapping for Ray node: {ray_node_id}")
 
         return result
+
+    def launch_cai_application(
+        self,
+        name: str,
+        script: str,
+        cpu: int,
+        memory: int,
+        gpus: int = 0,
+        runtime_identifier: str = None,
+        environment: dict = None,
+        bypass_authentication: bool = True,
+    ) -> Dict[str, Any]:
+        """
+        Validate cluster capacity, launch a CML application, and record the allocation.
+
+        Raises:
+            ValueError: If the cluster lacks sufficient CPU / memory / GPU.
+        """
+        self.resource_map.validate(cpu=cpu, memory=memory, gpus=gpus)
+
+        result = self.cai_service.launch_cai_application(
+            name=name,
+            script=script,
+            cpu=cpu,
+            memory=memory,
+            gpus=gpus,
+            runtime_identifier=runtime_identifier,
+            environment=environment,
+            bypass_authentication=bypass_authentication,
+        )
+        self.resource_map.allocate(
+            app_id=result["app_id"],
+            app_name=result["app_name"],
+            cpu=cpu,
+            memory=memory,
+            gpus=gpus,
+        )
+        return result
+
+    def remove_cai_application(self, app_id: str) -> Dict[str, Any]:
+        """Stop a CML application and release its resources from the map."""
+        result = self.cai_service.delete_worker_node(app_id)
+        self.resource_map.release(app_id)
+        return result
+
+    def get_resource_map(self) -> Dict[str, Any]:
+        """Return the current resource capacity summary."""
+        return self.resource_map.get_summary()

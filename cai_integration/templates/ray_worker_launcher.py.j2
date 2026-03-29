@@ -76,3 +76,32 @@ for attempt in range(1, MAX_RETRIES + 1):
     else:
         print(f"All {MAX_RETRIES} attempts failed. Exiting.")
         sys.exit(result.returncode)
+
+print("\n✅ Joined Ray cluster")
+
+# ── Start worker info server ──────────────────────────────────────────────────
+# CML requires a live process on CDSW_APP_PORT to keep the application in
+# "running" state. This server also exposes node metadata so the Management
+# API can retrieve the worker's IP address and resources without querying GCS.
+_app_port = int(os.environ.get("CDSW_APP_PORT", 8100))
+print(f"\nStarting worker info server on port {_app_port} ...")
+print(f"  node_type  : {NODE_TYPE}")
+print(f"  head_address: {HEAD_ADDRESS}")
+
+_server_env = {
+    **os.environ,
+    "PYTHONPATH":            str(Path("{{ project_dir }}")),
+    "RAY_WORKER_NODE_TYPE":  NODE_TYPE,
+    "RAY_HEAD_ADDRESS":      HEAD_ADDRESS,
+    "RAY_WORKER_CPUS":       str(os.environ.get("WORKER_CPUS", "")),
+    "RAY_WORKER_MEMORY_GB":  str(os.environ.get("WORKER_MEMORY_GB", "")),
+    "RAY_WORKER_GPUS":       str(os.environ.get("WORKER_GPUS", "0")),
+    "CDSW_APP_PORT":         str(_app_port),
+}
+
+# This call blocks until the server exits, keeping the CML application alive.
+_server = subprocess.run(
+    [str(VENV_PYTHON), "-m", "ray_serve_cai.worker_app"],
+    env=_server_env,
+)
+sys.exit(_server.returncode)

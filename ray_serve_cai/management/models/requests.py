@@ -22,6 +22,40 @@ class AddNodeRequest(BaseModel):
         }
 
 
+class LaunchCaiApplicationRequest(BaseModel):
+    """Request to launch a generic CML application."""
+
+    name: str = Field(..., description="CML application name")
+    script: str = Field(..., description="Script path to run (relative to /home/cdsw)")
+    cpu: int = Field(..., ge=1, le=256, description="CPU cores")
+    memory: int = Field(..., ge=1, le=1024, description="Memory in GB")
+    gpus: int = Field(default=0, ge=0, description="Number of GPUs")
+    runtime_identifier: Optional[str] = Field(
+        default=None,
+        description="Docker runtime identifier (uses cluster default when omitted)",
+    )
+    environment: Optional[Dict[str, str]] = Field(
+        default=None,
+        description="Environment variables injected into the application",
+    )
+    bypass_authentication: bool = Field(
+        default=True,
+        description="Allow unauthenticated access to the application",
+    )
+
+    class Config:
+        json_schema_extra = {
+            "example": {
+                "name": "my-ray-app",
+                "script": "my_ray_app.py",
+                "cpu": 4,
+                "memory": 16,
+                "gpus": 1,
+                "environment": {"MY_VAR": "value"},
+            }
+        }
+
+
 class DeployApplicationRequest(BaseModel):
     """Request to deploy a Ray Serve application."""
 
