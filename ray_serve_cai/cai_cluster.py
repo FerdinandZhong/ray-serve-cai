@@ -185,14 +185,20 @@ class CMLAPIClient:
             if page_token:
                 params["page_token"] = page_token
 
-            if self.verbose:
-                logger.debug(f"Listing applications: GET {base_url} params={params}")
+            logger.info(f"GET {base_url}  params={params}")
 
             response = self.session.get(base_url, params=params)
+
+            logger.info(f"  -> HTTP {response.status_code}")
+            if response.status_code != 200:
+                logger.warning(f"  -> body: {response.text[:500]}")
             response.raise_for_status()
 
             data = response.json()
+            if isinstance(data, dict):
+                logger.info(f"  -> response keys: {list(data.keys())}")
             items = data.get("applications", []) if isinstance(data, dict) else data
+            logger.info(f"  -> {len(items)} application(s) on this page")
             all_apps.extend([
                 ApplicationInfo(
                     id=a.get("id"),
