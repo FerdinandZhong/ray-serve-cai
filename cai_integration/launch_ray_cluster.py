@@ -400,85 +400,23 @@ def main():
         )
         print("✅ Manager initialized")
 
-        # ── Step 1: start head node (skip if already running) ─────────────────
+        # ── Step 1: start head node ────────────────────────────────────────────
         info_file = Path("/home/cdsw/ray_cluster_info.json")
-        existing_info = None
-        if info_file.exists():
-            try:
-                with open(info_file) as f:
-                    existing_info = json.load(f)
-            except Exception:
-                existing_info = None
-
-        _worker_groups_json = [
-            {
-                "name":               g.name,
-                "node_type":          g.node_type,
-                "count":              g.count,
-                "cpu":                g.cpu,
-                "memory":             g.memory,
-                "gpus":               g.gpus,
-                "script_path":        g.script_path,
-                "runtime_identifier": g.runtime_identifier,
-            }
-            for g in worker_groups
-        ]
-
-        if existing_info and existing_info.get("head_app_id"):
-            print("\n♻️  Reusing existing head node from ray_cluster_info.json")
-            print(f"   head_app_id : {existing_info['head_app_id']}")
-            print(f"   head_url    : {existing_info.get('head_url', 'unknown')}")
-            cluster_info = existing_info
-            # Refresh worker group definitions in case the YAML has changed.
-            cluster_info["worker_groups"] = _worker_groups_json
-            with open(info_file, "w") as f:
-                json.dump(cluster_info, f, indent=2)
-        else:
-            # Poll CML API until the head app is running OR timeout expires.
-            # If running within timeout → reuse. Otherwise → start fresh.
-            print(f"\n🔍 Polling CML for '{head_app_name}' (up to 300 s)...")
-            existing_head = None
-            deadline = time.time() + 300
-            while time.time() < deadline:
-                apps = manager.list_applications()
-                existing_head = next((a for a in apps if a["name"] == head_app_name), None)
-                if existing_head:
-                    print(f"   status={existing_head['status']}")
-                    if existing_head["status"].lower() == "running":
-                        break
-                time.sleep(10)
-
-            if existing_head and existing_head["status"].lower() == "running":
-                print(f"   ✅ Head app running: {existing_head['id']}")
-                cluster_info = {
-                    "status":         "running",
-                    "head_app_id":    existing_head["id"],
-                    "head_address":   None,
-                    "head_url":       head_url_from_domain or "",
-                    "worker_app_ids": [],
-                    "num_workers":    0,
-                    "worker_groups":  _worker_groups_json,
-                }
-                with open(info_file, "w") as f:
-                    json.dump(cluster_info, f, indent=2)
-                print(f"   head_url: {cluster_info['head_url']}")
-            else:
-                # Genuinely no head node exists — create one.
-                print("\n🚀 Starting Ray head node...")
-                print(f"   Head script: {head_script_path}")
-                cluster_info = manager.start_cluster(
-                    worker_groups=worker_groups,
-                    head_app_name=head_app_name,
-                    head_cpu=ray_config['head_cpu'],
-                    head_memory=ray_config['head_memory'],
-                    ray_port=ray_config['ray_port'],
-                    dashboard_port=ray_config['dashboard_port'],
-                    head_runtime_identifier=head_runtime,
-                    worker_runtime_identifier=worker_runtime,
-                    head_script_path=head_script_path,
-                    wait_ready=True,
-                    timeout=600,
-                )
+        print("\n🚀 Starting Ray head node...")
+        print(f"   Head script: {head_script_path}")
+        cluster_info = manager.start_cluster(
+            worker_groups=worker_groups,
+            head_app_name=head_app_name,
+            head_cpu=ray_config['head_cpu'],
+            head_memory=ray_config['head_memory'],
+            ray_port=ray_config['ray_port'],
+            dashboard_port=ray_config['dashboard_port'],
+            head_runtime_identifier=head_runtime,
+            worker_runtime_identifier=worker_runtime,
+            head_script_path=head_script_path,
+            wait_ready=True,
+            timeout=600,
+        )
 
         # ── Step 2: wait for Management API ───────────────────────────────────
         print("\n⏳ Waiting for Management API to become healthy on head node...")
