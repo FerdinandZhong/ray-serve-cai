@@ -57,25 +57,26 @@ print(f"\nStarting worker info server on port {_app_port} (daemon thread) ...")
 print(f"  node_type   : {NODE_TYPE}")
 print(f"  head_address: {HEAD_ADDRESS}")
 
-# Set env vars before importing worker_app so its module-level constants
-# (read once at import time) pick up the correct values.
-os.environ["RAY_WORKER_NODE_TYPE"] = NODE_TYPE
-os.environ["RAY_HEAD_ADDRESS"]     = HEAD_ADDRESS
-os.environ["RAY_WORKER_CPUS"]      = str(os.environ.get("WORKER_CPUS", ""))
-os.environ["RAY_WORKER_MEMORY_GB"] = str(os.environ.get("WORKER_MEMORY_GB", ""))
-os.environ["RAY_WORKER_GPUS"]      = str(os.environ.get("WORKER_GPUS", "0"))
-
-sys.path.insert(0, "{{ project_dir }}")
-
-import uvicorn as _uvicorn                                           # noqa: E402
-from ray_serve_cai.worker_app import app as _app, LOG_CONFIG as _LC  # noqa: E402
+_server_env = {
+    **os.environ,
+    "PYTHONPATH":            "{{ project_dir }}",
+    "RAY_WORKER_NODE_TYPE":  NODE_TYPE,
+    "RAY_HEAD_ADDRESS":      HEAD_ADDRESS,
+    "RAY_WORKER_CPUS":       str(os.environ.get("WORKER_CPUS", "")),
+    "RAY_WORKER_MEMORY_GB":  str(os.environ.get("WORKER_MEMORY_GB", "")),
+    "RAY_WORKER_GPUS":       str(os.environ.get("WORKER_GPUS", "0")),
+    "CDSW_APP_PORT":         str(_app_port),
+}
 
 _server_thread = threading.Thread(
-    target=lambda: _uvicorn.run(_app, host="127.0.0.1", port=_app_port, log_config=_LC),
+    target=lambda: subprocess.run(
+        [str(VENV_PYTHON), "-m", "ray_serve_cai.worker_app"],
+        env=_server_env,
+    ),
     daemon=True,
 )
 _server_thread.start()
-print(f"Worker info server listening on 127.0.0.1:{_app_port}")
+print(f"Worker info server launched on 127.0.0.1:{_app_port}")
 
 # ── Join Ray cluster (with --block) ──────────────────────────────────────────
 # `ray start --block` stays alive for as long as the raylet runs, then exits.
