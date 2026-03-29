@@ -434,37 +434,32 @@ def main():
             with open(info_file, "w") as f:
                 json.dump(cluster_info, f, indent=2)
         else:
-            # No saved cluster info — check whether the head app already exists.
-            print(f"\n🔍 Checking CML for existing '{head_app_name}' application...")
-            apps = manager.list_applications()
-            print(f"   Found {len(apps)} application(s) in project:")
-            for a in apps:
-                print(f"     - {a['name']:40s}  id={a['id']}  status={a['status']}")
-            existing_head = next(
-                (a for a in apps if a["name"] == head_app_name), None
-            )
+            # No saved cluster info — check directly if the head URL responds.
+            # We know the URL deterministically from app name + CDSW_DOMAIN,
+            # so no CML API lookup is needed.  If the URL is healthy → reuse.
+            # If not → start fresh (broken, never started, or wrong domain).
+            import urllib.request as _urlreq0
+            head_url = head_url_from_domain or ""
+            head_running = False
+            if head_url:
+                print(f"\n🔍 Checking head node at {head_url}/health ...")
+                try:
+                    with _urlreq0.urlopen(f"{head_url}/health", timeout=10) as r:
+                        head_running = r.status == 200
+                except Exception as _e:
+                    print(f"   Not reachable: {_e}")
+            else:
+                print("\n⚠️  CDSW_DOMAIN not set — cannot derive head URL, will start fresh.")
 
-            if existing_head:
-                # App exists — wait for running; never create a duplicate.
-                print(f"   Found head app: {existing_head['id']}  (status: {existing_head['status']})")
-                if existing_head["status"].lower() != "running":
-                    print(f"   Waiting for head to reach 'running' state (up to 600 s)...")
-                    if not manager._wait_for_application(existing_head["id"], timeout=600):
-                        print("❌ Head node application failed to reach 'running' state.")
-                        return 1
-                # Use the URL derived from CDSW_DOMAIN; fall back to CML API metadata.
-                if head_url_from_domain:
-                    head_url = head_url_from_domain
-                else:
-                    full = manager.get_application(existing_head["id"])
-                    head_url = full["metadata"].get("url") or full.get("subdomain", "")
-                    if head_url and not head_url.startswith("http"):
-                        head_url = f"https://{head_url}"
-                    head_url = head_url.rstrip("/") if head_url else ""
+            if head_running:
+                print("   ✅ Head node is running — reusing existing cluster.")
+                # Fetch app ID for tracking (best-effort; None is acceptable)
+                apps = manager.list_applications()
+                existing = next((a for a in apps if a["name"] == head_app_name), None)
                 cluster_info = {
                     "status":         "running",
-                    "head_app_id":    existing_head["id"],
-                    "head_address":   None,  # resolved after Management API is ready
+                    "head_app_id":    existing["id"] if existing else None,
+                    "head_address":   None,
                     "head_url":       head_url,
                     "worker_app_ids": [],
                     "num_workers":    0,
