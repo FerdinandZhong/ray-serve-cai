@@ -245,6 +245,14 @@ def verify_nginx(app_port: int, retries: int = 5, delay: float = 1.0) -> bool:
 # ---------------------------------------------------------------------------
 
 def main() -> int:
+    import argparse
+    parser = argparse.ArgumentParser(add_help=False)
+    parser.add_argument(
+        "--foreground", action="store_true",
+        help="Exec into nginx with 'daemon off;' so this process blocks until nginx exits.",
+    )
+    args, _ = parser.parse_known_args()
+
     print("=" * 70)
     print("Starting Nginx Reverse Proxy")
     print("=" * 70)
@@ -276,10 +284,20 @@ def main() -> int:
     print("\nRendering templates...")
     render_templates(runtime_dir, context)
 
-    # 5. Stop any existing nginx, then start fresh
+    # 5. Stop any existing nginx
     conf_path = runtime_dir / "nginx.conf"
     stop_nginx(nginx_bin)
 
+    if args.foreground:
+        # Replace this Python process with nginx running in the foreground.
+        # The caller blocks until nginx exits — no while-loop needed.
+        print(f"\nStarting nginx in foreground mode (process will block)...")
+        print(f"  config : {conf_path}")
+        print("=" * 70)
+        os.execv(nginx_bin, [nginx_bin, "-c", str(conf_path), "-g", "daemon off;"])
+        # os.execv() never returns
+
+    # Daemon mode (default) — start nginx, verify, then return.
     print(f"\nStarting nginx with config: {conf_path}")
     try:
         start_nginx(nginx_bin, conf_path)
@@ -287,7 +305,6 @@ def main() -> int:
         print(f"ERROR: {exc}")
         return 1
 
-    # 6. Verify
     if verify_nginx(context["app_port"]):
         print(f"\nnginx is listening on port {context['app_port']}")
     else:

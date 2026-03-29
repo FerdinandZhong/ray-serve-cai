@@ -38,12 +38,16 @@ async def lifespan(app: FastAPI):
     ray_service = RayService(ray_address=ray_address)
 
     # Initialize CAI service
-    project_id = os.environ.get("CML_PROJECT_ID")
+    # CDSW_DOMAIN is the standard CML pod env var; CML_HOST overrides it when set.
+    _domain = os.environ.get("CDSW_DOMAIN", "").strip()
+    cml_host = os.environ.get("CML_HOST") or (f"https://{_domain}" if _domain else None)
+
+    project_id = os.environ.get("CML_PROJECT_ID") or os.environ.get("CDSW_PROJECT_ID")
     if not project_id:
-        logger.warning("CML_PROJECT_ID not set. CML operations may fail.")
+        logger.warning("CML_PROJECT_ID / CDSW_PROJECT_ID not set. CML operations may fail.")
 
     try:
-        cai_service = CAIService(project_id=project_id)
+        cai_service = CAIService(project_id=project_id, cml_host=cml_host)
     except Exception as e:
         logger.error(f"Failed to initialize CAI service: {e}")
         cai_service = None

@@ -411,21 +411,49 @@ def main():
             with open(info_file, "w") as f:
                 json.dump(cluster_info, f, indent=2)
         else:
-            # No saved cluster info — create the head node for the first time.
-            print("\n🚀 Starting Ray head node...")
-            print(f"   Head script: {head_script_path}")
-            cluster_info = manager.start_cluster(
-                worker_groups=worker_groups,
-                head_cpu=ray_config['head_cpu'],
-                head_memory=ray_config['head_memory'],
-                ray_port=ray_config['ray_port'],
-                dashboard_port=ray_config['dashboard_port'],
-                head_runtime_identifier=head_runtime,
-                worker_runtime_identifier=worker_runtime,
-                head_script_path=head_script_path,
-                wait_ready=True,
-                timeout=600,
+            # No saved cluster info — check whether "ray-cluster-head" already
+            # exists in CML before attempting to create a new one.
+            print("\n🔍 Checking CML for existing 'ray-cluster-head' application...")
+            apps = manager.list_applications()
+            existing_head = next(
+                (a for a in apps if a["name"] == "ray-cluster-head"), None
             )
+
+            if existing_head and existing_head["status"].lower() == "running":
+                print(f"   Found running head app: {existing_head['id']}")
+                full = manager.get_application(existing_head["id"])
+                head_url = full["metadata"].get("url") or full.get("subdomain", "")
+                if head_url and not head_url.startswith("http"):
+                    head_url = f"https://{head_url}"
+                head_url = head_url.rstrip("/") if head_url else ""
+                cluster_info = {
+                    "status":         "running",
+                    "head_app_id":    existing_head["id"],
+                    "head_address":   None,  # resolved after Management API is ready
+                    "head_url":       head_url,
+                    "worker_app_ids": [],
+                    "num_workers":    0,
+                    "worker_groups":  _worker_groups_json,
+                }
+                with open(info_file, "w") as f:
+                    json.dump(cluster_info, f, indent=2)
+                print(f"   head_url: {head_url}")
+            else:
+                # Genuinely no head node — create one.
+                print("\n🚀 Starting Ray head node...")
+                print(f"   Head script: {head_script_path}")
+                cluster_info = manager.start_cluster(
+                    worker_groups=worker_groups,
+                    head_cpu=ray_config['head_cpu'],
+                    head_memory=ray_config['head_memory'],
+                    ray_port=ray_config['ray_port'],
+                    dashboard_port=ray_config['dashboard_port'],
+                    head_runtime_identifier=head_runtime,
+                    worker_runtime_identifier=worker_runtime,
+                    head_script_path=head_script_path,
+                    wait_ready=True,
+                    timeout=600,
+                )
 
         # ── Step 2: wait for Management API ───────────────────────────────────
         print("\n⏳ Waiting for Management API to become healthy on head node...")

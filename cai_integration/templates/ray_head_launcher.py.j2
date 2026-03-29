@@ -148,23 +148,13 @@ if result.returncode != 0:
 print("  Management API live at http://127.0.0.1:5000/api/*")
 
 
-# ── [4/4] Start nginx ─────────────────────────────────────────────────────────
-print("\n[4/4] Starting nginx reverse proxy...")
+# ── [4/4] Start nginx (foreground — keeps this application alive) ─────────────
+print("\n[4/4] Starting nginx reverse proxy (foreground)...")
 nginx_script = PROJECT_DIR / "ray_serve_cai" / "scripts" / "start_nginx.py"
 if not nginx_script.exists():
     print(f"ERROR: nginx startup script not found: {nginx_script}")
     sys.exit(1)
 
-result = subprocess.run(
-    [str(VENV_PYTHON), str(nginx_script)],
-    env={**os.environ, "PYTHONPATH": str(PROJECT_DIR)},
-)
-if result.returncode != 0:
-    print(f"ERROR: nginx failed to start (exit {result.returncode})")
-    sys.exit(result.returncode)
-
-
-# ── All services running — keep the process alive ────────────────────────────
 app_port = int(os.environ.get("CDSW_APP_PORT", 8080))
 print("\n" + "=" * 70)
 print("Ray Head Node — all services running")
@@ -173,10 +163,13 @@ print(f"  External  : :{app_port}  (nginx, public)")
 print(f"  API       : http://127.0.0.1:5000/api/*  (Ray Serve, internal)")
 print(f"  Dashboard : http://127.0.0.1:{{ dashboard_port }}/  (internal)")
 print(f"  GCS       : 127.0.0.1:{{ ray_port }}  (internal)")
-print("\nProcess staying alive — stop the CAI application to shut down.")
+print("\nHanding off to nginx — application stays alive as long as nginx runs.")
+print("=" * 70)
 
-try:
-    while True:
-        time.sleep(60)
-except KeyboardInterrupt:
-    print("\nShutting down...")
+# exec into nginx via start_nginx.py --foreground; this call blocks until nginx exits.
+result = subprocess.run(
+    [str(VENV_PYTHON), str(nginx_script), "--foreground"],
+    env={**os.environ, "PYTHONPATH": str(PROJECT_DIR)},
+)
+# If we reach here nginx has exited — propagate its exit code.
+sys.exit(result.returncode)
