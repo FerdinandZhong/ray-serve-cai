@@ -21,11 +21,21 @@ Usage:
 """
 
 import json
+import logging
 import os
 import sys
 import time
 import yaml
 from pathlib import Path
+
+# Configure logging before anything else so that logger calls from cai_cluster
+# and other modules are visible.  Write to stdout (same stream as print) so
+# log lines and print lines appear in the correct order in the job log.
+logging.basicConfig(
+    level=logging.INFO,
+    format="%(levelname)s %(name)s -- %(message)s",
+    stream=sys.stdout,
+)
 
 # ---------------------------------------------------------------------------
 # Re-exec with venv Python if we're not already inside it.
@@ -162,6 +172,7 @@ def load_config():
         'management_api_cpu':    None,
         'management_api_memory': None,
         'worker_groups':         None,
+        'head_app_name':         'ray-cluster-head',
         # Ray Serve proxy tuning — None means "use Ray's built-in default"
         'proxy_health_check_period_s':  None,
         'proxy_health_check_timeout_s': None,
@@ -181,6 +192,9 @@ def load_config():
                         'proxy_ready_check_timeout_s', 'proxy_min_draining_period_s'):
                 if key in ray_serve_section:
                     config[key] = float(ray_serve_section[key])
+            cai_section = file_config.get('cai', {}) or {}
+            if 'head_app_name' in cai_section:
+                config['head_app_name'] = cai_section['head_app_name']
             print(f"Loaded configuration from {config_path}")
         except Exception as e:
             print(f"Warning: could not load config file: {e}")
@@ -306,6 +320,15 @@ def main():
     # Load Ray cluster configuration
     ray_config = load_config()
 
+    head_app_name = ray_config['head_app_name']
+    # Derive head URL from app name + CDSW_DOMAIN — deterministic, no CML API call needed.
+    cdsw_domain = os.environ.get("CDSW_DOMAIN", "").strip()
+    head_url_from_domain = (
+        f"https://{head_app_name}.{cdsw_domain}" if cdsw_domain else None
+    )
+    print(f"   Head App Name : {head_app_name}")
+    print(f"   Head URL      : {head_url_from_domain or '(CDSW_DOMAIN not set)'}")
+
     # Compute management API resources — default to half of head node resources.
     # Head node is CPU-only; management API inherits that constraint.
     head_cpu    = ray_config['head_cpu']
@@ -411,28 +434,33 @@ def main():
             with open(info_file, "w") as f:
                 json.dump(cluster_info, f, indent=2)
         else:
-            # No saved cluster info — check whether "ray-cluster-head" already
-            # exists in CML before attempting to create a new one.
-            print("\n🔍 Checking CML for existing 'ray-cluster-head' application...")
+            # No saved cluster info — check whether the head app already exists.
+            print(f"\n🔍 Checking CML for existing '{head_app_name}' application...")
             apps = manager.list_applications()
+            print(f"   Found {len(apps)} application(s) in project:")
+            for a in apps:
+                print(f"     - {a['name']:40s}  id={a['id']}  status={a['status']}")
             existing_head = next(
-                (a for a in apps if a["name"] == "ray-cluster-head"), None
+                (a for a in apps if a["name"] == head_app_name), None
             )
 
             if existing_head:
-                # App exists in CML — wait for it to become running.
-                # Never create a duplicate, even if it is still "starting".
+                # App exists — wait for running; never create a duplicate.
                 print(f"   Found head app: {existing_head['id']}  (status: {existing_head['status']})")
                 if existing_head["status"].lower() != "running":
                     print(f"   Waiting for head to reach 'running' state (up to 600 s)...")
                     if not manager._wait_for_application(existing_head["id"], timeout=600):
                         print("❌ Head node application failed to reach 'running' state.")
                         return 1
-                full = manager.get_application(existing_head["id"])
-                head_url = full["metadata"].get("url") or full.get("subdomain", "")
-                if head_url and not head_url.startswith("http"):
-                    head_url = f"https://{head_url}"
-                head_url = head_url.rstrip("/") if head_url else ""
+                # Use the URL derived from CDSW_DOMAIN; fall back to CML API metadata.
+                if head_url_from_domain:
+                    head_url = head_url_from_domain
+                else:
+                    full = manager.get_application(existing_head["id"])
+                    head_url = full["metadata"].get("url") or full.get("subdomain", "")
+                    if head_url and not head_url.startswith("http"):
+                        head_url = f"https://{head_url}"
+                    head_url = head_url.rstrip("/") if head_url else ""
                 cluster_info = {
                     "status":         "running",
                     "head_app_id":    existing_head["id"],
@@ -451,6 +479,7 @@ def main():
                 print(f"   Head script: {head_script_path}")
                 cluster_info = manager.start_cluster(
                     worker_groups=worker_groups,
+                    head_app_name=head_app_name,
                     head_cpu=ray_config['head_cpu'],
                     head_memory=ray_config['head_memory'],
                     ray_port=ray_config['ray_port'],

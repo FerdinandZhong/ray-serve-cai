@@ -51,3 +51,7 @@ htmlcov/
 *.local.yaml
 *.local.yml
 .env
+
+# Discussion / session notes
+file.txt
+

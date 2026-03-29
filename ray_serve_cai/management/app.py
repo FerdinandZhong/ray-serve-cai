@@ -46,19 +46,27 @@ async def lifespan(app: FastAPI):
     if not project_id:
         logger.warning("CML_PROJECT_ID / CDSW_PROJECT_ID not set. CML operations may fail.")
 
+    logger.info(f"  cml_host   : {cml_host or '(not set)'}")
+    logger.info(f"  project_id : {project_id or '(not set)'}")
+
     try:
         cai_service = CAIService(project_id=project_id, cml_host=cml_host)
+        logger.info("CAI service initialized")
     except Exception as e:
-        logger.error(f"Failed to initialize CAI service: {e}")
+        logger.error(f"CAI service failed to initialize: {e}")
         cai_service = None
 
     # Initialize coordinator service
     if cai_service:
         coordinator_service = CoordinatorService(ray_service, cai_service)
+        logger.info("Coordinator service initialized")
     else:
-        logger.warning("Coordinator service not initialized due to missing CAI service")
+        logger.error(
+            "Coordinator service NOT initialized — all /resources and /applications "
+            "endpoints will return 500. Check CML_HOST/CDSW_DOMAIN and CML_API_KEY/CDSW_APIV2_KEY."
+        )
 
-    logger.info("Management API services initialized successfully")
+    logger.info("Management API lifespan startup complete")
 
     yield
 

@@ -48,6 +48,11 @@ cai:
 
   project_name: "ray-cluster"
 
+  # ── Head node CML application ──────────────────────────────────────────────
+  # Name of the head node CML application.  Also used as the app subdomain.
+  # The head URL is derived as https://<head_app_name>.<CDSW_DOMAIN>.
+  head_app_name: "ray-cluster-head"
+
 # ── Ray Serve proxy tuning ────────────────────────────────────────────────────
 # These become RAY_SERVE_PROXY_* environment variables read by Ray Serve.
 # Omit a key to keep Ray's built-in default.

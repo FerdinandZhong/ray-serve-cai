@@ -168,7 +168,7 @@ class CMLAPIClient:
 
     def list_applications(self, project_id: str) -> List[ApplicationInfo]:
         """
-        List all applications in a project.
+        List all applications in a project, following pagination tokens.
 
         Args:
             project_id: Project ID
@@ -176,27 +176,39 @@ class CMLAPIClient:
         Returns:
             List of ApplicationInfo
         """
-        url = f"{self.base_url}/projects/{project_id}/applications"
+        base_url = f"{self.base_url}/projects/{project_id}/applications"
+        all_apps: List[ApplicationInfo] = []
+        page_token: str = ""
 
-        if self.verbose:
-            logger.debug(f"Listing applications: GET {url}")
+        while True:
+            params = {"page_size": 100}
+            if page_token:
+                params["page_token"] = page_token
 
-        response = self.session.get(url)
-        response.raise_for_status()
+            if self.verbose:
+                logger.debug(f"Listing applications: GET {base_url} params={params}")
 
-        data = response.json()
-        # CML API v2 returns {"applications": [...], "next_page_token": "..."}
-        items = data.get('applications', data) if isinstance(data, dict) else data
-        return [
-            ApplicationInfo(
-                id=a.get('id'),
-                name=a.get('name'),
-                status=a.get('status', 'unknown'),
-                subdomain=a.get('subdomain'),
-                metadata=a,
-            )
-            for a in items
-        ]
+            response = self.session.get(base_url, params=params)
+            response.raise_for_status()
+
+            data = response.json()
+            items = data.get("applications", []) if isinstance(data, dict) else data
+            all_apps.extend([
+                ApplicationInfo(
+                    id=a.get("id"),
+                    name=a.get("name"),
+                    status=a.get("status", "unknown"),
+                    subdomain=a.get("subdomain"),
+                    metadata=a,
+                )
+                for a in items
+            ])
+
+            page_token = data.get("next_page_token", "") if isinstance(data, dict) else ""
+            if not page_token:
+                break
+
+        return all_apps
 
     def get_application(self, project_id: str, app_id: str) -> ApplicationInfo:
         """
@@ -319,6 +331,7 @@ class CAIClusterManager:
     def start_cluster(
         self,
         worker_groups: List[WorkerGroupConfig],
+        head_app_name: str = "ray-cluster-head",
         head_cpu: int = 8,
         head_memory: int = 32,
         ray_port: int = 6379,
@@ -395,12 +408,12 @@ class CAIClusterManager:
             logger.info("🎯 Creating head node application...")
             head_app = self.cml_client.create_application(
                 project_id=self.project_id,
-                name="ray-cluster-head",
+                name=head_app_name,
                 script=head_script_path,
                 cpu=head_cpu,
                 memory=head_memory,
                 runtime_identifier=head_runtime_identifier,
-                subdomain="ray-cluster-head",
+                subdomain=head_app_name,
                 bypass_authentication=True,
             )
             self.head_app_id = head_app.id
