@@ -117,6 +117,24 @@ class ProjectSetup:
 
         return None
 
+    def configure_project_resources(self, project_id: str) -> bool:
+        """Patch project-level resource defaults (shared memory, ephemeral storage)."""
+        print(f"⚙️  Configuring project resource defaults...")
+        result = self.make_request(
+            "PATCH",
+            f"projects/{project_id}",
+            data={
+                "shared_memory_limit":        10000,
+                "ephemeral_storage_request_mb": 0,
+                "ephemeral_storage_limit_mb":   307200,
+            },
+        )
+        if result is not None:
+            print("✅ Project resource defaults configured")
+            return True
+        print("⚠️  Could not configure project resource defaults (non-fatal)")
+        return False
+
     def get_or_create_project(self) -> Optional[str]:
         """Get existing project or create new one with git."""
         print("\n" + "=" * 70)
@@ -193,6 +211,8 @@ class ProjectSetup:
         if not project_id:
             print("❌ Failed to get/create project")
             return False
+
+        self.configure_project_resources(project_id)
 
         # Only wait for git clone if we created a new project with git
         if self.github_repo:

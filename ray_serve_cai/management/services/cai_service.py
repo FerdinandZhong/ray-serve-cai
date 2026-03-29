@@ -76,9 +76,6 @@ class CAIService:
                     gpus=g.get("gpus", 0),
                     script_path=g.get("script_path"),
                     runtime_identifier=g.get("runtime_identifier"),
-                    shared_memory_limit_mb=g.get("shared_memory_limit_mb", 0),
-                    ephemeral_storage_request_mb=g.get("ephemeral_storage_request_mb", 0),
-                    ephemeral_storage_limit_mb=g.get("ephemeral_storage_limit_mb", 0),
                 )
         available = [g["node_type"] for g in cluster_info.get("worker_groups", [])]
         raise RuntimeError(
