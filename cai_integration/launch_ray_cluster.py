@@ -128,10 +128,12 @@ def create_ray_launcher_scripts(
     worker_template = env.get_template("ray_worker_launcher.py.j2")
     for group in worker_groups:
         worker_context = {
-            "venv_python":  str(venv_python),
-            "head_address": head_address,   # None → reads RAY_HEAD_ADDRESS at runtime
-            "ray_port":     ray_port,
-            "node_type":    group.node_type,
+            "venv_python":      str(venv_python),
+            "project_dir":      str(project_dir),
+            "head_address":     head_address,   # None → reads RAY_HEAD_ADDRESS at runtime
+            "ray_port":         ray_port,
+            "node_type":        group.node_type,
+            "worker_memory_gb": group.memory,
         }
         # Sanitise group name for use as a filename component.
         safe_name = group.name.replace("-", "_").replace(" ", "_")

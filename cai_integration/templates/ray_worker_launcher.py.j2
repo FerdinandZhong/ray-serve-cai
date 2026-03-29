@@ -88,14 +88,33 @@ print(f"Worker info server launched on 127.0.0.1:{_app_port}")
 print("\nWaiting 30 s for head node to be ready...")
 time.sleep(30)
 
+# ── Heartbeat tuning ─────────────────────────────────────────────────────────
+# Increase GCS health-check tolerances so a slow or briefly congested network
+# does not immediately trigger "missing too many heartbeats" and kill the node.
+#   period_ms       : how often the raylet sends a heartbeat          (default 1 000)
+#   timeout_ms      : per-check network timeout                       (default 10 000)
+#   failure_threshold: consecutive failures before the node is DEAD   (default 3)
+# With these values the node survives up to 10 × 5 s = 50 s of missed beats.
+os.environ["RAY_health_check_period_ms"]        = "5000"
+os.environ["RAY_health_check_timeout_ms"]       = "30000"
+os.environ["RAY_health_check_failure_threshold"] = "10"
+
+# ── Object-store memory cap ───────────────────────────────────────────────────
+# Ray defaults to 30 % of system memory for the object store.  On a
+# {{ worker_memory_gb }} GB worker that would be ~{{ (worker_memory_gb * 0.3) | int }} GB,
+# which combined with the launcher process and uvicorn can exceed the container
+# limit and trigger an OOM kill before any model is even loaded.
+# Cap it at 20 % of the configured worker memory.
+_object_store_bytes = int({{ worker_memory_gb }} * 0.20 * 1024 ** 3)
+
 cmd = [
     str(RAY_BIN),
     "start",
-    "--address",   HEAD_ADDRESS,
-    "--resources", node_resources,
+    "--address",              HEAD_ADDRESS,
+    "--resources",            node_resources,
+    "--object-store-memory",  str(_object_store_bytes),
     "--block",
 ]
-print("Command:", " ".join(cmd))
 
 # Clean up any stale Ray session so we start fresh.
 subprocess.run([str(RAY_BIN), "stop", "--force"], capture_output=True)
