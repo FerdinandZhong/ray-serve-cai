@@ -436,13 +436,8 @@ class CAIClusterManager:
                     if not head_url.startswith('http'):
                         head_url = f"https://{head_url}"
                     self.head_url = head_url.rstrip('/')
-                    logger.info(f"✅ Head node ready. Public URL: {self.head_url}")
-
-                # Query the Management API for the real GCS address (pod IP + port).
-                # The public domain only exposes port 443; workers need direct
-                # TCP access to the GCS port on the pod's internal IP.
-                self.head_address = self._get_gcs_address(ray_port)
-                logger.info(f"   GCS address (internal): {self.head_address}")
+                    logger.info(f"✅ Head node CML app running. Public URL: {self.head_url}")
+                logger.info("   GCS address will be resolved once the Management API is ready.")
 
             # Workers are launched by the caller via Management API
             # (POST /api/v1/resources/nodes/add) once the head is healthy.
@@ -561,9 +556,9 @@ class CAIClusterManager:
 
                 status = app.status.lower()
 
-                if status == "running":
+                if "running" in status:
                     return True
-                elif status in ["failed", "stopped", "error"]:
+                elif any(s in status for s in ["failed", "stopped", "error"]):
                     logger.error(f"Application {app_id} failed with status: {status}")
                     return False
 
@@ -667,7 +662,7 @@ class CAIClusterManager:
                     })
 
             return {
-                'running': head_app.status.lower() == 'running',
+                'running': 'running' in head_app.status.lower(),
                 'head': {
                     'id': self.head_app_id,
                     'status': head_app.status,
