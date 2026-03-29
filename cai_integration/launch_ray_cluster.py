@@ -419,8 +419,15 @@ def main():
                 (a for a in apps if a["name"] == "ray-cluster-head"), None
             )
 
-            if existing_head and existing_head["status"].lower() == "running":
-                print(f"   Found running head app: {existing_head['id']}")
+            if existing_head:
+                # App exists in CML — wait for it to become running.
+                # Never create a duplicate, even if it is still "starting".
+                print(f"   Found head app: {existing_head['id']}  (status: {existing_head['status']})")
+                if existing_head["status"].lower() != "running":
+                    print(f"   Waiting for head to reach 'running' state (up to 600 s)...")
+                    if not manager._wait_for_application(existing_head["id"], timeout=600):
+                        print("❌ Head node application failed to reach 'running' state.")
+                        return 1
                 full = manager.get_application(existing_head["id"])
                 head_url = full["metadata"].get("url") or full.get("subdomain", "")
                 if head_url and not head_url.startswith("http"):
@@ -439,7 +446,7 @@ def main():
                     json.dump(cluster_info, f, indent=2)
                 print(f"   head_url: {head_url}")
             else:
-                # Genuinely no head node — create one.
+                # Genuinely no head node exists — create one.
                 print("\n🚀 Starting Ray head node...")
                 print(f"   Head script: {head_script_path}")
                 cluster_info = manager.start_cluster(
