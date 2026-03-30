@@ -17,6 +17,7 @@ References:
 """
 
 import asyncio
+import inspect
 import logging
 from typing import Any, Dict, List, Optional
 
@@ -73,8 +74,46 @@ def _accepted_kwargs(cls, kwargs: dict) -> dict:
 
 def _requires_param(cls, param: str) -> bool:
     """Return True if cls.__init__ declares *param* (any default)."""
-    import inspect
     return param in inspect.signature(cls.__init__).parameters
+
+
+def _normalize_vllm_stream_result(result: Any, *, op_name: str) -> Response:
+    """
+    vLLM versions differ: older builds wrap SSE in Starlette StreamingResponse;
+    newer vLLM (OpenAIServing*) returns AsyncGenerator[str, None] directly.
+    FastAPI must always see a Response — never a bare async generator.
+    """
+    disconnect_log = f"{op_name} cancelled (client disconnect)"
+    err_prefix = f"Exception during {op_name}"
+
+    if isinstance(result, StreamingResponse):
+        body_iter = result.body_iterator
+        stream_kw: Dict[str, Any] = {
+            "status_code": result.status_code,
+            "media_type": result.media_type,
+            "headers": result.headers,
+        }
+    elif inspect.isasyncgen(result):
+        body_iter = result
+        stream_kw = {
+            "status_code": 200,
+            "media_type": "text/event-stream",
+        }
+    else:
+        return result
+
+    async def _logged_stream():
+        try:
+            async for chunk in body_iter:
+                yield chunk
+        except asyncio.CancelledError:
+            logger.debug("%s", disconnect_log)
+            raise
+        except Exception as exc:
+            logger.error("%s: %s", err_prefix, exc, exc_info=True)
+            raise
+
+    return StreamingResponse(content=_logged_stream(), **stream_kw)
 
 
 def _build_serving_render(engine_args: AsyncEngineArgs, model_name: str,
@@ -320,14 +359,12 @@ class VLLMEngine:
     # Endpoints
     #
     # Each endpoint dispatches to a streaming or non-streaming helper
-    # based on the request payload.  This avoids returning vLLM's
-    # StreamingResponse directly from the FastAPI handler — Ray Serve's
-    # make_fastapi_class_based_view + include_router loses the
-    # response_model=None setting, causing FastAPI to json-encode the
-    # async-generator body_iterator instead of passing it through.
+    # based on the request payload.  Newer vLLM returns a bare
+    # AsyncGenerator[str] for SSE; older vLLM used StreamingResponse.
+    # We always normalize to a fresh StreamingResponse so FastAPI / Ray
+    # Serve never try to json-encode an async generator.
     #
-    # Streaming path:  build a fresh StreamingResponse ourselves.
-    # Non-streaming:   return the JSONResponse from vLLM as-is.
+    # Non-streaming: return vLLM's JSON / Pydantic payload as-is.
     # ------------------------------------------------------------------
 
     @_vllm_app.post("/v1/chat/completions", tags=["Chat"],
@@ -354,7 +391,7 @@ class VLLMEngine:
 
     async def _stream_chat_completion(
         self, body: ChatCompletionRequest, request: Request
-    ) -> StreamingResponse:
+    ) -> Response:
         try:
             result = await self.openai_serving_chat.create_chat_completion(
                 body, raw_request=request
@@ -364,29 +401,8 @@ class VLLMEngine:
             import traceback; logger.error(traceback.format_exc())
             return JSONResponse({"error": str(exc)}, status_code=500)
 
-        # vLLM returns a StreamingResponse; extract its iterator and build
-        # a fresh one so FastAPI never sees a mutated response object.
-        if not isinstance(result, StreamingResponse):
-            return result  # unexpected non-streaming fallback
-
-        original_iter = result.body_iterator
-
-        async def _logged_stream():
-            try:
-                async for chunk in original_iter:
-                    yield chunk
-            except asyncio.CancelledError:
-                logger.debug("Streaming chat completion cancelled (client disconnect)")
-                raise
-            except Exception as exc:
-                logger.error("Exception during streaming chat completion: %s",
-                             exc, exc_info=True)
-                raise
-
-        return StreamingResponse(
-            content=_logged_stream(),
-            status_code=result.status_code,
-            media_type=result.media_type,
+        return _normalize_vllm_stream_result(
+            result, op_name="streaming chat completion"
         )
 
     @_vllm_app.post("/v1/completions", tags=["Completions"],
@@ -413,7 +429,7 @@ class VLLMEngine:
 
     async def _stream_completion(
         self, body: CompletionRequest, request: Request
-    ) -> StreamingResponse:
+    ) -> Response:
         try:
             result = await self.openai_serving_completion.create_completion(
                 body, raw_request=request
@@ -423,27 +439,8 @@ class VLLMEngine:
             import traceback; logger.error(traceback.format_exc())
             return JSONResponse({"error": str(exc)}, status_code=500)
 
-        if not isinstance(result, StreamingResponse):
-            return result
-
-        original_iter = result.body_iterator
-
-        async def _logged_stream():
-            try:
-                async for chunk in original_iter:
-                    yield chunk
-            except asyncio.CancelledError:
-                logger.debug("Streaming completion cancelled (client disconnect)")
-                raise
-            except Exception as exc:
-                logger.error("Exception during streaming completion: %s",
-                             exc, exc_info=True)
-                raise
-
-        return StreamingResponse(
-            content=_logged_stream(),
-            status_code=result.status_code,
-            media_type=result.media_type,
+        return _normalize_vllm_stream_result(
+            result, op_name="streaming completion"
         )
 
     @_vllm_app.get("/v1/models", tags=["Models"],
