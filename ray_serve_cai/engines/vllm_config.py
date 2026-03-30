@@ -267,41 +267,10 @@ class VLLMDeploymentFactory:
 
         logger.info(f"Creating vLLM deployment with tensor_parallel_size={tensor_parallel_size}")
 
-        # Calculate resource requirements
-        if use_cpu:
-            # CPU mode - no GPU needed
-            ray_actor_options = {
-                "num_cpus": 4,  # Adjust based on needs
-                "num_gpus": 0,
-            }
-        elif tensor_parallel_size > 1:
-            # Multi-GPU with tensor parallelism
-            # Use placement group for proper GPU allocation
-            # Each bundle gets exactly 1 GPU (Ray constraint)
-            placement_group_bundles = [
-                {"GPU": 1, "CPU": 1} for _ in range(tensor_parallel_size)
-            ]
-
-            ray_actor_options = {
-                "num_cpus": tensor_parallel_size,
-                "num_gpus": tensor_parallel_size,
-                "placement_group_bundles": placement_group_bundles,
-                "placement_group_strategy": "PACK",  # Pack on same node if possible
-            }
-
-            logger.info(f"Using placement group with {tensor_parallel_size} bundles (1 GPU each)")
-        else:
-            # Single GPU
-            ray_actor_options = {
-                "num_cpus": 2,
-                "num_gpus": 1,
-            }
-
-        # Create deployment with configured options
-        deployment = VLLMEngine.options(
+        from .vllm_engine import create_vllm_deployment
+        return create_vllm_deployment(
+            engine_config=engine_config,
             num_replicas=num_replicas,
-            ray_actor_options=ray_actor_options,
+            tensor_parallel_size=tensor_parallel_size,
+            use_cpu=use_cpu,
         )
-
-        # Bind engine config
-        return deployment.bind(engine_config)
