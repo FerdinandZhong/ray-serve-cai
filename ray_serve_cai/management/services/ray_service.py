@@ -130,6 +130,8 @@ class RayService:
         use_cpu: bool = False,
         gpu_fraction: Optional[float] = None,
         engine_config: Optional[Dict[str, Any]] = None,
+        placement_group_bundles: Optional[List[Dict[str, float]]] = None,
+        placement_group_strategy: Optional[str] = None,
     ) -> Dict[str, Any]:
         """
         Deploy a vLLM or SGLang model as a Ray Serve application.
@@ -182,6 +184,8 @@ class RayService:
             tensor_parallel_size=tensor_parallel_size,
             use_cpu=use_cpu,
             gpu_fraction=gpu_fraction,
+            placement_group_bundles=placement_group_bundles,
+            placement_group_strategy=placement_group_strategy,
         )
 
         # serve.run() blocks until the deployment is healthy, which can take

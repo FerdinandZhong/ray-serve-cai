@@ -1,7 +1,7 @@
 """Request models for management API."""
 
-from typing import Optional, Dict, Any
-from pydantic import BaseModel, Field
+from typing import Optional, Dict, Any, List
+from pydantic import BaseModel, Field, field_validator
 
 
 class AddNodeRequest(BaseModel):
@@ -130,6 +130,38 @@ class DeployModelRequest(BaseModel):
             "trust_remote_code, enable_prefix_caching, download_dir."
         ),
     )
+    placement_group_bundles: Optional[List[Dict[str, float]]] = Field(
+        default=None,
+        description=(
+            "Placement group bundles — one dict per bundle specifying resource "
+            "requirements (e.g. [{\"GPU\": 1, \"CPU\": 1}, {\"GPU\": 1, \"CPU\": 1}]). "
+            "Ray Serve creates one placement group per replica using these bundles. "
+            "When omitted, sensible defaults are auto-generated: STRICT_PACK bundles "
+            "for tensor_parallel_size > 1, PACK bundles for fractional GPU replicas."
+        ),
+    )
+    placement_group_strategy: Optional[str] = Field(
+        default=None,
+        description=(
+            "Placement group scheduling strategy. "
+            "PACK: bin-pack bundles onto as few nodes as possible (default). "
+            "STRICT_PACK: all bundles must fit on a single node — required for "
+            "tensor parallelism across GPUs on the same machine. "
+            "SPREAD: spread bundles across as many nodes as possible. "
+            "STRICT_SPREAD: each bundle on a strictly different node — use for "
+            "cross-node tensor parallelism."
+        ),
+    )
+
+    @field_validator("placement_group_strategy")
+    @classmethod
+    def validate_strategy(cls, v: Optional[str]) -> Optional[str]:
+        valid = {"PACK", "STRICT_PACK", "SPREAD", "STRICT_SPREAD"}
+        if v is not None and v not in valid:
+            raise ValueError(
+                f"placement_group_strategy must be one of {sorted(valid)}, got '{v}'"
+            )
+        return v
 
     class Config:
         json_schema_extra = {

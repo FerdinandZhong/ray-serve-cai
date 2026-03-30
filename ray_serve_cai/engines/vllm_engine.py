@@ -18,7 +18,7 @@ References:
 
 import asyncio
 import logging
-from typing import Any, Dict, Optional
+from typing import Any, Dict, List, Optional
 
 from fastapi import FastAPI
 from fastapi.responses import JSONResponse, Response
@@ -412,6 +412,8 @@ def create_vllm_deployment(
     use_cpu: bool = False,
     max_ongoing_requests: int = 100,
     gpu_fraction: Optional[float] = None,
+    placement_group_bundles: Optional[List[Dict[str, float]]] = None,
+    placement_group_strategy: Optional[str] = None,
 ) -> serve.Application:
     """
     Create a vLLM Ray Serve deployment with appropriate resource allocation.
@@ -420,6 +422,14 @@ def create_vllm_deployment(
     long-lived streaming requests) each replica accepts.  vLLM's AsyncLLMEngine
     uses continuous batching so many requests can be in-flight simultaneously;
     this value should be at least as large as the engine's max_num_seqs.
+
+    placement_group_bundles and placement_group_strategy are passed as top-level
+    deployment options (not inside ray_actor_options, which Ray Serve blocks).
+    When omitted, sensible defaults are auto-generated per scenario:
+      - tensor_parallel_size > 1  → [{GPU:1, CPU:1}] * tp  +  STRICT_PACK
+        (all TP shards on one node; required for NVLink/PCIe shared memory)
+      - gpu_fraction < 1          → [{GPU:gpu_fraction, CPU:1}]  +  PACK
+        (bin-pack fractional replicas onto the same node's GPU pool)
 
     References:
       Streaming: https://docs.ray.io/en/latest/serve/tutorials/streaming.html
@@ -440,11 +450,9 @@ def create_vllm_deployment(
                 "each tensor-parallel shard requires one full GPU.",
                 gpu_fraction, tensor_parallel_size,
             )
-        # Ray Serve does not allow placement_group_bundles in ray_actor_options
-        # (blocked by deployment validation).  For tensor parallelism, vLLM
-        # spawns its own Ray workers internally when distributed_executor_backend
-        # is "ray"; declaring num_gpus=tensor_parallel_size is sufficient for
-        # Ray's scheduler to reserve the right number of GPUs per replica.
+        # ray_actor_options carries per-replica resource totals.  vLLM spawns
+        # its own internal Ray workers for TP when distributed_executor_backend
+        # is "ray"; num_gpus=tensor_parallel_size reserves the right count.
         ray_actor_options = {
             "num_cpus": tensor_parallel_size,
             "num_gpus": tensor_parallel_size,
@@ -456,11 +464,6 @@ def create_vllm_deployment(
         )
     elif gpu_fraction is not None:
         # Fractional GPU: multiple replicas share one physical GPU.
-        # num_gpus < 1 tells Ray's scheduler that each replica only consumes
-        # a fraction of a GPU — replicas naturally co-locate on the same GPU
-        # when the cluster has fewer GPUs than replicas * gpu_fraction.
-        # Ray Serve does not allow placement_group_bundles here, so PACK
-        # co-location relies on the scheduler's bin-packing behaviour.
         ray_actor_options = {
             "num_cpus": 2,
             "num_gpus": gpu_fraction,
@@ -473,9 +476,45 @@ def create_vllm_deployment(
     else:
         ray_actor_options = {"num_cpus": 2, "num_gpus": 1}
 
-    deployment = VLLMEngine.options(
-        num_replicas=num_replicas,
-        ray_actor_options=ray_actor_options,
-        max_ongoing_requests=max_ongoing_requests,
-    )
+    # ── Placement group defaults ────────────────────────────────────────────
+    # placement_group_bundles / placement_group_strategy are top-level
+    # deployment options (NOT inside ray_actor_options — Ray Serve blocks them
+    # there).  Auto-generate sensible defaults when the caller omits them.
+    if placement_group_bundles is None and not use_cpu:
+        if tensor_parallel_size > 1:
+            # All TP shards must share a single node to use NVLink / PCIe.
+            placement_group_bundles = [
+                {"GPU": 1.0, "CPU": 1.0} for _ in range(tensor_parallel_size)
+            ]
+            placement_group_strategy = placement_group_strategy or "STRICT_PACK"
+            logger.info(
+                "Auto placement group: STRICT_PACK × %d bundles for TP=%d",
+                tensor_parallel_size, tensor_parallel_size,
+            )
+        elif gpu_fraction is not None and gpu_fraction < 1.0:
+            # Bin-pack fractional replicas onto the same node's GPU pool.
+            placement_group_bundles = [{"GPU": gpu_fraction, "CPU": 1.0}]
+            placement_group_strategy = placement_group_strategy or "PACK"
+            logger.info(
+                "Auto placement group: PACK bundle for gpu_fraction=%.2f",
+                gpu_fraction,
+            )
+
+    # ── Build .options() kwargs ─────────────────────────────────────────────
+    opts: Dict[str, Any] = {
+        "num_replicas": num_replicas,
+        "ray_actor_options": ray_actor_options,
+        "max_ongoing_requests": max_ongoing_requests,
+    }
+    if placement_group_bundles is not None:
+        opts["placement_group_bundles"] = placement_group_bundles
+        if placement_group_strategy:
+            opts["placement_group_strategy"] = placement_group_strategy
+        logger.info(
+            "Placement group: strategy=%s  bundles=%s",
+            placement_group_strategy or "PACK (default)",
+            placement_group_bundles,
+        )
+
+    deployment = VLLMEngine.options(**opts)
     return deployment.bind(engine_config)

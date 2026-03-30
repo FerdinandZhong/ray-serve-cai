@@ -279,4 +279,6 @@ class VLLMDeploymentFactory:
             use_cpu=use_cpu,
             max_ongoing_requests=max_ongoing_requests,
             gpu_fraction=kwargs.get("gpu_fraction"),
+            placement_group_bundles=kwargs.get("placement_group_bundles"),
+            placement_group_strategy=kwargs.get("placement_group_strategy"),
         )
