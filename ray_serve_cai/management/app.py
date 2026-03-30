@@ -10,7 +10,7 @@ from contextlib import asynccontextmanager
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
-from .api import resources_router, applications_router, cluster_router
+from .api import resources_router, applications_router, cluster_router, cml_apps_router
 from .services import RayService, CAIService, CoordinatorService
 from ..utils.logging import setup_serve_logging
 
@@ -97,6 +97,7 @@ app.add_middleware(
 # Include routers
 app.include_router(resources_router)
 app.include_router(applications_router)
+app.include_router(cml_apps_router)
 app.include_router(cluster_router)
 
 

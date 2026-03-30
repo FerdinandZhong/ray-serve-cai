@@ -16,6 +16,7 @@ References:
   Ray Placement Groups: https://docs.ray.io/en/latest/serve/llm/user-guides/cross-node-parallelism.html
 """
 
+import asyncio
 import logging
 from typing import Any, Dict, Optional
 
@@ -23,6 +24,7 @@ from fastapi import FastAPI
 from fastapi.responses import JSONResponse, Response
 from ray import serve
 from starlette.requests import Request
+from starlette.responses import StreamingResponse
 from starlette.types import ASGIApp, Receive, Scope, Send
 
 from vllm import AsyncLLMEngine
@@ -336,13 +338,37 @@ class VLLMEngine:
         self, body: ChatCompletionRequest, request: Request
     ) -> Response:
         try:
-            return await self.openai_serving_chat.create_chat_completion(
+            result = await self.openai_serving_chat.create_chat_completion(
                 body, raw_request=request
             )
         except Exception as exc:
             logger.error("Error in chat completion: %s", exc)
             import traceback; logger.error(traceback.format_exc())
             return JSONResponse({"error": str(exc)}, status_code=500)
+
+        # For streaming responses the generator runs after this handler returns,
+        # so exceptions during streaming are invisible to the try/except above.
+        # Wrap the body iterator to log the real cause before Ray Serve swallows
+        # it with "raise e from None" in fetch_messages_from_queue.
+        if isinstance(result, StreamingResponse):
+            original_iter = result.body_iterator
+
+            async def _logged_stream():
+                try:
+                    async for chunk in original_iter:
+                        yield chunk
+                except asyncio.CancelledError:
+                    # Client disconnected mid-stream — normal, not an error.
+                    logger.debug("Streaming chat completion cancelled (client disconnect)")
+                    raise
+                except Exception as exc:
+                    logger.error("Exception during streaming chat completion: %s", exc,
+                                 exc_info=True)
+                    raise
+
+            result.body_iterator = _logged_stream()
+
+        return result
 
     @_vllm_app.post("/v1/completions", tags=["Completions"],
                     summary="Text completion (OpenAI-compatible)")

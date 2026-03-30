@@ -1,9 +1,7 @@
+### Option 1 — remote URL (may 403 on some hosts behind authentication)
 POST /paddleocr/v1/chat/completions HTTP/1.1
 Host: ray-cluster-head.ml-1841266f-15a.qzhong-1.a465-9q4k.cloudera.site
-User-Agent: curl/8.2.1
-Accept: */*
 Content-Type: application/json
-Content-Length: 615
 
 {
     "model": "/home/cdsw/models/PaddleOCR-VL-1.5",
@@ -14,7 +12,7 @@ Content-Length: 615
           {
             "type": "image_url",
             "image_url": {
-              "url": "https://upload.wikimedia.org/wikipedia/commons/thumb/4/47/PNG_transparency_demonstration_1.png/280px-PNG_transparency_demonstration_1.png"
+              "url": "https://encrypted-tbn0.gstatic.com/images?q=tbn:ANd9GcSOqYyRpINDdyjVmfJ1gBNHnUqlyCy0HB-a6Q&s"
             }
           },
           {
@@ -28,3 +26,16 @@ Content-Length: 615
     "temperature": 0.1,
     "stream": false
   }
+
+###
+
+### Option 2 — base64-encoded inline image (no external URL, no 403)
+### Generate the payload file first:
+###   python demo_configs/make_test_image.py
+### That writes demo_configs/query_paddleocr_base64.http with a real data: URI.
+###
+### Or encode any PNG yourself:
+###   python -c "import base64,sys; print('data:image/png;base64,' + base64.b64encode(open(sys.argv[1],'rb').read()).decode())" /path/to/image.png
+###
+### Then use the data: URI as the url value, e.g.:
+###   "url": "data:image/png;base64,iVBORw0KGgoAAAANSUhEUg..."

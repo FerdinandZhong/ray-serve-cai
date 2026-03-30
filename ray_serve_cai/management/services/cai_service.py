@@ -160,8 +160,16 @@ class CAIService:
 
         Returns:
             Dict with status and app_id.
+
+        Raises:
+            RuntimeError: If the CML API returns a non-success response.
         """
-        self.manager.stop_application(app_id)
+        success = self.manager.stop_application(app_id)
+        if not success:
+            raise RuntimeError(
+                f"CML API returned failure when deleting application {app_id}. "
+                "The application may not exist or the API key may lack permission."
+            )
         logger.info(f"Deleted worker node: {app_id}")
         return {"status": "success", "app_id": app_id}
 

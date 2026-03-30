@@ -218,7 +218,13 @@ class CoordinatorService:
         return result
 
     def remove_worker_node(self, app_id: str) -> Dict[str, Any]:
-        """Remove a worker node, unregister it from the resource map, and clean up mapping."""
+        """Remove a worker node, unregister it from the resource map, and clean up mapping.
+
+        Local state (resource map, node mapping) is cleaned up regardless of whether
+        the CML delete succeeds, so that a partially-deleted or already-gone application
+        does not leave stale entries.  A warning is included in the response when the
+        CML API call fails.
+        """
         state = self.load_state()
         node_mapping = state.get("node_mapping", {})
 
@@ -228,13 +234,31 @@ class CoordinatorService:
                 ray_node_id = nid
                 break
 
-        result = self.cai_service.delete_worker_node(app_id)
+        # Attempt to stop the CML application.  Failure is non-fatal for local
+        # state cleanup — the app may have already been deleted or crashed.
+        cml_delete_warning = None
+        try:
+            self.cai_service.delete_worker_node(app_id)
+        except Exception as exc:
+            cml_delete_warning = str(exc)
+            logger.warning(
+                "CML application delete failed for %s (will still clean up local state): %s",
+                app_id, exc,
+            )
+
+        # Always clean up local state so stale entries don't linger.
         self.resource_map.unregister_worker(app_id)
 
         if ray_node_id:
             self.remove_node_mapping(ray_node_id)
-            logger.info(f"Removed node mapping for Ray node: {ray_node_id}")
+            logger.info("Removed node mapping for Ray node: %s", ray_node_id)
 
+        result: Dict[str, Any] = {"status": "success", "app_id": app_id}
+        if ray_node_id:
+            result["ray_node_id"] = ray_node_id
+        if cml_delete_warning:
+            result["status"] = "partial"
+            result["warning"] = cml_delete_warning
         return result
 
     def launch_cai_application(
