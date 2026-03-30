@@ -19,9 +19,11 @@ References:
 import logging
 from typing import Any, Dict, Optional
 
+from fastapi import FastAPI
+from fastapi.responses import JSONResponse, Response
 from ray import serve
 from starlette.requests import Request
-from starlette.responses import JSONResponse, StreamingResponse
+from starlette.types import ASGIApp, Receive, Scope, Send
 
 from vllm import AsyncLLMEngine
 from vllm.engine.arg_utils import AsyncEngineArgs
@@ -123,6 +125,67 @@ def _build_serving_render(engine_args: AsyncEngineArgs, model_name: str,
 
 
 # ---------------------------------------------------------------------------
+# ASGI middleware — strips route_prefix from scope["path"] before routing.
+#
+# Ray Serve (starlette >= 0.33.0) sets scope["root_path"] to the deployment's
+# route_prefix (e.g. "/paddleocr") but does NOT strip it from scope["path"],
+# leaving scope["path"] = "/paddleocr/v1/chat/completions".  The FastAPI
+# routes are registered without the prefix ("/v1/chat/completions"), so they
+# would not match the full path → 404.
+#
+# Starlette 0.33.0+ handles this via get_route_path() in the Router, but the
+# behaviour differs across deployment environments and Ray Serve versions.
+# This middleware normalises the path unconditionally so routing is reliable.
+# ---------------------------------------------------------------------------
+
+class _RoutePathMiddleware:
+    """Strip ASGI root_path prefix from scope path before FastAPI routing."""
+
+    def __init__(self, app: ASGIApp) -> None:
+        self.app = app
+
+    async def __call__(self, scope: Scope, receive: Receive, send: Send) -> None:
+        if scope["type"] in ("http", "websocket"):
+            root_path: str = scope.get("root_path", "")
+            path: str = scope.get("path", "")
+            if root_path and path.startswith(root_path):
+                remainder = path[len(root_path):]
+                if remainder == "" or remainder.startswith("/"):
+                    scope = dict(scope)
+                    scope["path"] = remainder or "/"
+                    # Keep root_path so Swagger UI server URL generation
+                    # still uses the correct prefix.
+        await self.app(scope, receive, send)
+
+
+# ---------------------------------------------------------------------------
+# FastAPI app — provides Swagger UI at <route_prefix>/docs
+# Defined at module level; @serve.ingress binds it to the deployment class.
+# root_path_in_servers=True tells FastAPI to use the ASGI root_path set by
+# Ray Serve (the deployment's route_prefix) as the server base URL, so the
+# "Try it out" button in Swagger UI sends requests to the correct path.
+# ---------------------------------------------------------------------------
+_vllm_app = FastAPI(
+    title="vLLM OpenAI-Compatible API",
+    description=(
+        "OpenAI-compatible inference API powered by vLLM and Ray Serve.\n\n"
+        "Supports `/v1/chat/completions`, `/v1/completions`, and `/v1/models`."
+    ),
+    version="1.0.0",
+    root_path_in_servers=True,
+    openapi_tags=[
+        {"name": "Chat",        "description": "Chat completion endpoints"},
+        {"name": "Completions", "description": "Text completion endpoints"},
+        {"name": "Models",      "description": "Model registry"},
+        {"name": "Health",      "description": "Liveness probe"},
+    ],
+)
+# Apply the path-stripping middleware so all starlette/Ray Serve version
+# combinations route correctly regardless of path-stripping behaviour.
+_vllm_app.add_middleware(_RoutePathMiddleware)
+
+
+# ---------------------------------------------------------------------------
 # Deployment
 # ---------------------------------------------------------------------------
 
@@ -131,6 +194,7 @@ def _build_serving_render(engine_args: AsyncEngineArgs, model_name: str,
     num_replicas=1,
     ray_actor_options={},
 )
+@serve.ingress(_vllm_app)
 class VLLMEngine:
     """
     Ray Serve deployment for vLLM with OpenAI-compatible API.
@@ -253,70 +317,56 @@ class VLLMEngine:
         return "vllm"
 
     # ------------------------------------------------------------------
-    # Endpoint handlers
+    # Endpoints — decorated with _vllm_app routes so FastAPI generates
+    # the OpenAPI schema and serves Swagger UI at <route_prefix>/docs.
+    # FastAPI injects the parsed Pydantic body and the raw Request;
+    # both are forwarded directly to vLLM's serving handlers.
+    # Response is returned as-is (JSONResponse or StreamingResponse).
     # ------------------------------------------------------------------
 
-    async def completion(self, request: Request) -> JSONResponse:
-        """POST /v1/completions"""
+    @_vllm_app.post("/v1/chat/completions", tags=["Chat"],
+                    summary="Chat completion (OpenAI-compatible)")
+    async def chat_completion(
+        self, body: ChatCompletionRequest, request: Request
+    ) -> Response:
         try:
-            request_dict = await request.json()
-            completion_request = CompletionRequest(**request_dict)
-            return await self.openai_serving_completion.create_completion(
-                completion_request, raw_request=request
-            )
-        except Exception as exc:
-            logger.error("Error in completion: %s", exc)
-            import traceback; logger.error(traceback.format_exc())
-            return JSONResponse({"error": str(exc)}, status_code=500)
-
-    async def chat_completion(self, request: Request) -> JSONResponse:
-        """POST /v1/chat/completions"""
-        try:
-            request_dict = await request.json()
-            chat_request = ChatCompletionRequest(**request_dict)
             return await self.openai_serving_chat.create_chat_completion(
-                chat_request, raw_request=request
+                body, raw_request=request
             )
         except Exception as exc:
             logger.error("Error in chat completion: %s", exc)
             import traceback; logger.error(traceback.format_exc())
             return JSONResponse({"error": str(exc)}, status_code=500)
 
-    async def list_models(self, request: Request) -> JSONResponse:
-        """GET /v1/models"""
+    @_vllm_app.post("/v1/completions", tags=["Completions"],
+                    summary="Text completion (OpenAI-compatible)")
+    async def completion(
+        self, body: CompletionRequest, request: Request
+    ) -> Response:
+        try:
+            return await self.openai_serving_completion.create_completion(
+                body, raw_request=request
+            )
+        except Exception as exc:
+            logger.error("Error in completion: %s", exc)
+            import traceback; logger.error(traceback.format_exc())
+            return JSONResponse({"error": str(exc)}, status_code=500)
+
+    @_vllm_app.get("/v1/models", tags=["Models"],
+                   summary="List available models")
+    async def list_models(self) -> Response:
         models = await self.openai_serving_models.show_available_models()
         return JSONResponse(content=models.model_dump())
 
-    async def health_check(self, request: Request) -> JSONResponse:
-        """GET /health"""
-        return JSONResponse({
+    @_vllm_app.get("/health", tags=["Health"],
+                   summary="Liveness probe")
+    async def health_check(self) -> dict:
+        return {
             "status": "healthy",
             "model": self.model_name,
             "engine": "vllm",
             "tensor_parallel_size": self.tensor_parallel_size,
-        })
-
-    # ------------------------------------------------------------------
-    # Router
-    # ------------------------------------------------------------------
-
-    async def __call__(self, request: Request):
-        path = request.url.path
-        method = request.method
-
-        if path == "/v1/completions" and method == "POST":
-            return await self.completion(request)
-        if path == "/v1/chat/completions" and method == "POST":
-            return await self.chat_completion(request)
-        if path == "/v1/models" and method == "GET":
-            return await self.list_models(request)
-        if path == "/health" and method == "GET":
-            return await self.health_check(request)
-
-        return JSONResponse(
-            {"error": f"Unknown endpoint: {method} {path}"},
-            status_code=404,
-        )
+        }
 
 
 # ---------------------------------------------------------------------------

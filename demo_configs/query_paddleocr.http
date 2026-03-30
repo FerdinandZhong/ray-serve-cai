@@ -1,0 +1,30 @@
+POST /paddleocr/v1/chat/completions HTTP/1.1
+Host: ray-cluster-head.ml-1841266f-15a.qzhong-1.a465-9q4k.cloudera.site
+User-Agent: curl/8.2.1
+Accept: */*
+Content-Type: application/json
+Content-Length: 615
+
+{
+    "model": "/home/cdsw/models/PaddleOCR-VL-1.5",
+    "messages": [
+      {
+        "role": "user",
+        "content": [
+          {
+            "type": "image_url",
+            "image_url": {
+              "url": "https://upload.wikimedia.org/wikipedia/commons/thumb/4/47/PNG_transparency_demonstration_1.png/280px-PNG_transparency_demonstration_1.png"
+            }
+          },
+          {
+            "type": "text",
+            "text": "What text can you read in this image? List all detected text."
+          }
+        ]
+      }
+    ],
+    "max_tokens": 512,
+    "temperature": 0.1,
+    "stream": false
+  }
