@@ -128,6 +128,7 @@ class RayService:
         num_replicas: int = 1,
         tensor_parallel_size: int = 1,
         use_cpu: bool = False,
+        gpu_fraction: Optional[float] = None,
         engine_config: Optional[Dict[str, Any]] = None,
     ) -> Dict[str, Any]:
         """
@@ -180,6 +181,7 @@ class RayService:
             num_replicas=num_replicas,
             tensor_parallel_size=tensor_parallel_size,
             use_cpu=use_cpu,
+            gpu_fraction=gpu_fraction,
         )
 
         # serve.run() blocks until the deployment is healthy, which can take

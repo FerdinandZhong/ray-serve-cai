@@ -111,6 +111,17 @@ class DeployModelRequest(BaseModel):
         default=False,
         description="Run inference on CPU (no GPU required; slower, for testing only)",
     )
+    gpu_fraction: Optional[float] = Field(
+        default=None,
+        ge=0.0,
+        le=1.0,
+        description=(
+            "Fractional GPU resource allocated per replica (e.g. 0.5 to fit two "
+            "replicas on one GPU). Defaults to 1.0 when not set. Must be combined "
+            "with a matching gpu_memory_utilization in engine_config so vLLM only "
+            "uses that fraction of VRAM."
+        ),
+    )
     engine_config: Optional[Dict[str, Any]] = Field(
         default=None,
         description=(

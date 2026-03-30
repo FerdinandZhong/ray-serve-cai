@@ -411,6 +411,7 @@ def create_vllm_deployment(
     tensor_parallel_size: int = 1,
     use_cpu: bool = False,
     max_ongoing_requests: int = 100,
+    gpu_fraction: Optional[float] = None,
 ) -> serve.Application:
     """
     Create a vLLM Ray Serve deployment with appropriate resource allocation.
@@ -431,6 +432,14 @@ def create_vllm_deployment(
     if use_cpu:
         ray_actor_options: Dict[str, Any] = {"num_cpus": 4, "num_gpus": 0}
     elif tensor_parallel_size > 1:
+        # Tensor parallelism splits one model across multiple whole GPUs.
+        # gpu_fraction is incompatible here — each shard needs a full GPU.
+        if gpu_fraction is not None:
+            logger.warning(
+                "gpu_fraction=%.2f is ignored when tensor_parallel_size=%d — "
+                "each tensor-parallel shard requires one full GPU.",
+                gpu_fraction, tensor_parallel_size,
+            )
         placement_group_bundles = [
             {"GPU": 1, "CPU": 1} for _ in range(tensor_parallel_size)
         ]
@@ -441,6 +450,22 @@ def create_vllm_deployment(
             "placement_group_strategy": "PACK",
         }
         logger.info("Using placement group with %d bundles (1 GPU each)", tensor_parallel_size)
+    elif gpu_fraction is not None:
+        # Fractional GPU: multiple replicas share one physical GPU.
+        # Declare the fraction in a placement group bundle so Ray's scheduler
+        # accounts for it correctly and it appears in the Ray dashboard.
+        # PACK ensures the actor and any sub-workers stay on the same node.
+        ray_actor_options = {
+            "num_cpus": 2,
+            "num_gpus": gpu_fraction,
+            "placement_group_bundles": [{"GPU": gpu_fraction, "CPU": 2}],
+            "placement_group_strategy": "PACK",
+        }
+        logger.info(
+            "Using fractional GPU placement group: %.2f GPU per replica  "
+            "(strategy=PACK — combine with gpu_memory_utilization=%.2f in engine_config)",
+            gpu_fraction, gpu_fraction,
+        )
     else:
         ray_actor_options = {"num_cpus": 2, "num_gpus": 1}
 

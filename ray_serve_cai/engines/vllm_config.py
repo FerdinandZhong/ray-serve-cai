@@ -278,4 +278,5 @@ class VLLMDeploymentFactory:
             tensor_parallel_size=tensor_parallel_size,
             use_cpu=use_cpu,
             max_ongoing_requests=max_ongoing_requests,
+            gpu_fraction=kwargs.get("gpu_fraction"),
         )
