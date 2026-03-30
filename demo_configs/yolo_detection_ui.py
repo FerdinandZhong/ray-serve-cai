@@ -29,6 +29,26 @@ import os
 import subprocess
 import sys
 
+
+def _ensure_deps():
+    """Install missing packages into the current Python environment."""
+    required = ["fastapi", "uvicorn[standard]", "requests", "python-multipart"]
+    missing = []
+    for pkg in ["fastapi", "uvicorn", "requests", "multipart"]:
+        try:
+            __import__(pkg)
+        except ImportError:
+            missing.append(pkg)
+    if missing:
+        print(f"Installing missing packages: {required}")
+        subprocess.check_call(
+            [sys.executable, "-m", "pip", "install", "--quiet"] + required
+        )
+        print("Dependencies installed.")
+
+
+_ensure_deps()
+
 import requests as http_requests
 import uvicorn
 from fastapi import FastAPI, File, HTTPException, UploadFile
