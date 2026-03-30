@@ -32,6 +32,45 @@ print("=" * 70)
 print("Ray Worker Node — startup")
 print("=" * 70)
 
+# ── CUDA environment setup (GPU nodes only) ───────────────────────────────────
+# Only runs when a CUDA installation is actually present on this image.
+# CPU-only nodes using the standard (non-CUDA) image skip this block entirely.
+print("\nCUDA environment (image defaults):")
+print(f"  CUDA_HOME       : {os.environ.get('CUDA_HOME', '(not set)')}")
+print(f"  CUDA_ROOT       : {os.environ.get('CUDA_ROOT', '(not set)')}")
+print(f"  PATH            : {os.environ.get('PATH', '(not set)')[:120]}")
+print(f"  LD_LIBRARY_PATH : {os.environ.get('LD_LIBRARY_PATH', '(not set)')[:120]}")
+
+_cuda_home = Path(os.environ.get("CUDA_HOME", "/usr/local/cuda"))
+if not _cuda_home.exists():
+    # Try the versioned symlink that CUDA installers create
+    _cuda_home = next(
+        (p for p in Path("/usr/local").glob("cuda-*") if p.is_dir()),
+        None,
+    )
+
+if _cuda_home:
+    _cuda_bin = str(_cuda_home / "bin")
+    _cuda_lib = str(_cuda_home / "lib64")
+
+    os.environ.setdefault("CUDA_HOME", str(_cuda_home))
+    os.environ.setdefault("CUDA_ROOT", str(_cuda_home))
+
+    _path = os.environ.get("PATH", "")
+    if _cuda_bin not in _path.split(":"):
+        os.environ["PATH"] = _cuda_bin + ":" + _path
+
+    _ldpath = os.environ.get("LD_LIBRARY_PATH", "")
+    if _cuda_lib not in _ldpath.split(":"):
+        os.environ["LD_LIBRARY_PATH"] = _cuda_lib + ":" + _ldpath
+
+    if Path(_cuda_bin + "/nvcc").exists():
+        print(f"CUDA compiler   : {_cuda_bin}/nvcc  (CUDA_HOME={_cuda_home})")
+    else:
+        print(f"CUDA libs found at {_cuda_home} but nvcc missing — JIT compilation unavailable")
+else:
+    print("No CUDA installation found — CPU-only node, skipping CUDA env setup")
+
 {% if head_address %}
 HEAD_ADDRESS = "{{ head_address }}"
 {% else %}

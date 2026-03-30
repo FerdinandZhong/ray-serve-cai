@@ -11,13 +11,18 @@ class AddNodeRequest(BaseModel):
     cpu: Optional[int] = Field(default=None, ge=1, le=256, description="CPU cores override (uses group default when omitted)")
     memory: Optional[int] = Field(default=None, ge=4, le=1024, description="Memory in GB override (uses group default when omitted)")
     gpus: Optional[int] = Field(default=None, ge=0, description="GPU count override (uses group default when omitted)")
+    runtime_identifier: Optional[str] = Field(
+        default=None,
+        description="Docker runtime identifier override (uses group default from ray_cluster_info.json when omitted)",
+    )
 
     class Config:
         json_schema_extra = {
             "example": {
-                "cpu": 8,
+                "node_type": "t4-gpu-worker",
+                "cpu": 16,
                 "memory": 32,
-                "node_type": "worker"
+                "gpus": 1,
             }
         }
 

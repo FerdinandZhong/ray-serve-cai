@@ -91,6 +91,7 @@ class CAIService:
         cpu: int = None,
         memory: int = None,
         gpus: int = None,
+        runtime_identifier: str = None,
     ) -> Dict[str, Any]:
         """
         Launch a new worker node as a CML application.
@@ -120,6 +121,8 @@ class CAIService:
             group.memory = memory
         if gpus is not None:
             group.gpus = gpus
+        if runtime_identifier is not None:
+            group.runtime_identifier = runtime_identifier
 
         worker_name = f"ray-{group.name}-{int(time.time())}"
 

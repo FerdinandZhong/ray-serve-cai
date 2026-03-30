@@ -105,6 +105,21 @@ def build_vllm_engine_config(user_config: Dict[str, Any]) -> Dict[str, Any]:
         # vLLM accepts chat_template as a string
         engine_config['chat_template'] = user_config['custom_chat_template']
 
+    # Attention backend override.
+    # vLLM selects the attention backend via the VLLM_ATTENTION_BACKEND env var
+    # (not an AsyncEngineArgs parameter).  Pass it through the config dict so
+    # VLLMEngine.__init__ can set the env var before starting the engine.
+    #
+    # vLLM V1 engine (v0.7+) valid values: FLASH_ATTN | FLASHINFER | TRITON_ATTN
+    #   - XFORMERS does NOT exist in V1 and is silently ignored → falls back to
+    #     FLASHINFER, which requires Ninja for JIT compilation.
+    # vLLM V0 engine valid values: FLASH_ATTN | FLASHINFER | XFORMERS | ROCM_FLASH_ATTN
+    #
+    # Recommended for T4 / SM7.5 on CML (no Ninja in container): "FLASH_ATTN"
+    # flash-attn ships pre-compiled wheels for SM7.5+ — no JIT required.
+    if user_config.get('attention_backend'):
+        engine_config['attention_backend'] = user_config['attention_backend']
+
     logger.info(f"Built vLLM engine config: {engine_config}")
 
     return engine_config

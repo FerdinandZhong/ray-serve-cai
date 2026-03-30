@@ -1,0 +1,16 @@
+{
+  "name": "paddleocr-vl",
+  "engine_type": "vllm",
+  "model": "/home/cdsw/models/PaddleOCR-VL-1.5",
+  "route_prefix": "/paddleocr",
+  "num_replicas": 1,
+  "tensor_parallel_size": 1,
+  "engine_config": {
+    "dtype": "float16",
+    "trust_remote_code": true,
+    "max_model_len": 8192,
+    "gpu_memory_utilization": 0.85,
+    "enable_prefix_caching": false,
+    "attention_backend": "FLASH_ATTN"
+  }
+}

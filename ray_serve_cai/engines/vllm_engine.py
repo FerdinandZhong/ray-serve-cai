@@ -79,6 +79,19 @@ class VLLMEngine:
         logger.info(f"Initializing vLLM engine with config: {engine_config}")
 
         try:
+            import os
+
+            # attention_backend is not an AsyncEngineArgs parameter — it controls
+            # which attention kernel vLLM uses via the VLLM_ATTENTION_BACKEND env
+            # var.  Must be set before the engine is created so both the engine
+            # process and its EngineCore subprocess inherit the value.
+            # Use "XFORMERS" on T4 / SM7.5 GPUs: FlashInfer's JIT compilation
+            # requires Ninja which is not available in CML containers.
+            attention_backend = engine_config.pop('attention_backend', None)
+            if attention_backend:
+                os.environ['VLLM_ATTENTION_BACKEND'] = attention_backend
+                logger.info(f"Set VLLM_ATTENTION_BACKEND={attention_backend}")
+
             # Create engine args from config
             self.engine_args = AsyncEngineArgs(**engine_config)
 

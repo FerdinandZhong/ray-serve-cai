@@ -294,12 +294,36 @@ def main():
     print("\n📦 Installing inference engine (vllm)...")
     if run_command(f"{uv_install} 'vllm>=0.13.0'"):
         print("✅ vllm installed")
+        # ninja is required by FlashInfer's JIT compilation, which vLLM triggers on
+        # older GPUs (e.g. T4/SM7.5) that lack pre-compiled flash-attn kernels.
+        # Install the ninja pip package so `.venv/bin/ninja` is available on PATH.
+        if run_command(f"{uv_install} ninja"):
+            print("✅ ninja installed (FlashInfer JIT dependency)")
+        else:
+            print("⚠️  ninja installation failed — FlashInfer JIT may fail on older GPUs")
     else:
         print("⚠️  vllm failed — trying sglang...")
         if run_command(f"{uv_install} 'sglang>=0.5.7'"):
             print("✅ sglang installed")
         else:
             print("⚠️  Neither vllm nor sglang could be installed — inference workers will fail")
+
+    # Install YOLO dependencies (ultralytics + Pillow).
+    # These are lightweight and do not conflict with vllm/sglang.
+    # opencv-python-headless is needed by ultralytics for image I/O on a
+    # headless server (no display); the -headless variant avoids pulling in
+    # libGL which is absent in most CML containers.
+    print("\n📦 Installing YOLO dependencies (ultralytics, Pillow, opencv-headless)...")
+    yolo_packages = [
+        "ultralytics>=8.0.0",
+        "Pillow>=9.0.0",
+        "opencv-python-headless>=4.8.0",
+    ]
+    for pkg in yolo_packages:
+        if run_command(f"{uv_install} '{pkg}'"):
+            print(f"✅ {pkg.split('>=')[0]} installed")
+        else:
+            print(f"⚠️  {pkg} failed — YOLO engine may not work")
 
     # Verify Ray installation
     print("\n🔍 Verifying Ray installation...")

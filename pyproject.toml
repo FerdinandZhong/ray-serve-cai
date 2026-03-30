@@ -54,9 +54,15 @@ dependencies = [
 [project.optional-dependencies]
 vllm = [
     "vllm>=0.13.0",
+    "ninja",                        # FlashInfer JIT compilation on older GPUs (T4/SM7.5)
 ]
 sglang = [
     "sglang>=0.5.7",
+]
+yolo = [
+    "ultralytics>=8.0.0",
+    "Pillow>=9.0.0",
+    "opencv-python-headless>=4.8.0",
 ]
 all = [
     # vllm and sglang cannot be installed together — they require conflicting

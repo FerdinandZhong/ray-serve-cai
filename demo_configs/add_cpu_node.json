@@ -1,0 +1,6 @@
+{
+  "node_type": "cpu-worker",
+  "cpu": 16,
+  "memory": 32,
+  "gpus": 0
+}
