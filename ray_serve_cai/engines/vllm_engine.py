@@ -77,30 +77,48 @@ def _requires_param(cls, param: str) -> bool:
     return param in inspect.signature(cls.__init__).parameters
 
 
-def _normalize_vllm_stream_result(result: Any, *, op_name: str) -> Response:
+def _normalize_vllm_stream_result(result: Any, *, op_name: str) -> Any:
     """
-    vLLM versions differ: older builds wrap SSE in Starlette StreamingResponse;
-    newer vLLM (OpenAIServing*) returns AsyncGenerator[str, None] directly.
-    FastAPI must always see a Response — never a bare async generator.
+    Ensure FastAPI / Ray Serve never try to json-encode a streaming payload.
+
+    vLLM behavior varies by version:
+      - Returns AsyncGenerator[str] (SSE lines) directly.
+      - Returns Starlette StreamingResponse.
+
+    Additionally, vLLM may use a different Starlette install than this app,
+    so isinstance(..., StreamingResponse) can be False even when the object
+    is stream-shaped.  Duck-type on ``body_iterator``.
+
+    If we mis-route on ``body.stream`` and call the non-stream handler while
+    the payload still has stream=True, vLLM still returns a generator — a
+    single post-await normalization fixes that without relying on branch flags.
     """
     disconnect_log = f"{op_name} cancelled (client disconnect)"
     err_prefix = f"Exception during {op_name}"
 
-    if isinstance(result, StreamingResponse):
-        body_iter = result.body_iterator
-        stream_kw: Dict[str, Any] = {
-            "status_code": result.status_code,
-            "media_type": result.media_type,
-            "headers": result.headers,
-        }
-    elif inspect.isasyncgen(result):
+    body_iter: Any = None
+    stream_kw: Dict[str, Any]
+
+    if inspect.isasyncgen(result):
         body_iter = result
         stream_kw = {
             "status_code": 200,
             "media_type": "text/event-stream",
         }
     else:
-        return result
+        maybe_iter = getattr(result, "body_iterator", None)
+        if maybe_iter is not None:
+            body_iter = maybe_iter
+            stream_kw = {
+                "status_code": getattr(result, "status_code", 200),
+                "media_type": getattr(result, "media_type", None)
+                or "text/event-stream",
+            }
+            hdrs = getattr(result, "headers", None)
+            if hdrs is not None:
+                stream_kw["headers"] = hdrs
+        else:
+            return result
 
     async def _logged_stream():
         try:
@@ -358,13 +376,9 @@ class VLLMEngine:
     # ------------------------------------------------------------------
     # Endpoints
     #
-    # Each endpoint dispatches to a streaming or non-streaming helper
-    # based on the request payload.  Newer vLLM returns a bare
-    # AsyncGenerator[str] for SSE; older vLLM used StreamingResponse.
-    # We always normalize to a fresh StreamingResponse so FastAPI / Ray
-    # Serve never try to json-encode an async generator.
-    #
-    # Non-streaming: return vLLM's JSON / Pydantic payload as-is.
+    # Always await vLLM once, then normalize streams.  Do not branch on
+    # body.stream before calling vLLM: optional/coerced ``stream`` can be
+    # wrong; vLLM still returns an async generator when the request streams.
     # ------------------------------------------------------------------
 
     @_vllm_app.post("/v1/chat/completions", tags=["Chat"],
@@ -373,31 +387,12 @@ class VLLMEngine:
     async def chat_completion(
         self, body: ChatCompletionRequest, request: Request
     ) -> Response:
-        if getattr(body, "stream", False):
-            return await self._stream_chat_completion(body, request)
-        return await self._non_stream_chat_completion(body, request)
-
-    async def _non_stream_chat_completion(
-        self, body: ChatCompletionRequest, request: Request
-    ) -> Response:
-        try:
-            return await self.openai_serving_chat.create_chat_completion(
-                body, raw_request=request
-            )
-        except Exception as exc:
-            logger.error("Error in chat completion: %s", exc)
-            import traceback; logger.error(traceback.format_exc())
-            return JSONResponse({"error": str(exc)}, status_code=500)
-
-    async def _stream_chat_completion(
-        self, body: ChatCompletionRequest, request: Request
-    ) -> Response:
         try:
             result = await self.openai_serving_chat.create_chat_completion(
                 body, raw_request=request
             )
         except Exception as exc:
-            logger.error("Error in streaming chat completion: %s", exc)
+            logger.error("Error in chat completion: %s", exc)
             import traceback; logger.error(traceback.format_exc())
             return JSONResponse({"error": str(exc)}, status_code=500)
 
@@ -411,31 +406,12 @@ class VLLMEngine:
     async def completion(
         self, body: CompletionRequest, request: Request
     ) -> Response:
-        if getattr(body, "stream", False):
-            return await self._stream_completion(body, request)
-        return await self._non_stream_completion(body, request)
-
-    async def _non_stream_completion(
-        self, body: CompletionRequest, request: Request
-    ) -> Response:
-        try:
-            return await self.openai_serving_completion.create_completion(
-                body, raw_request=request
-            )
-        except Exception as exc:
-            logger.error("Error in completion: %s", exc)
-            import traceback; logger.error(traceback.format_exc())
-            return JSONResponse({"error": str(exc)}, status_code=500)
-
-    async def _stream_completion(
-        self, body: CompletionRequest, request: Request
-    ) -> Response:
         try:
             result = await self.openai_serving_completion.create_completion(
                 body, raw_request=request
             )
         except Exception as exc:
-            logger.error("Error in streaming completion: %s", exc)
+            logger.error("Error in completion: %s", exc)
             import traceback; logger.error(traceback.format_exc())
             return JSONResponse({"error": str(exc)}, status_code=500)
 
