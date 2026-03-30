@@ -161,20 +161,24 @@ def load_config():
     Head node has no GPUs — only workers carry GPU resources.
     """
     # ── Step 1: built-in defaults ────────────────────────────────────────────
+    _STD  = "docker.repository.cloudera.com/cloudera/cdsw/ml-runtime-pbj-jupyterlab-python3.11-standard:2026.01.1-b6"
+    _CUDA = "docker.repository.cloudera.com/cloudera/cdsw/ml-runtime-pbj-jupyterlab-python3.11-cuda:2026.01.1-b6"
     config = {
-        'num_workers':           1,
-        'head_cpu':              8,
-        'head_memory':           32,
-        'worker_cpu':            16,
-        'worker_memory':         32,
-        'worker_gpus':           0,
-        'worker_node_type':      None,
-        'ray_port':              6379,
-        'dashboard_port':        8265,
-        'management_api_cpu':    None,
-        'management_api_memory': None,
-        'worker_groups':         None,
-        'head_app_name':         'ray-cluster-head',
+        'num_workers':              1,
+        'head_cpu':                 8,
+        'head_memory':              32,
+        'worker_cpu':               16,
+        'worker_memory':            32,
+        'worker_gpus':              0,
+        'worker_node_type':         None,
+        'ray_port':                 6379,
+        'dashboard_port':           8265,
+        'management_api_cpu':       None,
+        'management_api_memory':    None,
+        'worker_groups':            None,
+        'head_app_name':            'ray-cluster-head',
+        'head_runtime_identifier':  _STD,
+        'worker_runtime_identifier': _CUDA,
         # Ray Serve proxy tuning — None means "use Ray's built-in default"
         'proxy_health_check_period_s':  None,
         'proxy_health_check_timeout_s': None,
@@ -197,6 +201,10 @@ def load_config():
             cai_section = file_config.get('cai', {}) or {}
             if 'head_app_name' in cai_section:
                 config['head_app_name'] = cai_section['head_app_name']
+            if 'head_runtime_identifier' in cai_section:
+                config['head_runtime_identifier'] = cai_section['head_runtime_identifier']
+            if 'worker_runtime_identifier' in cai_section:
+                config['worker_runtime_identifier'] = cai_section['worker_runtime_identifier']
             print(f"Loaded configuration from {config_path}")
         except Exception as e:
             print(f"Warning: could not load config file: {e}")
@@ -298,15 +306,12 @@ def main():
     cml_api_key = os.environ.get("CML_API_KEY") or os.environ.get("CDSW_APIV2_KEY")
     project_id = os.environ.get("CDSW_PROJECT_ID") or os.environ.get("CML_PROJECT_ID")
 
-    # Runtime identifiers
-    head_runtime = os.environ.get(
-        "HEAD_RUNTIME_IDENTIFIER",
-        "docker.repository.cloudera.com/cloudera/cdsw/ml-runtime-pbj-jupyterlab-python3.11-standard:2026.01.1-b6"
-    )
-    worker_runtime = os.environ.get(
-        "WORKER_RUNTIME_IDENTIFIER",
-        "docker.repository.cloudera.com/cloudera/cdsw/ml-runtime-pbj-jupyterlab-python3.11-cuda:2026.01.1-b6"
-    )
+    # Load cluster configuration first so runtime defaults come from the YAML.
+    ray_config = load_config()
+
+    # Runtime identifiers: env var > ray_cluster_config.yaml > built-in defaults
+    head_runtime   = os.environ.get("HEAD_RUNTIME_IDENTIFIER",   ray_config['head_runtime_identifier'])
+    worker_runtime = os.environ.get("WORKER_RUNTIME_IDENTIFIER", ray_config['worker_runtime_identifier'])
 
     print("\n📋 Configuration:")
     print(f"   CML Host: {cml_host}")
@@ -318,9 +323,6 @@ def main():
         print("\n❌ Missing required environment variables:")
         print("   Required: CML_HOST, CML_API_KEY, CML_PROJECT_ID (or CDSW_PROJECT_ID)")
         return 1
-
-    # Load Ray cluster configuration
-    ray_config = load_config()
 
     head_app_name = ray_config['head_app_name']
     # Derive head URL from app name + CDSW_DOMAIN — deterministic, no CML API call needed.
