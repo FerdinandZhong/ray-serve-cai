@@ -56,10 +56,10 @@ from fastapi.responses import HTMLResponse, JSONResponse
 
 # ── Config ───────────────────────────────────────────────────────────────────
 
-YOLO_API_URL = os.getenv(
+YOLO_API_URL_DEFAULT = os.getenv(
     "YOLO_API_URL",
-    "http://localhost:8000/yolo",
-).rstrip("/")
+    "https://ray-cluster-head.ml-1841266f-15a.qzhong-1.a465-9q4k.cloudera.site/yolo/v1/detect",
+)
 
 APP_PORT = int(os.getenv("CDSW_APP_PORT", "8100"))
 
@@ -304,7 +304,13 @@ HTML = r"""<!DOCTYPE html>
     <path d="M9 15h6M15 9H9"/>
   </svg>
   <h1>YOLO Object Detection</h1>
-  <span id="api-status">API: <b id="api-url-label"></b></span>
+  <label style="margin-left:auto;display:flex;align-items:center;gap:8px;font-size:.8rem;color:var(--muted);">
+    API URL
+    <input id="api-url-input" type="text" spellcheck="false"
+           style="width:420px;padding:5px 10px;border-radius:6px;border:1px solid var(--border);
+                  background:var(--bg);color:var(--text);font-size:.8rem;font-family:monospace;"
+           value="PLACEHOLDER_DEFAULT_URL"/>
+  </label>
 </header>
 
 <main>
@@ -376,9 +382,7 @@ const ctx            = canvas.getContext('2d');
 const canvasWrapper  = document.getElementById('canvas-wrapper');
 const loadingOverlay = document.getElementById('loading-overlay');
 const resultsContent = document.getElementById('results-content');
-
-document.getElementById('api-url-label').textContent =
-  window.location.host + '/api/detect';
+const apiUrlInput    = document.getElementById('api-url-input');
 
 // ── Upload handling ──────────────────────────────────────────────────────────
 dropZone.addEventListener('click', e => {
@@ -442,6 +446,7 @@ async function runDetection() {
   try {
     const form = new FormData();
     form.append('file', currentFile, currentFile.name);
+    form.append('api_url', apiUrlInput.value.trim());
 
     const resp = await fetch('/api/detect', { method: 'POST', body: form });
     if (!resp.ok) {
@@ -573,25 +578,28 @@ function escHtml(str) {
 
 @app.get("/", response_class=HTMLResponse)
 async def index():
-    return HTMLResponse(content=HTML)
+    page = HTML.replace("PLACEHOLDER_DEFAULT_URL", YOLO_API_URL_DEFAULT)
+    return HTMLResponse(content=page)
 
 
 @app.post("/api/detect")
-async def detect(file: UploadFile = File(...)):
+async def detect(file: UploadFile = File(...), api_url: str = ""):
     """Proxy the uploaded image to the YOLO Ray Serve deployment."""
+    target_url = api_url.strip() or YOLO_API_URL_DEFAULT
     image_bytes = await file.read()
 
     try:
         resp = http_requests.post(
-            f"{YOLO_API_URL}/v1/detect",
+            target_url,
             files={"file": (file.filename, io.BytesIO(image_bytes), file.content_type)},
             timeout=60,
+            verify=False,
         )
         resp.raise_for_status()
     except http_requests.exceptions.ConnectionError:
         raise HTTPException(
             status_code=502,
-            detail=f"Cannot reach YOLO API at {YOLO_API_URL}. Check YOLO_API_URL env var.",
+            detail=f"Cannot reach YOLO API at {target_url}.",
         )
     except http_requests.exceptions.Timeout:
         raise HTTPException(status_code=504, detail="YOLO API timed out (>60 s).")
@@ -611,7 +619,7 @@ if __name__ == "__main__":
     print("YOLO Detection UI")
     print("=" * 60)
     print(f"  Port:     {APP_PORT}")
-    print(f"  YOLO API: {YOLO_API_URL}")
+    print(f"  YOLO API: {YOLO_API_URL_DEFAULT}")
     print(f"  UI:       http://127.0.0.1:{APP_PORT}/")
     print()
 
