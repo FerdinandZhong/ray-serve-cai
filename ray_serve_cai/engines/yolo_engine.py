@@ -9,17 +9,15 @@ Architecture
 ------------
   HTTP request                    Ray Serve actor
   ──────────────                  ──────────────────────────────────────────
-  POST /v1/detect     ──►  __call__  ──►  _detect_batch(single_bytes)
-  POST /v1/detect (N) ──►  __call__  ──►  │                         │
-  POST /v1/detect     ──►  __call__  ──►  │  @serve.batch collects  │
-                                           │  up to max_batch_size   │
-                                           │  or until timeout_s     │
-                                           └──►  _run_inference([img0, img1, …])
-                                                  └──►  return [result0, result1, …]
+  POST /v1/detect     ──►  FastAPI  ──►  _detect_batch(single_bytes)
+  POST /v1/detect (N) ──►  FastAPI  ──►  │                         │
+  POST /v1/detect     ──►  FastAPI  ──►  │  @serve.batch collects  │
+                                          │  up to max_batch_size   │
+                                          │  or until timeout_s     │
+                                          └──►  _run_inference([img0, img1, …])
+                                                 └──►  return [result0, result1, …]
 
-The @serve.batch wrapper is applied inside make_yolo_deployment() so that
-max_batch_size and batch_wait_timeout_s can be configured per deployment at
-run time — each call to make_yolo_deployment() closes over different values.
+Swagger UI is available at <route_prefix>/docs (e.g. /yolo/docs).
 
 Endpoints
 ---------
@@ -51,9 +49,10 @@ import io
 import logging
 from typing import Any, Dict, List
 
+from fastapi import FastAPI, File, UploadFile
+from fastapi.responses import JSONResponse
 from ray import serve
-from starlette.requests import Request
-from starlette.responses import JSONResponse
+from starlette.types import Receive, Scope, Send
 
 logger = logging.getLogger(__name__)
 
@@ -137,12 +136,50 @@ def _check_occlusion(boxes: List[List[float]], threshold: float = 0.3) -> bool:
 
 
 # ---------------------------------------------------------------------------
-# Base class
+# FastAPI app — provides Swagger UI at <route_prefix>/docs
+#
+# Path stripping: override __call__ to strip root_path BEFORE Starlette's
+# middleware stack, same pattern as the vLLM engine.
+# ---------------------------------------------------------------------------
+
+class _YOLOApp(FastAPI):
+    """FastAPI subclass that strips root_path prefix before routing."""
+
+    async def __call__(self, scope: Scope, receive: Receive, send: Send) -> None:
+        if scope["type"] in ("http", "websocket"):
+            root_path: str = scope.get("root_path", "")
+            path: str = scope.get("path", "")
+            if root_path and path.startswith(root_path):
+                remainder = path[len(root_path):]
+                if remainder == "" or remainder.startswith("/"):
+                    scope = dict(scope)
+                    scope["path"] = remainder or "/"
+        await super().__call__(scope, receive, send)
+
+
+_yolo_app = _YOLOApp(
+    title="YOLO Object Detection API",
+    description=(
+        "Object detection API powered by YOLO and Ray Serve.\n\n"
+        "Supports `/v1/detect` (multipart file upload), `/health`, and `/info`."
+    ),
+    version="1.0.0",
+    root_path_in_servers=True,
+    openapi_tags=[
+        {"name": "Detection", "description": "Object detection endpoints"},
+        {"name": "Health",    "description": "Liveness probe"},
+        {"name": "Info",      "description": "Model metadata"},
+    ],
+)
+
+
+# ---------------------------------------------------------------------------
+# Base class — model loading, inference, FastAPI route handlers
 # ---------------------------------------------------------------------------
 
 class _YOLOBase:
     """
-    Shared YOLO engine logic — model loading, inference, HTTP routing.
+    Shared YOLO engine logic — model loading, inference, endpoints.
 
     Not decorated with @serve.deployment.  Subclasses add the deployment
     decorator and a @serve.batch decorated _detect_batch method with
@@ -206,68 +243,40 @@ class _YOLOBase:
                 bboxes.append(bbox_norm)
 
         return {
-            "items":              items,
-            "total_count":        len(items),
+            "items":               items,
+            "total_count":         len(items),
             "has_concealed_items": _check_occlusion(bboxes),
         }
 
-    # ── HTTP handlers ────────────────────────────────────────────────────
+    # ── FastAPI endpoints ────────────────────────────────────────────────
 
-    async def _handle_detect(self, request: Request) -> JSONResponse:
-        """Accept multipart file upload, run detection, return result."""
-        content_type = request.headers.get("content-type", "")
-
-        if "multipart/form-data" in content_type:
-            form = await request.form()
-            upload = form.get("file")
-            if upload is None:
-                return JSONResponse(
-                    {"error": "No 'file' field in multipart form data."},
-                    status_code=400,
-                )
-            img_bytes = await upload.read()
-        else:
-            return JSONResponse(
-                {"error": "Expected multipart/form-data with a 'file' field."},
-                status_code=400,
-            )
-
-        # Single call — @serve.batch collects concurrent calls into a batch.
+    @_yolo_app.post("/v1/detect", tags=["Detection"],
+                    summary="Detect objects in an uploaded image",
+                    response_model=None)
+    async def detect(self, file: UploadFile = File(...)):
+        img_bytes = await file.read()
         result = await self._detect_batch(img_bytes)
         return JSONResponse(result)
 
-    async def _handle_health(self, request: Request) -> JSONResponse:
-        return JSONResponse({
+    @_yolo_app.get("/health", tags=["Health"],
+                   summary="Liveness probe")
+    async def health_check(self):
+        return {
             "status": "healthy",
             "model":  self._model_path,
-        })
+        }
 
-    async def _handle_info(self, request: Request) -> JSONResponse:
+    @_yolo_app.get("/info", tags=["Info"],
+                   summary="Model metadata")
+    async def model_info(self):
         names = getattr(self._model, "names", {})
-        return JSONResponse({
+        return {
             "model":          self._model_path,
             "device":         self._device,
             "conf_threshold": self._conf,
             "iou_threshold":  self._iou,
             "classes":        names,
-        })
-
-    async def __call__(self, request: Request):
-        path = request.url.path
-
-        # POST /v1/detect (or POST / for compat)
-        if request.method == "POST":
-            return await self._handle_detect(request)
-
-        if path.endswith("/health"):
-            return await self._handle_health(request)
-        if path.endswith("/info"):
-            return await self._handle_info(request)
-
-        return JSONResponse(
-            {"error": f"Not found: {request.method} {path}"},
-            status_code=404,
-        )
+        }
 
 
 # ---------------------------------------------------------------------------
@@ -286,8 +295,9 @@ def make_yolo_deployment(
     """
 
     @serve.deployment
+    @serve.ingress(_yolo_app)
     class YOLOEngine(_YOLOBase):
-        """Ray Serve YOLO deployment with dynamic batching."""
+        """Ray Serve YOLO deployment with dynamic batching and Swagger UI."""
 
         @serve.batch(
             max_batch_size=max_batch_size,
@@ -299,9 +309,9 @@ def make_yolo_deployment(
             """
             Batched inference entry point — called by Ray Serve.
 
-            Ray Serve collects individual image_bytes from concurrent __call__
-            invocations and delivers them here as image_bytes_list.  Returns a
-            list of DetectionResult dicts, one per input image.
+            Ray Serve collects individual image_bytes from concurrent
+            detect() invocations and delivers them here as image_bytes_list.
+            Returns a list of DetectionResult dicts, one per input image.
             """
             from PIL import Image
 

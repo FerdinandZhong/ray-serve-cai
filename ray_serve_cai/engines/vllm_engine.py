@@ -317,20 +317,34 @@ class VLLMEngine:
         return "vllm"
 
     # ------------------------------------------------------------------
-    # Endpoints — decorated with _vllm_app routes so FastAPI generates
-    # the OpenAPI schema and serves Swagger UI at <route_prefix>/docs.
-    # FastAPI injects the parsed Pydantic body and the raw Request;
-    # both are forwarded directly to vLLM's serving handlers.
-    # Response is returned as-is (JSONResponse or StreamingResponse).
+    # Endpoints
+    #
+    # Each endpoint dispatches to a streaming or non-streaming helper
+    # based on the request payload.  This avoids returning vLLM's
+    # StreamingResponse directly from the FastAPI handler — Ray Serve's
+    # make_fastapi_class_based_view + include_router loses the
+    # response_model=None setting, causing FastAPI to json-encode the
+    # async-generator body_iterator instead of passing it through.
+    #
+    # Streaming path:  build a fresh StreamingResponse ourselves.
+    # Non-streaming:   return the JSONResponse from vLLM as-is.
     # ------------------------------------------------------------------
 
     @_vllm_app.post("/v1/chat/completions", tags=["Chat"],
-                    summary="Chat completion (OpenAI-compatible)")
+                    summary="Chat completion (OpenAI-compatible)",
+                    response_model=None)
     async def chat_completion(
         self, body: ChatCompletionRequest, request: Request
     ) -> Response:
+        if getattr(body, "stream", False):
+            return await self._stream_chat_completion(body, request)
+        return await self._non_stream_chat_completion(body, request)
+
+    async def _non_stream_chat_completion(
+        self, body: ChatCompletionRequest, request: Request
+    ) -> Response:
         try:
-            result = await self.openai_serving_chat.create_chat_completion(
+            return await self.openai_serving_chat.create_chat_completion(
                 body, raw_request=request
             )
         except Exception as exc:
@@ -338,37 +352,58 @@ class VLLMEngine:
             import traceback; logger.error(traceback.format_exc())
             return JSONResponse({"error": str(exc)}, status_code=500)
 
-        # For streaming responses the generator runs after this handler returns,
-        # so exceptions during streaming are invisible to the try/except above.
-        # Wrap the body iterator to log the real cause before Ray Serve swallows
-        # it with "raise e from None" in fetch_messages_from_queue.
-        if isinstance(result, StreamingResponse):
-            original_iter = result.body_iterator
+    async def _stream_chat_completion(
+        self, body: ChatCompletionRequest, request: Request
+    ) -> StreamingResponse:
+        try:
+            result = await self.openai_serving_chat.create_chat_completion(
+                body, raw_request=request
+            )
+        except Exception as exc:
+            logger.error("Error in streaming chat completion: %s", exc)
+            import traceback; logger.error(traceback.format_exc())
+            return JSONResponse({"error": str(exc)}, status_code=500)
 
-            async def _logged_stream():
-                try:
-                    async for chunk in original_iter:
-                        yield chunk
-                except asyncio.CancelledError:
-                    # Client disconnected mid-stream — normal, not an error.
-                    logger.debug("Streaming chat completion cancelled (client disconnect)")
-                    raise
-                except Exception as exc:
-                    logger.error("Exception during streaming chat completion: %s", exc,
-                                 exc_info=True)
-                    raise
+        # vLLM returns a StreamingResponse; extract its iterator and build
+        # a fresh one so FastAPI never sees a mutated response object.
+        if not isinstance(result, StreamingResponse):
+            return result  # unexpected non-streaming fallback
 
-            result.body_iterator = _logged_stream()
+        original_iter = result.body_iterator
 
-        return result
+        async def _logged_stream():
+            try:
+                async for chunk in original_iter:
+                    yield chunk
+            except asyncio.CancelledError:
+                logger.debug("Streaming chat completion cancelled (client disconnect)")
+                raise
+            except Exception as exc:
+                logger.error("Exception during streaming chat completion: %s",
+                             exc, exc_info=True)
+                raise
+
+        return StreamingResponse(
+            content=_logged_stream(),
+            status_code=result.status_code,
+            media_type=result.media_type,
+        )
 
     @_vllm_app.post("/v1/completions", tags=["Completions"],
-                    summary="Text completion (OpenAI-compatible)")
+                    summary="Text completion (OpenAI-compatible)",
+                    response_model=None)
     async def completion(
         self, body: CompletionRequest, request: Request
     ) -> Response:
+        if getattr(body, "stream", False):
+            return await self._stream_completion(body, request)
+        return await self._non_stream_completion(body, request)
+
+    async def _non_stream_completion(
+        self, body: CompletionRequest, request: Request
+    ) -> Response:
         try:
-            result = await self.openai_serving_completion.create_completion(
+            return await self.openai_serving_completion.create_completion(
                 body, raw_request=request
             )
         except Exception as exc:
@@ -376,27 +411,44 @@ class VLLMEngine:
             import traceback; logger.error(traceback.format_exc())
             return JSONResponse({"error": str(exc)}, status_code=500)
 
-        if isinstance(result, StreamingResponse):
-            original_iter = result.body_iterator
+    async def _stream_completion(
+        self, body: CompletionRequest, request: Request
+    ) -> StreamingResponse:
+        try:
+            result = await self.openai_serving_completion.create_completion(
+                body, raw_request=request
+            )
+        except Exception as exc:
+            logger.error("Error in streaming completion: %s", exc)
+            import traceback; logger.error(traceback.format_exc())
+            return JSONResponse({"error": str(exc)}, status_code=500)
 
-            async def _logged_stream():
-                try:
-                    async for chunk in original_iter:
-                        yield chunk
-                except asyncio.CancelledError:
-                    logger.debug("Streaming completion cancelled (client disconnect)")
-                    raise
-                except Exception as exc:
-                    logger.error("Exception during streaming completion: %s", exc,
-                                 exc_info=True)
-                    raise
+        if not isinstance(result, StreamingResponse):
+            return result
 
-            result.body_iterator = _logged_stream()
+        original_iter = result.body_iterator
 
-        return result
+        async def _logged_stream():
+            try:
+                async for chunk in original_iter:
+                    yield chunk
+            except asyncio.CancelledError:
+                logger.debug("Streaming completion cancelled (client disconnect)")
+                raise
+            except Exception as exc:
+                logger.error("Exception during streaming completion: %s",
+                             exc, exc_info=True)
+                raise
+
+        return StreamingResponse(
+            content=_logged_stream(),
+            status_code=result.status_code,
+            media_type=result.media_type,
+        )
 
     @_vllm_app.get("/v1/models", tags=["Models"],
-                   summary="List available models")
+                   summary="List available models",
+                   response_model=None)
     async def list_models(self) -> Response:
         models = await self.openai_serving_models.show_available_models()
         return JSONResponse(content=models.model_dump())
