@@ -240,6 +240,7 @@ class VLLMDeploymentFactory:
         num_replicas: int = 1,
         tensor_parallel_size: int = 1,
         use_cpu: bool = False,
+        max_ongoing_requests: int = 100,
         **kwargs
     ) -> serve.Application:
         """
@@ -253,24 +254,28 @@ class VLLMDeploymentFactory:
             num_replicas: Number of deployment replicas
             tensor_parallel_size: Number of GPUs for tensor parallelism
             use_cpu: Whether to use CPU-only mode
-            **kwargs: Additional deployment options (ignored for vLLM)
+            max_ongoing_requests: Max concurrent HTTP connections per replica,
+                including long-lived streaming connections. Should be >= vLLM's
+                max_num_seqs. Default 100.
+            **kwargs: Additional deployment options (reserved for future use)
 
         Returns:
             Configured Ray Serve application
 
         References:
+            - Streaming: https://docs.ray.io/en/latest/serve/tutorials/streaming.html
             - Placement groups: https://docs.ray.io/en/latest/serve/llm/user-guides/cross-node-parallelism.html
             - vLLM distributed: https://docs.vllm.ai/en/stable/serving/distributed_serving.html
         """
         # Import here to avoid circular dependency
-        from .vllm_engine import VLLMEngine
+        from .vllm_engine import create_vllm_deployment
 
         logger.info(f"Creating vLLM deployment with tensor_parallel_size={tensor_parallel_size}")
 
-        from .vllm_engine import create_vllm_deployment
         return create_vllm_deployment(
             engine_config=engine_config,
             num_replicas=num_replicas,
             tensor_parallel_size=tensor_parallel_size,
             use_cpu=use_cpu,
+            max_ongoing_requests=max_ongoing_requests,
         )

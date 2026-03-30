@@ -193,6 +193,12 @@ _vllm_app.add_middleware(_RoutePathMiddleware)
     name="vllm-deployment",
     num_replicas=1,
     ray_actor_options={},
+    # Allow many concurrent streaming connections per replica.
+    # vLLM's AsyncLLMEngine handles real concurrency internally via continuous
+    # batching; this gate just needs to be high enough not to throttle it.
+    # Default Ray Serve value is 5, which is far too low for streaming LLMs.
+    # Reference: https://docs.ray.io/en/latest/serve/tutorials/streaming.html
+    max_ongoing_requests=100,
 )
 @serve.ingress(_vllm_app)
 class VLLMEngine:
@@ -378,16 +384,23 @@ def create_vllm_deployment(
     num_replicas: int = 1,
     tensor_parallel_size: int = 1,
     use_cpu: bool = False,
+    max_ongoing_requests: int = 100,
 ) -> serve.Application:
     """
     Create a vLLM Ray Serve deployment with appropriate resource allocation.
 
+    max_ongoing_requests controls how many concurrent HTTP connections (including
+    long-lived streaming requests) each replica accepts.  vLLM's AsyncLLMEngine
+    uses continuous batching so many requests can be in-flight simultaneously;
+    this value should be at least as large as the engine's max_num_seqs.
+
     References:
+      Streaming: https://docs.ray.io/en/latest/serve/tutorials/streaming.html
       Placement groups: https://docs.ray.io/en/latest/serve/llm/user-guides/cross-node-parallelism.html
       vLLM distributed: https://docs.vllm.ai/en/stable/serving/distributed_serving.html
     """
-    logger.info("Creating vLLM deployment  replicas=%d  tp=%d  cpu=%s",
-                num_replicas, tensor_parallel_size, use_cpu)
+    logger.info("Creating vLLM deployment  replicas=%d  tp=%d  cpu=%s  max_ongoing=%d",
+                num_replicas, tensor_parallel_size, use_cpu, max_ongoing_requests)
 
     if use_cpu:
         ray_actor_options: Dict[str, Any] = {"num_cpus": 4, "num_gpus": 0}
@@ -408,5 +421,6 @@ def create_vllm_deployment(
     deployment = VLLMEngine.options(
         num_replicas=num_replicas,
         ray_actor_options=ray_actor_options,
+        max_ongoing_requests=max_ongoing_requests,
     )
     return deployment.bind(engine_config)
