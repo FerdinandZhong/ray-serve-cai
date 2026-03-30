@@ -25,7 +25,7 @@ from fastapi.responses import JSONResponse, Response
 from ray import serve
 from starlette.requests import Request
 from starlette.responses import StreamingResponse
-from starlette.types import ASGIApp, Receive, Scope, Send
+from starlette.types import Receive, Scope, Send
 
 from vllm import AsyncLLMEngine
 from vllm.engine.arg_utils import AsyncEngineArgs
@@ -127,24 +127,28 @@ def _build_serving_render(engine_args: AsyncEngineArgs, model_name: str,
 
 
 # ---------------------------------------------------------------------------
-# ASGI middleware — strips route_prefix from scope["path"] before routing.
+# FastAPI app — provides Swagger UI at <route_prefix>/docs
+# Defined at module level; @serve.ingress binds it to the deployment class.
+# root_path_in_servers=True tells FastAPI to use the ASGI root_path set by
+# Ray Serve (the deployment's route_prefix) as the server base URL, so the
+# "Try it out" button in Swagger UI sends requests to the correct path.
 #
-# Ray Serve (starlette >= 0.33.0) sets scope["root_path"] to the deployment's
+# Path stripping: Ray Serve sets scope["root_path"] to the deployment's
 # route_prefix (e.g. "/paddleocr") but does NOT strip it from scope["path"],
 # leaving scope["path"] = "/paddleocr/v1/chat/completions".  The FastAPI
 # routes are registered without the prefix ("/v1/chat/completions"), so they
 # would not match the full path → 404.
 #
-# Starlette 0.33.0+ handles this via get_route_path() in the Router, but the
-# behaviour differs across deployment environments and Ray Serve versions.
-# This middleware normalises the path unconditionally so routing is reliable.
+# We handle this by overriding __call__ to strip the prefix BEFORE Starlette
+# builds its middleware stack.  This avoids add_middleware() which inserts a
+# layer between ServerErrorMiddleware and ExceptionMiddleware and breaks
+# FastAPI's detection of StreamingResponse as a pass-through Response — it
+# instead tries to JSON-serialize the body_iterator (an async generator).
 # ---------------------------------------------------------------------------
 
-class _RoutePathMiddleware:
-    """Strip ASGI root_path prefix from scope path before FastAPI routing."""
 
-    def __init__(self, app: ASGIApp) -> None:
-        self.app = app
+class _VLLMApp(FastAPI):
+    """FastAPI subclass that strips root_path prefix before routing."""
 
     async def __call__(self, scope: Scope, receive: Receive, send: Send) -> None:
         if scope["type"] in ("http", "websocket"):
@@ -155,19 +159,10 @@ class _RoutePathMiddleware:
                 if remainder == "" or remainder.startswith("/"):
                     scope = dict(scope)
                     scope["path"] = remainder or "/"
-                    # Keep root_path so Swagger UI server URL generation
-                    # still uses the correct prefix.
-        await self.app(scope, receive, send)
+        await super().__call__(scope, receive, send)
 
 
-# ---------------------------------------------------------------------------
-# FastAPI app — provides Swagger UI at <route_prefix>/docs
-# Defined at module level; @serve.ingress binds it to the deployment class.
-# root_path_in_servers=True tells FastAPI to use the ASGI root_path set by
-# Ray Serve (the deployment's route_prefix) as the server base URL, so the
-# "Try it out" button in Swagger UI sends requests to the correct path.
-# ---------------------------------------------------------------------------
-_vllm_app = FastAPI(
+_vllm_app = _VLLMApp(
     title="vLLM OpenAI-Compatible API",
     description=(
         "OpenAI-compatible inference API powered by vLLM and Ray Serve.\n\n"
@@ -182,9 +177,6 @@ _vllm_app = FastAPI(
         {"name": "Health",      "description": "Liveness probe"},
     ],
 )
-# Apply the path-stripping middleware so all starlette/Ray Serve version
-# combinations route correctly regardless of path-stripping behaviour.
-_vllm_app.add_middleware(_RoutePathMiddleware)
 
 
 # ---------------------------------------------------------------------------
@@ -376,13 +368,32 @@ class VLLMEngine:
         self, body: CompletionRequest, request: Request
     ) -> Response:
         try:
-            return await self.openai_serving_completion.create_completion(
+            result = await self.openai_serving_completion.create_completion(
                 body, raw_request=request
             )
         except Exception as exc:
             logger.error("Error in completion: %s", exc)
             import traceback; logger.error(traceback.format_exc())
             return JSONResponse({"error": str(exc)}, status_code=500)
+
+        if isinstance(result, StreamingResponse):
+            original_iter = result.body_iterator
+
+            async def _logged_stream():
+                try:
+                    async for chunk in original_iter:
+                        yield chunk
+                except asyncio.CancelledError:
+                    logger.debug("Streaming completion cancelled (client disconnect)")
+                    raise
+                except Exception as exc:
+                    logger.error("Exception during streaming completion: %s", exc,
+                                 exc_info=True)
+                    raise
+
+            result.body_iterator = _logged_stream()
+
+        return result
 
     @_vllm_app.get("/v1/models", tags=["Models"],
                    summary="List available models")
@@ -483,17 +494,23 @@ def create_vllm_deployment(
     if placement_group_bundles is None and not use_cpu:
         if tensor_parallel_size > 1:
             # All TP shards must share a single node to use NVLink / PCIe.
+            # The actor itself needs num_cpus=tp_size and num_gpus=tp_size
+            # (see ray_actor_options above), so the first bundle must cover
+            # those totals — use a single bundle with all TP resources.
             placement_group_bundles = [
-                {"GPU": 1.0, "CPU": 1.0} for _ in range(tensor_parallel_size)
+                {"GPU": float(tensor_parallel_size), "CPU": float(tensor_parallel_size)}
             ]
             placement_group_strategy = placement_group_strategy or "STRICT_PACK"
             logger.info(
-                "Auto placement group: STRICT_PACK × %d bundles for TP=%d",
-                tensor_parallel_size, tensor_parallel_size,
+                "Auto placement group: STRICT_PACK single bundle GPU=%d CPU=%d for TP=%d",
+                tensor_parallel_size, tensor_parallel_size, tensor_parallel_size,
             )
         elif gpu_fraction is not None and gpu_fraction < 1.0:
             # Bin-pack fractional replicas onto the same node's GPU pool.
-            placement_group_bundles = [{"GPU": gpu_fraction, "CPU": 1.0}]
+            # The actor needs num_cpus=2 (see ray_actor_options above), so
+            # the bundle CPU must be at least 2 to satisfy Ray's constraint
+            # that actor resources must be a subset of the first bundle.
+            placement_group_bundles = [{"GPU": gpu_fraction, "CPU": 2.0}]
             placement_group_strategy = placement_group_strategy or "PACK"
             logger.info(
                 "Auto placement group: PACK bundle for gpu_fraction=%.2f",
