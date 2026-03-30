@@ -32,6 +32,17 @@ print("=" * 70)
 print("Ray Worker Node — startup")
 print("=" * 70)
 
+# ── Venv bin prepended to PATH ────────────────────────────────────────────────
+# Running `.venv/bin/python` directly does NOT activate the venv — the venv's
+# bin/ directory is NOT added to PATH automatically.  Prepend it now so that
+# all child processes (raylet → Ray actor → vLLM EngineCore → FlashInfer JIT)
+# can resolve binaries installed in the venv (e.g. ninja, ray, uvicorn).
+_venv_bin = str(VENV_PYTHON.parent)
+_path = os.environ.get("PATH", "")
+if _venv_bin not in _path.split(":"):
+    os.environ["PATH"] = _venv_bin + ":" + _path
+    print(f"Prepended venv bin to PATH: {_venv_bin}")
+
 # ── CUDA environment setup (GPU nodes only) ───────────────────────────────────
 # Only runs when a CUDA installation is actually present on this image.
 # CPU-only nodes using the standard (non-CUDA) image skip this block entirely.

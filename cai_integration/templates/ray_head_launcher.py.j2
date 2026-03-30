@@ -41,6 +41,17 @@ print("=" * 70)
 print("Ray Head Node — startup")
 print("=" * 70)
 
+# ── Venv bin prepended to PATH ────────────────────────────────────────────────
+# Running `.venv/bin/python` directly does NOT activate the venv — the venv's
+# bin/ directory is NOT added to PATH automatically.  Prepend it now so that
+# all child processes (raylet → Ray actor → vLLM EngineCore → FlashInfer JIT)
+# can resolve binaries installed in the venv (e.g. ninja, ray, uvicorn).
+_venv_bin = str(VENV_PYTHON.parent)
+_path = os.environ.get("PATH", "")
+if _venv_bin not in _path.split(":"):
+    os.environ["PATH"] = _venv_bin + ":" + _path
+    print(f"Prepended venv bin to PATH: {_venv_bin}")
+
 # ── [0/4] Ensure nginx is installed ──────────────────────────────────────────
 _nginx_bin = Path("/home/cdsw/.local/bin/nginx")
 if not _nginx_bin.exists():
