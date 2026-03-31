@@ -1,0 +1,377 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>vLLM Distributed Executor Backend — Default Selection</title>
+<style>
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+
+  body {
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+    background: #ffffff;
+    color: #1e293b;
+    min-height: 100vh;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    padding: 40px 24px 60px;
+  }
+
+  h1 {
+    font-size: 1.4rem;
+    font-weight: 700;
+    color: #0f172a;
+    margin-bottom: 6px;
+    text-align: center;
+  }
+  .subtitle {
+    font-size: 0.875rem;
+    color: #64748b;
+    margin-bottom: 44px;
+    text-align: center;
+  }
+
+  /* ── tree layout ── */
+  .tree {
+    width: 100%;
+    max-width: 900px;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 0;
+  }
+
+  /* ── generic node ── */
+  .node {
+    border-radius: 10px;
+    padding: 11px 20px;
+    text-align: center;
+    font-size: 0.88rem;
+    font-weight: 600;
+    position: relative;
+    white-space: nowrap;
+  }
+
+  /* entry point */
+  .node-entry {
+    background: #f8fafc;
+    border: 2px solid #94a3b8;
+    color: #334155;
+    min-width: 300px;
+  }
+  .node-entry .tag {
+    display: block;
+    font-size: 0.68rem;
+    font-weight: 700;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+    color: #94a3b8;
+    margin-bottom: 3px;
+  }
+
+  /* decision diamond */
+  .diamond-wrap {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+  }
+  .diamond {
+    width: 220px;
+    padding: 12px 16px;
+    background: #fefce8;
+    border: 2px solid #ca8a04;
+    border-radius: 6px;
+    color: #78350f;
+    font-size: 0.82rem;
+    font-weight: 600;
+    text-align: center;
+    position: relative;
+  }
+  .diamond::before {
+    content: "?";
+    position: absolute;
+    top: -10px;
+    right: -10px;
+    width: 20px;
+    height: 20px;
+    background: #ca8a04;
+    color: #fff;
+    border-radius: 50%;
+    font-size: 0.7rem;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-weight: 700;
+  }
+
+  /* outcome pill */
+  .outcome {
+    border-radius: 20px;
+    padding: 6px 18px;
+    font-size: 0.82rem;
+    font-weight: 700;
+    border: 2px solid;
+  }
+  .outcome-uni   { background: #eff6ff; border-color: #3b82f6; color: #1d4ed8; }
+  .outcome-mp    { background: #fff7ed; border-color: #f97316; color: #c2410c; }
+  .outcome-ray   { background: #f0fdf4; border-color: #16a34a; color: #15803d; }
+  .outcome-error { background: #fff1f2; border-color: #e11d48; color: #be123c; }
+
+  /* connector lines */
+  .vline {
+    width: 2px;
+    background: #cbd5e1;
+  }
+  .hline {
+    height: 2px;
+    background: #cbd5e1;
+  }
+
+  /* branch label */
+  .branch-label {
+    font-size: 0.7rem;
+    font-weight: 600;
+    color: #94a3b8;
+    padding: 0 4px;
+  }
+
+  /* branch row */
+  .branch-row {
+    display: flex;
+    align-items: flex-start;
+    width: 100%;
+    max-width: 900px;
+    gap: 0;
+  }
+  .branch-col {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    flex: 1;
+    gap: 0;
+  }
+
+  /* ── our deployment note ── */
+  .our-note {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    background: #f0fdf4;
+    border: 1px solid #86efac;
+    border-radius: 6px;
+    padding: 4px 10px;
+    font-size: 0.76rem;
+    color: #15803d;
+    font-weight: 600;
+    margin-top: 5px;
+  }
+
+  /* ── summary table ── */
+  .summary {
+    width: 100%;
+    max-width: 900px;
+    margin-top: 40px;
+  }
+  .summary h2 {
+    font-size: 0.72rem;
+    font-weight: 700;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+    color: #94a3b8;
+    margin-bottom: 12px;
+    text-align: center;
+  }
+  table {
+    width: 100%;
+    border-collapse: collapse;
+    font-size: 0.83rem;
+  }
+  th {
+    background: #f8fafc;
+    border: 1px solid #e2e8f0;
+    padding: 9px 14px;
+    text-align: left;
+    font-size: 0.72rem;
+    font-weight: 700;
+    letter-spacing: 0.06em;
+    text-transform: uppercase;
+    color: #64748b;
+  }
+  td {
+    border: 1px solid #e2e8f0;
+    padding: 9px 14px;
+    color: #334155;
+    vertical-align: top;
+  }
+  tr:nth-child(even) td { background: #fafafa; }
+  td.highlight { font-weight: 700; }
+
+  code {
+    font-family: "SF Mono", "Fira Code", monospace;
+    font-size: 0.8rem;
+    background: #e2e8f0;
+    border-radius: 4px;
+    padding: 1px 5px;
+    color: #1d4ed8;
+  }
+
+  .badge {
+    display: inline-block;
+    border-radius: 4px;
+    padding: 2px 8px;
+    font-size: 0.75rem;
+    font-weight: 700;
+  }
+  .badge-uni   { background: #dbeafe; color: #1d4ed8; }
+  .badge-mp    { background: #ffedd5; color: #c2410c; }
+  .badge-ray   { background: #dcfce7; color: #15803d; }
+  .badge-err   { background: #ffe4e6; color: #be123c; }
+</style>
+</head>
+<body>
+
+<h1>vLLM Distributed Executor Backend — Default Selection</h1>
+<p class="subtitle">
+  How vLLM resolves <code>distributed_executor_backend = None</code> at engine startup
+  (source: <code>vllm/config/parallel.py</code>)
+</p>
+
+<!-- ════════════════════════════════════════════════════════ TREE -->
+<div class="tree">
+
+  <!-- Entry -->
+  <div class="node node-entry">
+    <span class="tag">input</span>
+    <code>distributed_executor_backend = None</code> &nbsp;(default)
+  </div>
+  <div class="vline" style="height:24px;"></div>
+
+  <!-- Decision 1: world_size -->
+  <div class="diamond-wrap">
+    <div class="diamond">world_size == 1 ?<br><span style="font-size:0.72rem;font-weight:400;color:#92400e;">(tensor_parallel × pipeline_parallel)</span></div>
+  </div>
+
+  <!-- Branch: YES / NO -->
+  <div style="position:relative; width:100%; max-width:600px; height:28px;">
+    <div style="position:absolute; top:0; left:50%; width:1px; height:28px; background:#cbd5e1;"></div>
+    <div style="position:absolute; top:27px; left:20%; width:60%; height:2px; background:#cbd5e1;"></div>
+  </div>
+
+  <div style="display:flex; justify-content:space-between; width:100%; max-width:600px;">
+
+    <!-- YES branch -->
+    <div style="display:flex;flex-direction:column;align-items:center;flex:1;">
+      <div style="width:2px;height:16px;background:#cbd5e1;"></div>
+      <span class="branch-label">YES</span>
+      <div style="width:2px;height:12px;background:#cbd5e1;"></div>
+      <div class="outcome outcome-uni">"uni" — single process</div>
+      <div class="our-note">✓ our case: tp=1, world_size=1</div>
+    </div>
+
+    <!-- NO branch -->
+    <div style="display:flex;flex-direction:column;align-items:center;flex:1;">
+      <div style="width:2px;height:16px;background:#cbd5e1;"></div>
+      <span class="branch-label">NO &nbsp;(world_size &gt; 1)</span>
+      <div style="width:2px;height:12px;background:#cbd5e1;"></div>
+
+      <!-- sub-decisions -->
+      <div style="display:flex;flex-direction:column;align-items:center;gap:0;width:100%;">
+
+        <!-- sub 1: nnodes > 1 -->
+        <div class="diamond" style="width:270px;">CUDA + nnodes &gt; 1 ?</div>
+        <div style="display:flex;align-items:center;gap:0;width:270px;">
+          <div style="flex:1;height:2px;background:#cbd5e1;"></div>
+          <span class="branch-label">YES</span>
+          <div class="outcome outcome-mp" style="margin:6px 0;">"mp"</div>
+        </div>
+        <div style="width:2px;height:10px;background:#cbd5e1;"></div>
+
+        <!-- sub 2: gpu count < world_size -->
+        <div class="diamond" style="width:270px;">Available GPUs &lt; world_size ?</div>
+        <div style="display:flex;align-items:center;gap:0;width:270px;">
+          <div style="flex:1;height:2px;background:#cbd5e1;"></div>
+          <span class="branch-label">YES</span>
+          <div class="outcome outcome-error" style="margin:6px 0;">ValueError ✕</div>
+        </div>
+        <div style="width:2px;height:10px;background:#cbd5e1;"></div>
+
+        <!-- sub 3: data_parallel_backend == ray -->
+        <div class="diamond" style="width:270px;">data_parallel_backend == "ray" ?</div>
+        <div style="display:flex;align-items:center;gap:0;width:270px;">
+          <div style="flex:1;height:2px;background:#cbd5e1;"></div>
+          <span class="branch-label">YES</span>
+          <div class="outcome outcome-ray" style="margin:6px 0;">"ray"</div>
+        </div>
+        <div style="width:2px;height:10px;background:#cbd5e1;"></div>
+
+        <!-- sub 4: Ray available + placement group -->
+        <div class="diamond" style="width:270px;">Ray available AND placement group set ?</div>
+        <div style="display:flex;justify-content:space-between;align-items:flex-start;width:270px;padding:0 10px;">
+          <div style="display:flex;flex-direction:column;align-items:center;">
+            <div style="width:2px;height:14px;background:#cbd5e1;"></div>
+            <span class="branch-label">YES</span>
+            <div style="width:2px;height:8px;background:#cbd5e1;"></div>
+            <div class="outcome outcome-ray">"ray"</div>
+            <div class="our-note">✓ our case: tp&gt;1 in Ray Serve<br>placement group detected</div>
+          </div>
+          <div style="display:flex;flex-direction:column;align-items:center;">
+            <div style="width:2px;height:14px;background:#cbd5e1;"></div>
+            <span class="branch-label">NO</span>
+            <div style="width:2px;height:8px;background:#cbd5e1;"></div>
+            <div class="outcome outcome-mp">"mp"</div>
+            <div style="font-size:0.7rem;color:#94a3b8;margin-top:4px;text-align:center;">single-node<br>multi-GPU default</div>
+          </div>
+        </div>
+
+      </div>
+    </div>
+
+  </div>
+
+</div>
+<!-- end tree -->
+
+<!-- ════════════════════════════════════════════════════════ TABLE -->
+<div class="summary">
+  <h2>Backend reference</h2>
+  <table>
+    <thead>
+      <tr>
+        <th>Backend</th>
+        <th>When selected</th>
+        <th>Workers</th>
+        <th>Our deployment</th>
+      </tr>
+    </thead>
+    <tbody>
+      <tr>
+        <td><span class="badge badge-uni">"uni"</span></td>
+        <td>world_size == 1 (single GPU)</td>
+        <td>Single process — no inter-process comms</td>
+        <td class="highlight">✓ tp=1, gpu_fraction&lt;1 replicas</td>
+      </tr>
+      <tr>
+        <td><span class="badge badge-ray">"ray"</span></td>
+        <td>Running inside a Ray placement group, OR data_parallel_backend="ray"</td>
+        <td>Ray remote actors — cross-node capable</td>
+        <td class="highlight">✓ tp&gt;1 inside Ray Serve deployment</td>
+      </tr>
+      <tr>
+        <td><span class="badge badge-mp">"mp"</span></td>
+        <td>world_size&gt;1, single node, no Ray placement group</td>
+        <td>OS processes via <code>multiprocessing</code> — same node only</td>
+        <td>Not used (we always run inside Ray)</td>
+      </tr>
+      <tr>
+        <td><span class="badge badge-err">ValueError</span></td>
+        <td>Available GPUs &lt; world_size and no explicit backend set</td>
+        <td>—</td>
+        <td>Set <code>distributed_executor_backend="ray"</code> to override</td>
+      </tr>
+    </tbody>
+  </table>
+</div>
+
+</body>
+</html>

@@ -85,6 +85,25 @@ except ImportError as e:
 except Exception as e:
     logger.warning(f"Failed to register YOLO engine: {e}")
 
+# Try to register MCP engine (optional, fail gracefully)
+# Requires: mcp, httpx (for tools that make HTTP calls)
+try:
+    from .mcp_engine import MCPEngine
+    from .mcp_config import MCPConfigBuilder, MCPDeploymentFactory
+
+    register_engine(
+        engine_type="mcp",
+        engine_class=MCPEngine,
+        config_builder=MCPConfigBuilder(),
+        deployment_factory=MCPDeploymentFactory(),
+        set_as_default=False
+    )
+    logger.info("✅ Registered MCP engine")
+except ImportError as e:
+    logger.debug(f"MCP engine not available (optional dependency): {e}")
+except Exception as e:
+    logger.warning(f"Failed to register MCP engine: {e}")
+
 __all__ = [
     # Legacy exports (backward compatibility)
     'VLLMEngine',
@@ -107,4 +126,8 @@ __all__ = [
     'YOLOEngine',
     'YOLOConfigBuilder',
     'YOLODeploymentFactory',
+    # MCP engine exports
+    'MCPEngine',
+    'MCPConfigBuilder',
+    'MCPDeploymentFactory',
 ]

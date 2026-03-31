@@ -1,7 +1,7 @@
 {
   "name": "yolo-detector",
   "engine_type": "yolo",
-  "model": "/home/cdsw/models/yolov8n.pt",
+  "model": "/home/cdsw/models/Yolo8n_finetuned/best.pt",
   "route_prefix": "/yolo",
   "num_replicas": 1,
   "use_cpu": true,
