@@ -64,6 +64,7 @@ def create_ray_launcher_scripts(
     head_address: str = None,
     ray_port: int = 6379,
     dashboard_port: int = 8265,
+    metrics_port: int = 9090,
     mgmt_cpu: int = 2,
     mgmt_memory_gb: int = 8,
     proxy_health_check_period_s: float = None,
@@ -109,6 +110,7 @@ def create_ray_launcher_scripts(
         "project_dir":    str(project_dir),
         "ray_port":       ray_port,
         "dashboard_port": dashboard_port,
+        "metrics_port":   metrics_port,
         "mgmt_cpu":       mgmt_cpu,
         "mgmt_memory_gb": mgmt_memory_gb,
         "proxy_health_check_period_s":  proxy_health_check_period_s,
@@ -132,6 +134,7 @@ def create_ray_launcher_scripts(
             "project_dir":      str(project_dir),
             "head_address":     head_address,   # None → reads RAY_HEAD_ADDRESS at runtime
             "ray_port":         ray_port,
+            "metrics_port":     metrics_port,
             "node_type":        group.node_type,
             "worker_memory_gb": group.memory,
         }
@@ -173,6 +176,7 @@ def load_config():
         'worker_node_type':         None,
         'ray_port':                 6379,
         'dashboard_port':           8265,
+        'metrics_port':             9090,
         'management_api_cpu':       None,
         'management_api_memory':    None,
         'worker_groups':            None,
@@ -221,6 +225,7 @@ def load_config():
         ('RAY_WORKER_GPUS',    'worker_gpus'),
         ('RAY_PORT',           'ray_port'),
         ('RAY_DASHBOARD_PORT', 'dashboard_port'),
+        ('RAY_METRICS_PORT',   'metrics_port'),
     ]
     for env_var, key in _env_int:
         val = os.environ.get(env_var)
@@ -386,6 +391,7 @@ def main():
             worker_groups=worker_groups,
             ray_port=ray_config['ray_port'],
             dashboard_port=ray_config['dashboard_port'],
+            metrics_port=ray_config['metrics_port'],
             mgmt_cpu=mgmt_cpu,
             mgmt_memory_gb=mgmt_memory,
             proxy_health_check_period_s=ray_config['proxy_health_check_period_s'],

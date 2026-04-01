@@ -92,6 +92,7 @@ result = subprocess.run(
         "--dashboard-host", "127.0.0.1",
         "--dashboard-port", "{{ dashboard_port }}",
         "--include-dashboard", "true",
+        "--metrics-export-port", "{{ metrics_port }}",
         # Kill idle worker processes after 60 s instead of the default
         # (several minutes).  This directly reduces the ray::IDLE actor count
         # visible in the dashboard between bursts of work.
@@ -105,7 +106,7 @@ if result.returncode != 0:
     print(f"ERROR: ray start --head failed (exit {result.returncode}):")
     print(result.stderr)
     sys.exit(result.returncode)
-print("  Ray head started  (GCS :{{ ray_port }}, dashboard 127.0.0.1:{{ dashboard_port }})")
+print("  Ray head started  (GCS :{{ ray_port }}, dashboard 127.0.0.1:{{ dashboard_port }}, metrics :{{ metrics_port }})")
 
 
 # ── [2/4] Wait for GCS ───────────────────────────────────────────────────────

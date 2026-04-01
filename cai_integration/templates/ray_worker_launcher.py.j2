@@ -161,6 +161,7 @@ cmd = [
     str(RAY_BIN),
     "start",
     "--address",              HEAD_ADDRESS,
+    "--metrics-export-port",  "{{ metrics_port }}",
     "--resources",            node_resources,
     "--object-store-memory",  str(_object_store_bytes),
     "--block",

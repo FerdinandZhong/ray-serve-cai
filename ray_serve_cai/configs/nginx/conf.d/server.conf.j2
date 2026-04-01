@@ -49,6 +49,15 @@ server {
     }
 
     # ------------------------------------------------------------------ #
+    # Prometheus metrics (no access log to avoid scrape noise)            #
+    # ------------------------------------------------------------------ #
+    location /metrics {
+        include {{ conf_dir }}/snippets/proxy_params.conf;
+        proxy_pass http://ray_serve/api/v1/metrics;
+        access_log off;
+    }
+
+    # ------------------------------------------------------------------ #
     # Health check (no access log to avoid noise)                         #
     # ------------------------------------------------------------------ #
     location = /health {

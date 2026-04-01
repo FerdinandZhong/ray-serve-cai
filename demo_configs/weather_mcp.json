@@ -1,6 +1,7 @@
 {
   "name": "weather-mcp",
   "engine_type": "mcp",
+  "model": "ray_serve_cai.engines.mcps.weather_tools",
   "route_prefix": "/weather-mcp",
   "num_replicas": 1,
   "use_cpu": true,
