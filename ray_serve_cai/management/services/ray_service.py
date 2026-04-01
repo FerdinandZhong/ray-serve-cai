@@ -1,5 +1,6 @@
 """Service for Ray cluster operations."""
 
+import concurrent.futures
 import ray
 from ray import serve
 from typing import List, Dict, Any, Optional
@@ -127,7 +128,10 @@ class RayService:
         num_replicas: int = 1,
         tensor_parallel_size: int = 1,
         use_cpu: bool = False,
+        gpu_fraction: Optional[float] = None,
         engine_config: Optional[Dict[str, Any]] = None,
+        placement_group_bundles: Optional[List[Dict[str, float]]] = None,
+        placement_group_strategy: Optional[str] = None,
     ) -> Dict[str, Any]:
         """
         Deploy a vLLM or SGLang model as a Ray Serve application.
@@ -179,16 +183,33 @@ class RayService:
             num_replicas=num_replicas,
             tensor_parallel_size=tensor_parallel_size,
             use_cpu=use_cpu,
+            gpu_fraction=gpu_fraction,
+            placement_group_bundles=placement_group_bundles,
+            placement_group_strategy=placement_group_strategy,
         )
 
-        serve.run(app, name=name, route_prefix=route_prefix)
+        # serve.run() blocks until the deployment is healthy, which can take
+        # minutes for large models.  Run it in a thread and wait up to 30 s.
+        # If it isn't ready in time, return "deploying" — the deployment
+        # continues in the background and can be tracked via the Ray dashboard
+        # or GET /api/v1/applications/{name}.
+        _DEPLOY_TIMEOUT = 30
+        executor = concurrent.futures.ThreadPoolExecutor(max_workers=1)
+        future = executor.submit(serve.run, app, name=name, route_prefix=route_prefix)
+        executor.shutdown(wait=False)  # thread keeps running after timeout
+
+        try:
+            future.result(timeout=_DEPLOY_TIMEOUT)
+            deploy_status = "deployed"
+        except concurrent.futures.TimeoutError:
+            deploy_status = "deploying"
 
         logger.info(
-            f"Deployed model application: {name}  "
+            f"Model application submitted: {name}  status={deploy_status}  "
             f"[engine:{engine_type}  model:{model}  tp:{tensor_parallel_size}]"
         )
         return {
-            "status": "deployed",
+            "status": deploy_status,
             "name": name,
             "engine_type": engine_type,
             "model": model,

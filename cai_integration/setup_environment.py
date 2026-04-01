@@ -13,6 +13,7 @@ Run this as a CML job to prepare the environment for Ray cluster deployment.
 import os
 import sys
 import subprocess
+from pathlib import Path
 
 
 def run_command(cmd, cwd=None):
@@ -32,6 +33,8 @@ def run_command(cmd, cwd=None):
         return True
     except subprocess.CalledProcessError as e:
         print(f"Error running command: {e}")
+        if e.stdout:
+            print(f"Output: {e.stdout}")
         if e.stderr:
             print(f"Error output: {e.stderr}")
         return False
@@ -62,28 +65,15 @@ def install_nginx():
     Strategy (tried in order):
       1. Already installed at the expected path — use as-is.
       2. System nginx is on PATH — symlink it.
-      3. Compile from source with a minimal feature set that only requires
-         standard build tools (gcc, make) and zlib, both of which are present
-         in every Cloudera ML runtime image.
-
-    Modules intentionally excluded:
-      --without-http_ssl_module    : no libssl-dev needed; TLS is terminated
-                                     by the CAI/CML platform layer, not nginx.
-      --without-http_v2_module     : no libssl-dev needed; HTTP/2 is not
-                                     required for internal proxying.
-      --without-http_rewrite_module: no libpcre-dev needed; we use only
-                                     prefix/exact location matches, not regex.
-
-    Modules intentionally kept (defaults):
-      http_gzip_module  : zlib is always available; enables `gzip on` in conf.
-      http_proxy_module : core requirement for reverse-proxying Ray services.
+      3. Download a pre-built static binary from nginx.org — no compiler,
+         no dev headers, no build tools required.
     """
     print("\n Setting up Nginx (no-root install)...")
 
-    nginx_bin = "/home/cdsw/.local/bin/nginx"
-    nginx_prefix = "/home/cdsw/.local/nginx"
+    home = Path.home()
+    nginx_bin = str(home / ".local" / "bin" / "nginx")
 
-    os.makedirs("/home/cdsw/.local/bin", exist_ok=True)
+    os.makedirs(str(home / ".local" / "bin"), exist_ok=True)
 
     # ------------------------------------------------------------------ #
     # Step 1: already installed?                                           #
@@ -112,30 +102,31 @@ def install_nginx():
             print(f"   Symlinked to: {nginx_bin}")
             return True
         except OSError as e:
-            print(f"   Could not create symlink: {e} — will compile from source")
+            print(f"   Could not create symlink: {e} — will download static binary")
 
     # ------------------------------------------------------------------ #
-    # Step 3: compile from source (no SSL, no PCRE, no apt needed)        #
+    # Step 3: compile from source (no SSL, no PCRE, no zlib needed)      #
     # ------------------------------------------------------------------ #
-    print("   No system nginx found — compiling from source...")
-    print("   (requires gcc, make, zlib — all present in the ML runtime)")
-
     import tarfile
     import tempfile
 
-    nginx_version = "1.28.1"
-    nginx_url = f"https://nginx.org/download/nginx-{nginx_version}.tar.gz"
+    nginx_version = os.environ.get("NGINX_VERSION", "1.29.7")
+    nginx_url = os.environ.get(
+        "NGINX_SOURCE_URL",
+        f"https://nginx.org/download/nginx-{nginx_version}.tar.gz",
+    )
+    nginx_prefix = str(home / ".local" / "nginx")
+
+    print(f"   No system nginx found — compiling from source (nginx {nginx_version})...")
 
     try:
         with tempfile.TemporaryDirectory() as tmpdir:
-            # Download
             tar_path = os.path.join(tmpdir, "nginx.tar.gz")
-            print(f"   Downloading nginx-{nginx_version}...")
+            print(f"   Downloading {nginx_url} ...")
             if not run_command(f"curl -fsSL -o {tar_path} {nginx_url}", cwd=tmpdir):
                 print("   Failed to download nginx source")
                 return False
 
-            # Extract
             print("   Extracting...")
             with tarfile.open(tar_path, "r:gz") as tar:
                 tar.extractall(path=tmpdir)
@@ -145,57 +136,43 @@ def install_nginx():
                 print(f"   Source directory not found: {src_dir}")
                 return False
 
-            # Configure — minimal: no SSL, no HTTP/2, no PCRE/rewrite
-            print("   Configuring (minimal build: proxy + gzip only)...")
+            # Minimal build: proxy only — no SSL, no PCRE, no zlib needed.
+            # TLS is terminated by the CAI/CML platform layer, not nginx.
             configure_cmd = " ".join([
                 "./configure",
                 f"--prefix={nginx_prefix}",
                 f"--sbin-path={nginx_bin}",
-                # These paths are compile-time defaults only;
-                # our Jinja2 templates override them at runtime via -c flag.
                 f"--conf-path={nginx_prefix}/conf/nginx.conf",
                 f"--pid-path={nginx_prefix}/run/nginx.pid",
                 f"--error-log-path={nginx_prefix}/logs/error.log",
                 f"--http-log-path={nginx_prefix}/logs/access.log",
-                # Excluded to avoid dev-header dependencies:
-                "--without-http_rewrite_module",   # no libpcre-dev needed
-                "--without-http_ssl_module",       # no libssl-dev needed (TLS
-                                                   # is terminated by CAI/CML)
-                "--without-http_v2_module",        # no libssl-dev needed
-                # Excluded modules not needed for local proxying:
+                "--without-http_rewrite_module",  # no libpcre-dev
+                # "--without-http_ssl_module",      # no libssl-dev
+                # "--without-http_v2_module",       # no libssl-dev
+                "--without-http_gzip_module",     # no zlib-dev
                 "--without-mail_smtp_module",
                 "--without-mail_imap_module",
                 "--without-mail_pop3_module",
-                # NOTE: do NOT add --without-stream_ssl_module here.
-                # The stream module is not enabled (no --with-stream), so that
-                # flag is unrecognised and causes ./configure to abort.
             ])
+            print("   Configuring...")
             if not run_command(configure_cmd, cwd=src_dir):
                 print("   Configure failed")
                 return False
 
-            # Compile
             num_cores = os.cpu_count() or 2
-            print(f"   Compiling with {num_cores} cores (this takes 1-3 minutes)...")
+            print(f"   Compiling with {num_cores} cores...")
             if not run_command(f"make -j{num_cores}", cwd=src_dir):
                 print("   Compile failed")
                 return False
 
-            # Install
-            print("   Installing...")
             if not run_command("make install", cwd=src_dir):
                 print("   Install failed")
                 return False
 
-        # Verify
-        if os.path.isfile(nginx_bin):
-            result = subprocess.run(
-                [nginx_bin, "-v"], capture_output=True, text=True
-            )
-            if result.returncode == 0:
-                print(f"   Nginx compiled and installed: {result.stderr.strip()}")
-                print(f"   Binary: {nginx_bin}")
-                return True
+        result = subprocess.run([nginx_bin, "-v"], capture_output=True, text=True)
+        if result.returncode == 0:
+            print(f"   Nginx installed: {result.stderr.strip()}")
+            return True
 
         print("   Nginx binary not found after compilation")
         return False
@@ -209,6 +186,17 @@ def install_nginx():
 
 def main():
     """Main setup function."""
+    import argparse
+    parser = argparse.ArgumentParser()
+    parser.add_argument(
+        "--force", action="store_true",
+        help="Delete and recreate the venv even if it already exists "
+             "(also honoured via SETUP_FORCE_RECREATE=1)"
+    )
+    args, _ = parser.parse_known_args()
+
+    force = args.force or os.environ.get("SETUP_FORCE_RECREATE", "").strip() in ("1", "true", "yes")
+
     print("=" * 70)
     print("🔧 Setting up Python environment for Ray cluster")
     print("=" * 70)
@@ -222,8 +210,12 @@ def main():
 
     venv_dir = "/home/cdsw/.venv"
 
+    if force and os.path.exists(venv_dir):
+        print(f"⚠️  --force: removing existing venv at {venv_dir}")
+        run_command(f"rm -rf {venv_dir}")
+
     # Check if environment is already properly configured
-    if is_venv_ready(venv_dir):
+    if not force and is_venv_ready(venv_dir):
         print(f"✅ Virtual environment already exists at: {venv_dir}")
         print("   Verifying Ray installation...")
 
@@ -267,39 +259,71 @@ def main():
     # Install the package itself first (includes all dependencies from pyproject.toml)
     print("🚀 Installing ray-serve-cai package and dependencies...")
 
-    # Install package in editable mode with all extras (includes vLLM and sglang)
-    print("\n📦 Installing ray-serve-cai package with all extras (vLLM, sglang)...")
-    if run_command("uv pip install -e '/home/cdsw[all]'"):
-        print("✅ ray-serve-cai package installed with all dependencies and extras")
+    # Always target the venv explicitly so packages land in the right place
+    # regardless of whether the caller has activated the venv.
+    uv_install = f"uv pip install --python {venv_dir}/bin/python"
+
+    # Install core package (no inference-engine extras — vllm and sglang
+    # require conflicting llguidance versions and cannot be co-installed).
+    print("\n📦 Installing ray-serve-cai core package...")
+    if run_command(f"{uv_install} -e '/home/cdsw'"):
+        print("✅ ray-serve-cai core package installed")
     else:
         print("⚠️  Failed to install via package, installing dependencies manually...")
 
-        # Fallback: Install dependencies manually
-        # These match pyproject.toml dependencies
+        # Fallback: Install core dependencies manually (matches pyproject.toml)
         ray_packages = [
-            # Core dependencies from pyproject.toml
             "ray[serve]>=2.53.0",
             "pyyaml>=6.0.3",
             "aiohttp>=3.13.3",
-            # Management API dependencies
             "fastapi>=0.110.0",
             "uvicorn[standard]>=0.27.0",
             "pydantic>=2.0.0",
             "httpx>=0.27.0",
             "starlette>=0.36.0",
-            "jinja2>=3.1.0",      # nginx config template rendering
-            # Common ML libraries (optional but useful)
-            "numpy>=1.24.0",
-            "pandas>=2.0.0",
-            # LLM inference engines
-            "vllm>=0.13.0",
-            "sglang>=0.5.7",
+            "jinja2>=3.1.0",
         ]
 
         for package in ray_packages:
             print(f"\n📦 Installing {package}...")
-            if not run_command(f"uv pip install {package}"):
+            if not run_command(f"{uv_install} {package}"):
                 print(f"⚠️  Warning: Could not install {package}")
+
+    # Install inference engines independently — they conflict with each other
+    # so we install whichever succeeds (vllm takes precedence).
+    print("\n📦 Installing inference engine (vllm)...")
+    if run_command(f"{uv_install} 'vllm>=0.13.0'"):
+        print("✅ vllm installed")
+        # ninja is required by FlashInfer's JIT compilation, which vLLM triggers on
+        # older GPUs (e.g. T4/SM7.5) that lack pre-compiled flash-attn kernels.
+        # Install the ninja pip package so `.venv/bin/ninja` is available on PATH.
+        if run_command(f"{uv_install} ninja"):
+            print("✅ ninja installed (FlashInfer JIT dependency)")
+        else:
+            print("⚠️  ninja installation failed — FlashInfer JIT may fail on older GPUs")
+    else:
+        print("⚠️  vllm failed — trying sglang...")
+        if run_command(f"{uv_install} 'sglang>=0.5.7'"):
+            print("✅ sglang installed")
+        else:
+            print("⚠️  Neither vllm nor sglang could be installed — inference workers will fail")
+
+    # Install YOLO dependencies (ultralytics + Pillow).
+    # These are lightweight and do not conflict with vllm/sglang.
+    # opencv-python-headless is needed by ultralytics for image I/O on a
+    # headless server (no display); the -headless variant avoids pulling in
+    # libGL which is absent in most CML containers.
+    print("\n📦 Installing YOLO dependencies (ultralytics, Pillow, opencv-headless)...")
+    yolo_packages = [
+        "ultralytics>=8.0.0",
+        "Pillow>=9.0.0",
+        "opencv-python-headless>=4.8.0",
+    ]
+    for pkg in yolo_packages:
+        if run_command(f"{uv_install} '{pkg}'"):
+            print(f"✅ {pkg.split('>=')[0]} installed")
+        else:
+            print(f"⚠️  {pkg} failed — YOLO engine may not work")
 
     # Verify Ray installation
     print("\n🔍 Verifying Ray installation...")

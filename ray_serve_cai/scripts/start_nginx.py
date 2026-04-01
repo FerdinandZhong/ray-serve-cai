@@ -43,7 +43,7 @@ DEFAULT_STATIC_ROOT = Path("/home/cdsw/ray_serve_cai/static")
 
 # Nginx binary search order
 NGINX_CANDIDATES = [
-    "/home/cdsw/.local/bin/nginx",
+    str(Path.home() / ".local" / "bin" / "nginx"),
     "/usr/sbin/nginx",
     "/usr/bin/nginx",
 ]
@@ -84,7 +84,7 @@ def build_context(runtime_dir: Path, static_root: Path) -> dict:
     Env var                         Default   Description
     ──────────────────────────────────────────────────────────────────────────
     CDSW_APP_PORT                   8080      External-facing port (nginx listen)
-    RAY_SERVE_PORT                  8000      Internal Management API port
+    RAY_SERVE_PORT                  5000      Internal Management API port
     RAY_DASHBOARD_PORT              8265      Internal Ray Dashboard port
     NGINX_WORKER_PROCESSES          auto      nginx worker_processes directive
     NGINX_WORKER_CONNECTIONS        1024      worker_connections per process
@@ -102,7 +102,7 @@ def build_context(runtime_dir: Path, static_root: Path) -> dict:
         "app_port": int(os.environ.get("CDSW_APP_PORT", 8080)),
         # ── Internal Ray service ports ────────────────────────────────────
         "ray_dashboard_port": int(os.environ.get("RAY_DASHBOARD_PORT", 8265)),
-        "ray_serve_port": int(os.environ.get("RAY_SERVE_PORT", 8000)),
+        "ray_serve_port": int(os.environ.get("RAY_SERVE_PORT", 5000)),
         # ── Runtime directory paths ────────────────────────────────────────
         "conf_dir": str(runtime_dir),
         "log_dir": str(runtime_dir / "logs"),
@@ -191,9 +191,7 @@ def find_nginx() -> str:
         if os.path.isfile(candidate) and os.access(candidate, os.X_OK):
             return candidate
 
-    result = subprocess.run(
-        ["which", "nginx"], capture_output=True, text=True
-    )
+    result = subprocess.run(["which", "nginx"], capture_output=True, text=True)
     if result.returncode == 0 and result.stdout.strip():
         return result.stdout.strip()
 
@@ -247,6 +245,14 @@ def verify_nginx(app_port: int, retries: int = 5, delay: float = 1.0) -> bool:
 # ---------------------------------------------------------------------------
 
 def main() -> int:
+    import argparse
+    parser = argparse.ArgumentParser(add_help=False)
+    parser.add_argument(
+        "--foreground", action="store_true",
+        help="Exec into nginx with 'daemon off;' so this process blocks until nginx exits.",
+    )
+    args, _ = parser.parse_known_args()
+
     print("=" * 70)
     print("Starting Nginx Reverse Proxy")
     print("=" * 70)
@@ -278,10 +284,20 @@ def main() -> int:
     print("\nRendering templates...")
     render_templates(runtime_dir, context)
 
-    # 5. Stop any existing nginx, then start fresh
+    # 5. Stop any existing nginx
     conf_path = runtime_dir / "nginx.conf"
     stop_nginx(nginx_bin)
 
+    if args.foreground:
+        # Replace this Python process with nginx running in the foreground.
+        # The caller blocks until nginx exits — no while-loop needed.
+        print(f"\nStarting nginx in foreground mode (process will block)...")
+        print(f"  config : {conf_path}")
+        print("=" * 70)
+        os.execv(nginx_bin, [nginx_bin, "-c", str(conf_path), "-g", "daemon off;"])
+        # os.execv() never returns
+
+    # Daemon mode (default) — start nginx, verify, then return.
     print(f"\nStarting nginx with config: {conf_path}")
     try:
         start_nginx(nginx_bin, conf_path)
@@ -289,7 +305,6 @@ def main() -> int:
         print(f"ERROR: {exc}")
         return 1
 
-    # 6. Verify
     if verify_nginx(context["app_port"]):
         print(f"\nnginx is listening on port {context['app_port']}")
     else:

@@ -105,6 +105,21 @@ def build_vllm_engine_config(user_config: Dict[str, Any]) -> Dict[str, Any]:
         # vLLM accepts chat_template as a string
         engine_config['chat_template'] = user_config['custom_chat_template']
 
+    # Attention backend override.
+    # vLLM selects the attention backend via the VLLM_ATTENTION_BACKEND env var
+    # (not an AsyncEngineArgs parameter).  Pass it through the config dict so
+    # VLLMEngine.__init__ can set the env var before starting the engine.
+    #
+    # vLLM V1 engine (v0.7+) valid values: FLASH_ATTN | FLASHINFER | TRITON_ATTN
+    #   - XFORMERS does NOT exist in V1 and is silently ignored → falls back to
+    #     FLASHINFER, which requires Ninja for JIT compilation.
+    # vLLM V0 engine valid values: FLASH_ATTN | FLASHINFER | XFORMERS | ROCM_FLASH_ATTN
+    #
+    # Recommended for T4 / SM7.5 on CML (no Ninja in container): "FLASH_ATTN"
+    # flash-attn ships pre-compiled wheels for SM7.5+ — no JIT required.
+    if user_config.get('attention_backend'):
+        engine_config['attention_backend'] = user_config['attention_backend']
+
     logger.info(f"Built vLLM engine config: {engine_config}")
 
     return engine_config
@@ -225,6 +240,7 @@ class VLLMDeploymentFactory:
         num_replicas: int = 1,
         tensor_parallel_size: int = 1,
         use_cpu: bool = False,
+        max_ongoing_requests: int = 100,
         **kwargs
     ) -> serve.Application:
         """
@@ -238,55 +254,31 @@ class VLLMDeploymentFactory:
             num_replicas: Number of deployment replicas
             tensor_parallel_size: Number of GPUs for tensor parallelism
             use_cpu: Whether to use CPU-only mode
-            **kwargs: Additional deployment options (ignored for vLLM)
+            max_ongoing_requests: Max concurrent HTTP connections per replica,
+                including long-lived streaming connections. Should be >= vLLM's
+                max_num_seqs. Default 100.
+            **kwargs: Additional deployment options (reserved for future use)
 
         Returns:
             Configured Ray Serve application
 
         References:
+            - Streaming: https://docs.ray.io/en/latest/serve/tutorials/streaming.html
             - Placement groups: https://docs.ray.io/en/latest/serve/llm/user-guides/cross-node-parallelism.html
             - vLLM distributed: https://docs.vllm.ai/en/stable/serving/distributed_serving.html
         """
         # Import here to avoid circular dependency
-        from .vllm_engine import VLLMEngine
+        from .vllm_engine import create_vllm_deployment
 
         logger.info(f"Creating vLLM deployment with tensor_parallel_size={tensor_parallel_size}")
 
-        # Calculate resource requirements
-        if use_cpu:
-            # CPU mode - no GPU needed
-            ray_actor_options = {
-                "num_cpus": 4,  # Adjust based on needs
-                "num_gpus": 0,
-            }
-        elif tensor_parallel_size > 1:
-            # Multi-GPU with tensor parallelism
-            # Use placement group for proper GPU allocation
-            # Each bundle gets exactly 1 GPU (Ray constraint)
-            placement_group_bundles = [
-                {"GPU": 1, "CPU": 1} for _ in range(tensor_parallel_size)
-            ]
-
-            ray_actor_options = {
-                "num_cpus": tensor_parallel_size,
-                "num_gpus": tensor_parallel_size,
-                "placement_group_bundles": placement_group_bundles,
-                "placement_group_strategy": "PACK",  # Pack on same node if possible
-            }
-
-            logger.info(f"Using placement group with {tensor_parallel_size} bundles (1 GPU each)")
-        else:
-            # Single GPU
-            ray_actor_options = {
-                "num_cpus": 2,
-                "num_gpus": 1,
-            }
-
-        # Create deployment with configured options
-        deployment = VLLMEngine.options(
+        return create_vllm_deployment(
+            engine_config=engine_config,
             num_replicas=num_replicas,
-            ray_actor_options=ray_actor_options,
+            tensor_parallel_size=tensor_parallel_size,
+            use_cpu=use_cpu,
+            max_ongoing_requests=max_ongoing_requests,
+            gpu_fraction=kwargs.get("gpu_fraction"),
+            placement_group_bundles=kwargs.get("placement_group_bundles"),
+            placement_group_strategy=kwargs.get("placement_group_strategy"),
         )
-
-        # Bind engine config
-        return deployment.bind(engine_config)

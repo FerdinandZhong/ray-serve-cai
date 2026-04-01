@@ -39,5 +39,13 @@ cai:
 
   project_name: "ray-cluster"
 
+# ── Ray Serve proxy tuning ────────────────────────────────────────────────────
+# Omit a key to keep Ray's built-in default.
+ray_serve:
+  # proxy_health_check_period_s: 10.0
+  # proxy_health_check_timeout_s: 10.0
+  # proxy_ready_check_timeout_s: 5.0
+  # proxy_min_draining_period_s: 30.0
+
 # ── Optional per-job environment variables ────────────────────────────────────
 environment: {}

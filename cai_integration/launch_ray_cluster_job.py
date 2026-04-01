@@ -45,16 +45,22 @@ def main():
     print("=" * 70)
     print("🚀 Ray Cluster Launch (CAI Job Entry Point)")
     print("=" * 70)
-    print(f"\n📝 Executing: bash {bash_wrapper.name}")
+    print(f"\n📝 Executing: launch_ray_cluster.py")
     print(f"   Project root: {project_root}")
     print()
 
+    venv_python = project_root / ".venv" / "bin" / "python"
+    if not venv_python.exists():
+        print(f"❌ Error: venv not found at {venv_python}")
+        print("Please run setup_environment.py first")
+        return 1
+
     try:
-        # Execute bash wrapper script
-        # Pass through any command line arguments
         result = subprocess.run(
-            ["bash", str(bash_wrapper)] + sys.argv[1:],
-            cwd=str(project_root)
+            [str(venv_python), "-u",
+             str(project_root / "cai_integration" / "launch_ray_cluster.py")]
+            + sys.argv[1:],
+            cwd=str(project_root),
         )
 
         return result.returncode
@@ -66,4 +72,6 @@ def main():
 
 
 if __name__ == "__main__":
-    sys.exit(main())
+    _rc = main()
+    if _rc:
+        sys.exit(_rc)

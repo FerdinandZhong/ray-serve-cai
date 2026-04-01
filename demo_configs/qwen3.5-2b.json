@@ -1,0 +1,17 @@
+{
+  "name": "qwen3.5-2b",
+  "engine_type": "vllm",
+  "model": "/home/cdsw/models/Qwen3.5-2B",
+  "route_prefix": "/qwen-2b",
+  "num_replicas": 1,
+  "tensor_parallel_size": 1,
+  "gpu_fraction": 0.5,
+  "placement_group_bundles": [{"GPU": 0.5, "CPU": 2}],
+  "placement_group_strategy": "PACK",
+  "engine_config": {
+    "dtype": "float16",
+    "max_model_len": 4096,
+    "gpu_memory_utilization": 0.45,
+    "enable_prefix_caching": true
+  }
+}

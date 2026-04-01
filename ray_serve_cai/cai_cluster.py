@@ -149,7 +149,6 @@ class CMLAPIClient:
             payload['nvidia_gpu'] = num_gpus
         if environment:
             payload['environment'] = environment
-
         if self.verbose:
             logger.debug(f"Creating application: POST {url}")
             logger.debug(f"Payload: {payload}")
@@ -168,7 +167,7 @@ class CMLAPIClient:
 
     def list_applications(self, project_id: str) -> List[ApplicationInfo]:
         """
-        List all applications in a project.
+        List all applications in a project, following pagination tokens.
 
         Args:
             project_id: Project ID
@@ -176,27 +175,45 @@ class CMLAPIClient:
         Returns:
             List of ApplicationInfo
         """
-        url = f"{self.base_url}/projects/{project_id}/applications"
+        base_url = f"{self.base_url}/projects/{project_id}/applications"
+        all_apps: List[ApplicationInfo] = []
+        page_token: str = ""
 
-        if self.verbose:
-            logger.debug(f"Listing applications: GET {url}")
+        while True:
+            params = {"page_size": 100}
+            if page_token:
+                params["page_token"] = page_token
 
-        response = self.session.get(url)
-        response.raise_for_status()
+            logger.info(f"GET {base_url}  params={params}")
 
-        data = response.json()
-        # CML API v2 returns {"applications": [...], "next_page_token": "..."}
-        items = data.get('applications', data) if isinstance(data, dict) else data
-        return [
-            ApplicationInfo(
-                id=a.get('id'),
-                name=a.get('name'),
-                status=a.get('status', 'unknown'),
-                subdomain=a.get('subdomain'),
-                metadata=a,
-            )
-            for a in items
-        ]
+            response = self.session.get(base_url, params=params)
+
+            logger.info(f"  -> HTTP {response.status_code}")
+            if response.status_code != 200:
+                logger.warning(f"  -> body: {response.text[:500]}")
+            response.raise_for_status()
+
+            data = response.json()
+            if isinstance(data, dict):
+                logger.info(f"  -> response keys: {list(data.keys())}")
+            items = data.get("applications", []) if isinstance(data, dict) else data
+            logger.info(f"  -> {len(items)} application(s) on this page")
+            all_apps.extend([
+                ApplicationInfo(
+                    id=a.get("id"),
+                    name=a.get("name"),
+                    status=a.get("status", "unknown"),
+                    subdomain=a.get("subdomain"),
+                    metadata=a,
+                )
+                for a in items
+            ])
+
+            page_token = data.get("next_page_token", "") if isinstance(data, dict) else ""
+            if not page_token:
+                break
+
+        return all_apps
 
     def get_application(self, project_id: str, app_id: str) -> ApplicationInfo:
         """
@@ -319,6 +336,7 @@ class CAIClusterManager:
     def start_cluster(
         self,
         worker_groups: List[WorkerGroupConfig],
+        head_app_name: str = "ray-cluster-head",
         head_cpu: int = 8,
         head_memory: int = 32,
         ray_port: int = 6379,
@@ -365,8 +383,8 @@ class CAIClusterManager:
                 "head_script_path is required. "
                 "Run create_ray_launcher_scripts() before calling start_cluster()."
             )
-        if not worker_groups:
-            raise RuntimeError("worker_groups must be a non-empty list of WorkerGroupConfig")
+        if worker_groups is None:
+            worker_groups = []
 
         for group in worker_groups:
             if not group.script_path:
@@ -380,8 +398,14 @@ class CAIClusterManager:
                     "no default worker_runtime_identifier was provided."
                 )
 
+        # Ensure every group has a concrete runtime_identifier stored on it so
+        # that the value is preserved when cluster_info is serialised to JSON
+        # and later used by CAIService._group_from_cluster_info() → launch_worker().
+        for g in worker_groups:
+            if not g.runtime_identifier and worker_runtime_identifier:
+                g.runtime_identifier = worker_runtime_identifier
+
         self.worker_groups = worker_groups
-        total_workers = sum(g.count for g in worker_groups)
 
         logger.info("🚀 Starting Ray cluster on CAI...")
         logger.info(f"   Head node : {head_cpu}CPU, {head_memory}GB RAM, 0GPU")
@@ -396,12 +420,12 @@ class CAIClusterManager:
             logger.info("🎯 Creating head node application...")
             head_app = self.cml_client.create_application(
                 project_id=self.project_id,
-                name="ray-cluster-head",
+                name=head_app_name,
                 script=head_script_path,
                 cpu=head_cpu,
                 memory=head_memory,
                 runtime_identifier=head_runtime_identifier,
-                subdomain="ray-cluster-head",
+                subdomain=head_app_name,
                 bypass_authentication=True,
             )
             self.head_app_id = head_app.id
@@ -418,50 +442,11 @@ class CAIClusterManager:
                     if not head_url.startswith('http'):
                         head_url = f"https://{head_url}"
                     self.head_url = head_url.rstrip('/')
-                    hostname = head_url.split('://', 1)[-1].split(':')[0].split('/')[0]
-                    self.head_address = f"{hostname}:{ray_port}"
-                    logger.info(f"✅ Head node ready: {self.head_address}")
-                    logger.info(f"   Public URL: {self.head_url}")
-                else:
-                    logger.warning("Could not determine head node address from application URL")
-                    self.head_address = f"ray-cluster-head:{ray_port}"
+                    logger.info(f"✅ Head node CML app running. Public URL: {self.head_url}")
+                logger.info("   GCS address will be resolved once the Management API is ready.")
 
-            # ── Worker groups ─────────────────────────────────────────────────
-            if total_workers > 0 and self.head_address:
-                logger.info(
-                    f"🔧 Creating {total_workers} worker(s) across "
-                    f"{len(worker_groups)} group(s)..."
-                )
-                for group in worker_groups:
-                    rt = group.runtime_identifier or worker_runtime_identifier
-                    logger.info(
-                        f"   Group '{group.name}' [node_type:{group.node_type}] "
-                        f"— {group.count} worker(s)"
-                    )
-                    for i in range(group.count):
-                        app_name = f"ray-{group.name}-{i + 1}"
-                        subdomain = app_name.replace("_", "-").lower()
-                        worker_app = self.cml_client.create_application(
-                            project_id=self.project_id,
-                            name=app_name,
-                            script=group.script_path,
-                            cpu=group.cpu,
-                            memory=group.memory,
-                            runtime_identifier=rt,
-                            subdomain=subdomain,
-                            bypass_authentication=True,
-                            num_gpus=group.gpus,
-                        )
-                        self.worker_app_ids.append(worker_app.id)
-                        logger.info(f"      ✅ {app_name} created: {worker_app.id}")
-
-                if wait_ready:
-                    logger.info("⏳ Waiting for workers to start...")
-                    for i, worker_id in enumerate(self.worker_app_ids):
-                        if self._wait_for_application(worker_id, timeout=timeout):
-                            logger.info(f"   ✅ Worker {i + 1} ready")
-                        else:
-                            logger.warning(f"   ⚠️  Worker {i + 1} may not be ready")
+            # Workers are launched by the caller via Management API
+            # (POST /api/v1/resources/nodes/add) once the head is healthy.
 
             cluster_info = {
                 'status': 'running',
@@ -504,6 +489,51 @@ class CAIClusterManager:
             self.stop_cluster()
             raise
 
+    def _get_gcs_address(self, ray_port: int, timeout: int = 120) -> str:
+        """
+        Query the head node's Management API for its internal GCS address.
+
+        The Management API returns the pod's CDSW_IP_ADDRESS which is
+        reachable directly on non-HTTPS ports from within the CML cluster.
+        Falls back to the public hostname if the endpoint is unavailable.
+
+        Args:
+            ray_port: Ray GCS port.
+            timeout:  Maximum seconds to wait for the endpoint.
+
+        Returns:
+            "IP:port" string suitable for `ray start --address`.
+        """
+        import time
+        import urllib.request
+        import json as _json
+
+        if not self.head_url:
+            logger.warning("head_url not set — cannot query GCS address endpoint")
+            return f"ray-cluster-head:{ray_port}"
+
+        url = f"{self.head_url}/api/v1/cluster/gcs-address"
+        start = time.time()
+        while time.time() - start < timeout:
+            try:
+                with urllib.request.urlopen(url, timeout=10) as resp:
+                    data = _json.loads(resp.read())
+                    addr = data.get("gcs_address", "")
+                    if addr:
+                        return addr
+            except Exception:
+                pass
+            time.sleep(10)
+
+        # Fallback: extract hostname from public URL (may not work for GCS port)
+        hostname = self.head_url.split('://', 1)[-1].split('/')[0]
+        fallback = f"{hostname}:{ray_port}"
+        logger.warning(
+            f"Could not retrieve GCS address from Management API — "
+            f"falling back to {fallback} (workers may fail to connect)"
+        )
+        return fallback
+
     def _wait_for_application(
         self,
         app_id: str,
@@ -532,9 +562,9 @@ class CAIClusterManager:
 
                 status = app.status.lower()
 
-                if status == "running":
+                if "running" in status:
                     return True
-                elif status in ["failed", "stopped", "error"]:
+                elif any(s in status for s in ["failed", "stopped", "error"]):
                     logger.error(f"Application {app_id} failed with status: {status}")
                     return False
 
@@ -638,7 +668,7 @@ class CAIClusterManager:
                     })
 
             return {
-                'running': head_app.status.lower() == 'running',
+                'running': 'running' in head_app.status.lower(),
                 'head': {
                     'id': self.head_app_id,
                     'status': head_app.status,

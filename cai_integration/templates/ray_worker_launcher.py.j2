@@ -14,18 +14,73 @@ import json
 import os
 import subprocess
 import sys
+import threading
 import time
 from pathlib import Path
 
 VENV_PYTHON = Path("{{ venv_python }}")
+RAY_BIN     = VENV_PYTHON.parent / "ray"   # /home/cdsw/.venv/bin/ray
 
 if not VENV_PYTHON.exists():
     print(f"ERROR: venv not found at {VENV_PYTHON}")
+    sys.exit(1)
+if not RAY_BIN.exists():
+    print(f"ERROR: ray binary not found at {RAY_BIN}")
     sys.exit(1)
 
 print("=" * 70)
 print("Ray Worker Node — startup")
 print("=" * 70)
+
+# ── Venv bin prepended to PATH ────────────────────────────────────────────────
+# Running `.venv/bin/python` directly does NOT activate the venv — the venv's
+# bin/ directory is NOT added to PATH automatically.  Prepend it now so that
+# all child processes (raylet → Ray actor → vLLM EngineCore → FlashInfer JIT)
+# can resolve binaries installed in the venv (e.g. ninja, ray, uvicorn).
+_venv_bin = str(VENV_PYTHON.parent)
+_path = os.environ.get("PATH", "")
+if _venv_bin not in _path.split(":"):
+    os.environ["PATH"] = _venv_bin + ":" + _path
+    print(f"Prepended venv bin to PATH: {_venv_bin}")
+
+# ── CUDA environment setup (GPU nodes only) ───────────────────────────────────
+# Only runs when a CUDA installation is actually present on this image.
+# CPU-only nodes using the standard (non-CUDA) image skip this block entirely.
+print("\nCUDA environment (image defaults):")
+print(f"  CUDA_HOME       : {os.environ.get('CUDA_HOME', '(not set)')}")
+print(f"  CUDA_ROOT       : {os.environ.get('CUDA_ROOT', '(not set)')}")
+print(f"  PATH            : {os.environ.get('PATH', '(not set)')[:120]}")
+print(f"  LD_LIBRARY_PATH : {os.environ.get('LD_LIBRARY_PATH', '(not set)')[:120]}")
+
+_cuda_home = Path(os.environ.get("CUDA_HOME", "/usr/local/cuda"))
+if not _cuda_home.exists():
+    # Try the versioned symlink that CUDA installers create
+    _cuda_home = next(
+        (p for p in Path("/usr/local").glob("cuda-*") if p.is_dir()),
+        None,
+    )
+
+if _cuda_home:
+    _cuda_bin = str(_cuda_home / "bin")
+    _cuda_lib = str(_cuda_home / "lib64")
+
+    os.environ.setdefault("CUDA_HOME", str(_cuda_home))
+    os.environ.setdefault("CUDA_ROOT", str(_cuda_home))
+
+    _path = os.environ.get("PATH", "")
+    if _cuda_bin not in _path.split(":"):
+        os.environ["PATH"] = _cuda_bin + ":" + _path
+
+    _ldpath = os.environ.get("LD_LIBRARY_PATH", "")
+    if _cuda_lib not in _ldpath.split(":"):
+        os.environ["LD_LIBRARY_PATH"] = _cuda_lib + ":" + _ldpath
+
+    if Path(_cuda_bin + "/nvcc").exists():
+        print(f"CUDA compiler   : {_cuda_bin}/nvcc  (CUDA_HOME={_cuda_home})")
+    else:
+        print(f"CUDA libs found at {_cuda_home} but nvcc missing — JIT compilation unavailable")
+else:
+    print("No CUDA installation found — CPU-only node, skipping CUDA env setup")
 
 {% if head_address %}
 HEAD_ADDRESS = "{{ head_address }}"
@@ -38,23 +93,84 @@ if not HEAD_ADDRESS:
 
 print(f"\nConnecting to head node: {HEAD_ADDRESS}")
 
-# Brief wait so the head node has time to fully initialise its GCS
-print("Waiting 10 s for head node to be ready...")
-time.sleep(10)
-
-# Register this node's type as a custom Ray resource label so that
-# coordinator.py (_detect_node_type) and deployment scheduling strategies
-# can identify and target specific node types without knowing node IDs.
 NODE_TYPE = "{{ node_type }}"
 node_resources = json.dumps({f"node_type:{NODE_TYPE}": 1})
+print(f"Node type label: node_type:{NODE_TYPE}")
+
+# ── Start worker info server (daemon thread) ──────────────────────────────────
+# CML requires a live process on CDSW_APP_PORT to mark the application as
+# "running".  Start uvicorn as a daemon thread before the Ray retry loop so
+# the port is bound immediately.  When the main process exits the daemon dies
+# automatically — no orphaned process can hold the port on a pod restart.
+_app_port = int(os.environ.get("CDSW_APP_PORT", 8100))
+print(f"\nStarting worker info server on port {_app_port} (daemon thread) ...")
+print(f"  node_type   : {NODE_TYPE}")
+print(f"  head_address: {HEAD_ADDRESS}")
+
+_server_env = {
+    **os.environ,
+    "PYTHONPATH":            "{{ project_dir }}",
+    "RAY_WORKER_NODE_TYPE":  NODE_TYPE,
+    "RAY_HEAD_ADDRESS":      HEAD_ADDRESS,
+    "RAY_WORKER_CPUS":       str(os.environ.get("WORKER_CPUS", "")),
+    "RAY_WORKER_MEMORY_GB":  str(os.environ.get("WORKER_MEMORY_GB", "")),
+    "RAY_WORKER_GPUS":       str(os.environ.get("WORKER_GPUS", "0")),
+    "CDSW_APP_PORT":         str(_app_port),
+}
+
+_server_thread = threading.Thread(
+    target=lambda: subprocess.run(
+        [str(VENV_PYTHON), "-m", "ray_serve_cai.worker_app"],
+        env=_server_env,
+    ),
+    daemon=True,
+)
+_server_thread.start()
+print(f"Worker info server launched on 127.0.0.1:{_app_port}")
+
+# ── Join Ray cluster (with --block) ──────────────────────────────────────────
+# `ray start --block` stays alive for as long as the raylet runs, then exits.
+# This ties the CML pod lifetime to the Ray node lifetime — when the raylet
+# stops, this process exits, CML restarts the pod cleanly, and no stale node
+# ID lingers in GCS.
+#
+# Brief wait so the head GCS has time to fully initialise.
+print("\nWaiting 30 s for head node to be ready...")
+time.sleep(30)
+
+# ── Heartbeat tuning ─────────────────────────────────────────────────────────
+# Increase GCS health-check tolerances so a slow or briefly congested network
+# does not immediately trigger "missing too many heartbeats" and kill the node.
+#   period_ms       : how often the raylet sends a heartbeat          (default 1 000)
+#   timeout_ms      : per-check network timeout                       (default 10 000)
+#   failure_threshold: consecutive failures before the node is DEAD   (default 3)
+# With these values the node survives up to 10 × 5 s = 50 s of missed beats.
+os.environ["RAY_health_check_period_ms"]        = "5000"
+os.environ["RAY_health_check_timeout_ms"]       = "30000"
+os.environ["RAY_health_check_failure_threshold"] = "10"
+
+# ── Object-store memory cap ───────────────────────────────────────────────────
+# Ray defaults to 30 % of system memory for the object store.  On a
+# {{ worker_memory_gb }} GB worker that would be ~{{ (worker_memory_gb * 0.3) | int }} GB,
+# which combined with the launcher process and uvicorn can exceed the container
+# limit and trigger an OOM kill before any model is even loaded.
+# Cap it at 20 % of the configured worker memory.
+_object_store_bytes = int({{ worker_memory_gb }} * 0.20 * 1024 ** 3)
 
 cmd = [
-    str(VENV_PYTHON), "-m", "ray.scripts.ray_start",
-    "--address", HEAD_ADDRESS,
-    "--resources", node_resources,
+    str(RAY_BIN),
+    "start",
+    "--address",              HEAD_ADDRESS,
+    "--metrics-export-port",  "{{ metrics_port }}",
+    "--resources",            node_resources,
+    "--object-store-memory",  str(_object_store_bytes),
+    "--block",
 ]
-print(f"Node type label: node_type:{NODE_TYPE}")
-print("Command:", " ".join(cmd))
 
+# Clean up any stale Ray session so we start fresh.
+subprocess.run([str(RAY_BIN), "stop", "--force"], capture_output=True)
+
+print("Running:", " ".join(cmd))
 result = subprocess.run(cmd)
+print(f"Ray worker node exited (code {result.returncode}).")
 sys.exit(result.returncode)

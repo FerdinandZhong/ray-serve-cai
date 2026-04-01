@@ -74,7 +74,10 @@ async def deploy_model(
             num_replicas=request.num_replicas,
             tensor_parallel_size=request.tensor_parallel_size,
             use_cpu=request.use_cpu,
+            gpu_fraction=request.gpu_fraction,
             engine_config=request.engine_config,
+            placement_group_bundles=request.placement_group_bundles,
+            placement_group_strategy=request.placement_group_strategy,
         )
         return result
     except ValueError as e:

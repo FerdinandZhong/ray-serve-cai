@@ -1,6 +1,7 @@
 """Cluster information and health API endpoints."""
 
 import json
+import os
 from pathlib import Path
 from fastapi import APIRouter, HTTPException, Depends
 
@@ -67,3 +68,28 @@ async def get_cluster_info():
         raise
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
+
+
+@router.get("/gcs-address")
+async def get_gcs_address():
+    """
+    Return the Ray GCS address (internal pod IP + port) for this head node.
+
+    Workers must connect to this address — the public CAI domain only exposes
+    port 443 and cannot be used for direct Ray GCS connections on port 6379.
+    """
+    gcs_file = Path("/home/cdsw/ray_gcs_address")
+    if gcs_file.exists():
+        address = gcs_file.read_text().strip()
+    else:
+        # Fallback: construct from CDSW_IP_ADDRESS if file not yet written
+        pod_ip = os.environ.get("CDSW_IP_ADDRESS")
+        ray_port = os.environ.get("RAY_PORT", "6379")
+        if not pod_ip:
+            raise HTTPException(
+                status_code=503,
+                detail="GCS address not available yet — head node may still be starting",
+            )
+        address = f"{pod_ip}:{ray_port}"
+
+    return {"gcs_address": address}

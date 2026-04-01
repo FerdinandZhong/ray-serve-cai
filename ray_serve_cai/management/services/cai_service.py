@@ -91,6 +91,7 @@ class CAIService:
         cpu: int = None,
         memory: int = None,
         gpus: int = None,
+        runtime_identifier: str = None,
     ) -> Dict[str, Any]:
         """
         Launch a new worker node as a CML application.
@@ -120,6 +121,8 @@ class CAIService:
             group.memory = memory
         if gpus is not None:
             group.gpus = gpus
+        if runtime_identifier is not None:
+            group.runtime_identifier = runtime_identifier
 
         worker_name = f"ray-{group.name}-{int(time.time())}"
 
@@ -157,10 +160,83 @@ class CAIService:
 
         Returns:
             Dict with status and app_id.
+
+        Raises:
+            RuntimeError: If the CML API returns a non-success response.
         """
-        self.manager.stop_application(app_id)
+        success = self.manager.stop_application(app_id)
+        if not success:
+            raise RuntimeError(
+                f"CML API returned failure when deleting application {app_id}. "
+                "The application may not exist or the API key may lack permission."
+            )
         logger.info(f"Deleted worker node: {app_id}")
         return {"status": "success", "app_id": app_id}
+
+    def launch_cai_application(
+        self,
+        name: str,
+        script: str,
+        cpu: int,
+        memory: int,
+        gpus: int = 0,
+        runtime_identifier: str = None,
+        environment: dict = None,
+        bypass_authentication: bool = True,
+    ) -> Dict[str, Any]:
+        """
+        Launch a generic CML application.
+
+        Args:
+            name: CML application name.
+            script: Script path to run (relative to /home/cdsw).
+            cpu: CPU cores.
+            memory: Memory in GB.
+            gpus: Number of GPUs (0 for CPU-only).
+            runtime_identifier: Docker runtime. Falls back to the cluster default
+                from ray_cluster_info.json when None.
+            environment: Optional env vars injected at start.
+            bypass_authentication: Allow unauthenticated access.
+
+        Returns:
+            Dict with app_id, app_name, status.
+        """
+        if runtime_identifier is None:
+            try:
+                cluster_info = self._load_cluster_info()
+                runtime_identifier = (
+                    cluster_info.get("worker_runtime_identifier")
+                    or cluster_info.get("head_runtime_identifier")
+                )
+            except Exception:
+                pass
+
+        if not runtime_identifier:
+            raise RuntimeError(
+                "runtime_identifier is required but was not provided and could not "
+                "be resolved from ray_cluster_info.json."
+            )
+
+        subdomain = name.replace("_", "-").lower()
+        app_info = self.manager.cml_client.create_application(
+            project_id=self.project_id,
+            name=name,
+            script=script,
+            cpu=cpu,
+            memory=memory,
+            runtime_identifier=runtime_identifier,
+            subdomain=subdomain,
+            bypass_authentication=bypass_authentication,
+            num_gpus=gpus,
+            environment=environment,
+        )
+        logger.info(f"Launched CML application: {name}  [{app_info.id}]")
+        return {
+            "status":   "success",
+            "app_id":   app_info.id,
+            "app_name": name,
+            "app_status": app_info.status,
+        }
 
     def list_applications(self) -> list:
         """

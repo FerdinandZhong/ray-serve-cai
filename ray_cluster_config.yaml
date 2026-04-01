@@ -6,9 +6,6 @@
 
 ray_cluster:
 
-  # ── Cluster topology ──────────────────────────────────────────────────────
-  num_workers: 1
-
   # ── Head node resources ───────────────────────────────────────────────────
   # The head node runs Ray GCS, the Ray Dashboard, the Management API, and
   # nginx.  It is CPU-only — GPUs are reserved for worker nodes.
@@ -21,21 +18,34 @@ ray_cluster:
   management_api_cpu:    4   # = head_cpu // 2
   management_api_memory: 16  # GB  = head_memory // 2
 
-  # ── Worker node resources ─────────────────────────────────────────────────
-  worker_cpu:    16
-  worker_memory: 32   # GB
-  worker_gpus:   2    # GPUs per worker node (0 for CPU-only workers)
-
-  # ── Worker node-type label ────────────────────────────────────────────────
-  # Registered as a Ray custom resource: "node_type:<worker_node_type>".
-  # Used by coordinator._detect_node_type() and scheduling strategies to
-  # identify this node type without knowing node IDs.
-  # Defaults to "gpu-worker" when worker_gpus > 0, else "cpu-worker".
-  # Override here or via RAY_WORKER_NODE_TYPE env var.
+  # ── Worker groups ─────────────────────────────────────────────────────────
+  # Each group defines a node type.  Workers are registered in Ray with a
+  # custom resource "node_type:<node_type>" so deployments can be pinned to
+  # a specific group (e.g. GPU models on t4-gpu-worker, CPU models on
+  # cpu-worker) regardless of GPU/CPU availability on other nodes.
   #
-  # For heterogeneous fleets (e.g. T4 + L40 workers), replace this block
-  # with a worker_groups list — see ray_serve_cai/configs/multi_node_example.yaml.
-  worker_node_type: "gpu-worker"
+  # count: workers launched automatically at cluster start.
+  #        Set to 0 to register the group without launching any workers;
+  #        add workers on demand via POST /api/v1/resources/nodes/add.
+  #
+  # runtime_identifier: overrides cai.worker_runtime_identifier per group.
+  #        Use the standard (non-CUDA) image for CPU-only groups.
+  worker_groups:
+    - name:      t4-gpu-workers
+      node_type: t4-gpu-worker
+      count:     1
+      cpu:       16
+      memory:    32   # GB
+      gpus:      1
+      # inherits cai.worker_runtime_identifier (CUDA image)
+
+    - name:      cpu-workers
+      node_type: cpu-worker
+      count:     0   # none at cluster start — add on demand via Management API
+      cpu:       16
+      memory:    32  # GB
+      gpus:      0
+      runtime_identifier: "docker.repository.cloudera.com/cloudera/cdsw/ml-runtime-pbj-jupyterlab-python3.11-standard:2026.01.1-b6"
 
   # ── Ray daemon ports ──────────────────────────────────────────────────────
   ray_port:       6379
@@ -43,10 +53,36 @@ ray_cluster:
 
 # ── CAI / CML Application configuration ──────────────────────────────────────
 cai:
-  # Docker runtime image.  Use a CUDA image for worker nodes if worker_gpus > 0.
-  runtime_identifier: "docker.repository.cloudera.com/cloudera/cdsw/ml-runtime-pbj-jupyterlab-python3.11-standard:2026.01.1-b6"
+  # Docker runtime images.
+  # head_runtime_identifier: CPU-only standard image for the head node (GCS + Management API).
+  # worker_runtime_identifier: CUDA image for worker nodes that carry GPUs.
+  #   If worker_gpus = 0, you can use the standard image instead.
+  head_runtime_identifier:   "docker.repository.cloudera.com/cloudera/cdsw/ml-runtime-pbj-jupyterlab-python3.11-standard:2026.01.1-b6"
+  worker_runtime_identifier: "docker.repository.cloudera.com/cloudera/cdsw/ml-runtime-pbj-jupyterlab-python3.11-cuda:2026.01.1-b6"
 
   project_name: "ray-cluster"
+
+  # ── Head node CML application ──────────────────────────────────────────────
+  # Name of the head node CML application.  Also used as the app subdomain.
+  # The head URL is derived as https://<head_app_name>.<CDSW_DOMAIN>.
+  head_app_name: "ray-cluster-head"
+
+# ── Ray Serve proxy tuning ────────────────────────────────────────────────────
+# These become RAY_SERVE_PROXY_* environment variables read by Ray Serve.
+# Omit a key to keep Ray's built-in default.
+ray_serve:
+  # How often (s) the Serve controller checks each proxy's health.
+  # proxy_health_check_period_s: 10.0
+
+  # How long (s) to wait for a health-check response before counting a failure.
+  # Three consecutive failures trigger a proxy restart.
+  # proxy_health_check_timeout_s: 10.0
+
+  # How long (s) to wait for a proxy to become ready on startup.
+  # proxy_ready_check_timeout_s: 5.0
+
+  # Minimum time (s) a proxy must drain before it is forcibly removed.
+  # proxy_min_draining_period_s: 30.0
 
 # ── Optional per-job environment variables ────────────────────────────────────
 environment: {}

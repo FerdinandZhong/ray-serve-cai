@@ -25,11 +25,26 @@ async def add_node(request: AddNodeRequest, coordinator: CoordinatorService = De
     """
     try:
         result = coordinator.add_worker_node(
+            node_type=request.node_type,
             cpu=request.cpu,
             memory=request.memory,
-            node_type=request.node_type
+            gpus=request.gpus,
+            runtime_identifier=request.runtime_identifier,
         )
         return result
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@router.get("/map", response_model=Dict[str, Any])
+async def get_resource_map(coordinator: CoordinatorService = Depends(get_coordinator)):
+    """
+    Return the current resource capacity map.
+
+    Shows total worker capacity, allocated resources, and what's still available.
+    """
+    try:
+        return coordinator.get_resource_map()
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
 

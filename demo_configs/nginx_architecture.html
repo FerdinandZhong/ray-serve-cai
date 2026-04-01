@@ -1,0 +1,323 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>nginx as Internal Ingress — Ray Serve on CAI</title>
+<style>
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+
+  body {
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+    background: #ffffff;
+    color: #1e293b;
+    min-height: 100vh;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    padding: 40px 24px;
+  }
+
+  h1 {
+    font-size: 1.5rem;
+    font-weight: 700;
+    color: #0f172a;
+    margin-bottom: 6px;
+    text-align: center;
+  }
+  .subtitle {
+    font-size: 0.875rem;
+    color: #64748b;
+    margin-bottom: 40px;
+    text-align: center;
+  }
+
+  .diagram {
+    width: 100%;
+    max-width: 860px;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+  }
+
+  .box {
+    border-radius: 10px;
+    padding: 14px 22px;
+    text-align: center;
+    position: relative;
+  }
+  .box-label {
+    font-size: 0.72rem;
+    font-weight: 700;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+    margin-bottom: 4px;
+  }
+  .box-title { font-size: 1rem; font-weight: 700; }
+  .box-sub   { font-size: 0.78rem; margin-top: 3px; color: #64748b; }
+
+  .box-client {
+    background: #f8fafc;
+    border: 1.5px solid #cbd5e1;
+    width: 240px;
+  }
+  .box-client .box-label { color: #64748b; }
+  .box-client .box-title { color: #1e293b; }
+
+  .box-nginx {
+    background: #f0fdf4;
+    border: 2px solid #16a34a;
+    width: 340px;
+  }
+  .box-nginx .box-label { color: #15803d; }
+  .box-nginx .box-title { color: #14532d; }
+
+  .box-serve {
+    background: #eff6ff;
+    border: 1.5px solid #3b82f6;
+  }
+  .box-serve .box-label { color: #1d4ed8; }
+  .box-serve .box-title { color: #1e3a8a; }
+
+  .box-dashboard {
+    background: #faf5ff;
+    border: 1.5px solid #a855f7;
+  }
+  .box-dashboard .box-label { color: #7e22ce; }
+  .box-dashboard .box-title { color: #4c1d95; }
+
+  .box-static {
+    background: #f8fafc;
+    border: 1.5px solid #94a3b8;
+  }
+  .box-static .box-label { color: #475569; }
+  .box-static .box-title { color: #1e293b; }
+
+  .connector { background: #cbd5e1; }
+
+  .routes-wrapper {
+    width: 100%;
+    max-width: 860px;
+    margin-top: 32px;
+  }
+  .routes-wrapper h2 {
+    font-size: 0.72rem;
+    font-weight: 700;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+    color: #94a3b8;
+    margin-bottom: 12px;
+    text-align: center;
+  }
+  .routes { display: flex; flex-direction: column; gap: 6px; }
+  .route-row {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    background: #f8fafc;
+    border-radius: 8px;
+    padding: 10px 16px;
+    border: 1px solid #e2e8f0;
+    border-left: 3px solid transparent;
+  }
+  .route-row.serve  { border-left-color: #3b82f6; }
+  .route-row.dash   { border-left-color: #a855f7; }
+  .route-row.static { border-left-color: #94a3b8; }
+  .route-row.model  { border-left-color: #f59e0b; }
+
+  .route-path {
+    font-family: "SF Mono", "Fira Code", monospace;
+    font-size: 0.85rem;
+    color: #1e293b;
+    min-width: 200px;
+  }
+  .route-arrow { color: #94a3b8; font-size: 1rem; }
+  .route-dest  { font-size: 0.82rem; color: #475569; min-width: 180px; }
+  .route-note  { font-size: 0.76rem; color: #94a3b8; margin-left: auto; text-align: right; }
+
+  .note-section {
+    width: 100%;
+    max-width: 860px;
+    margin-top: 24px;
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 12px;
+  }
+  .note-card {
+    background: #f8fafc;
+    border-radius: 10px;
+    padding: 16px 18px;
+    border: 1px solid #e2e8f0;
+  }
+  .note-card h3 {
+    font-size: 0.72rem;
+    font-weight: 700;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+    color: #94a3b8;
+    margin-bottom: 10px;
+  }
+  .note-card ul { list-style: none; display: flex; flex-direction: column; gap: 7px; }
+  .note-card li { font-size: 0.82rem; color: #475569; display: flex; gap: 8px; }
+  .note-card li .dot { color: #16a34a; flex-shrink: 0; }
+
+  code {
+    font-family: "SF Mono", "Fira Code", monospace;
+    font-size: 0.8rem;
+    background: #e2e8f0;
+    border-radius: 4px;
+    padding: 1px 5px;
+    color: #1d4ed8;
+  }
+</style>
+</head>
+<body>
+
+<h1>nginx as Internal Ingress — Ray Serve on CAI</h1>
+<p class="subtitle">CML exposes one port per application. nginx routes it to three internal services.</p>
+
+<div class="diagram">
+
+  <!-- Client -->
+  <div class="box box-client">
+    <div class="box-label">External</div>
+    <div class="box-title">Client / OpenWebUI</div>
+    <div class="box-sub">HTTPS via CML reverse proxy</div>
+  </div>
+
+  <!-- Arrow down -->
+  <div style="position:relative; height:32px; display:flex; align-items:center; justify-content:center;">
+    <div style="width:2px; height:32px; background:#cbd5e1; position:relative;">
+      <div style="position:absolute; bottom:-6px; left:50%; transform:translateX(-50%);
+                  border-left:6px solid transparent; border-right:6px solid transparent;
+                  border-top:8px solid #cbd5e1;"></div>
+    </div>
+    <span style="position:absolute; left:calc(50% + 12px); font-size:0.72rem; color:#94a3b8; white-space:nowrap;">
+      CDSW_APP_PORT · TLS terminated by CML
+    </span>
+  </div>
+
+  <!-- nginx -->
+  <div class="box box-nginx">
+    <div class="box-label">Ingress</div>
+    <div class="box-title">nginx</div>
+    <div class="box-sub">127.0.0.1:CDSW_APP_PORT &nbsp;·&nbsp; only externally visible process</div>
+  </div>
+
+  <!-- fan-out -->
+  <div style="position:relative; width:100%; max-width:700px; height:36px;">
+    <div style="position:absolute; top:0; left:50%; width:1px; height:36px; background:#cbd5e1;"></div>
+    <div style="position:absolute; top:35px; left:16%; width:68%; height:2px; background:#cbd5e1;"></div>
+  </div>
+
+  <!-- three backends -->
+  <div style="display:flex; justify-content:space-between; width:100%; max-width:700px; gap:12px;">
+
+    <div style="display:flex; flex-direction:column; align-items:center; flex:1;">
+      <div style="width:2px; height:20px; background:#cbd5e1;"></div>
+      <div class="box box-serve" style="width:100%;">
+        <div class="box-label">Ray Serve</div>
+        <div class="box-title">Management API</div>
+        <div class="box-sub">127.0.0.1:5000</div>
+      </div>
+    </div>
+
+    <div style="display:flex; flex-direction:column; align-items:center; flex:1;">
+      <div style="width:2px; height:20px; background:#cbd5e1;"></div>
+      <div class="box box-dashboard" style="width:100%;">
+        <div class="box-label">Ray</div>
+        <div class="box-title">Dashboard</div>
+        <div class="box-sub">127.0.0.1:8265</div>
+      </div>
+    </div>
+
+    <div style="display:flex; flex-direction:column; align-items:center; flex:1;">
+      <div style="width:2px; height:20px; background:#cbd5e1;"></div>
+      <div class="box box-static" style="width:100%;">
+        <div class="box-label">Static</div>
+        <div class="box-title">Landing Page</div>
+        <div class="box-sub">served by nginx directly</div>
+      </div>
+    </div>
+
+  </div>
+
+</div>
+
+<!-- Route table -->
+<div class="routes-wrapper">
+  <h2>Location Block Routing</h2>
+  <div class="routes">
+
+    <div class="route-row serve">
+      <span class="route-path">/api/*</span>
+      <span class="route-arrow">→</span>
+      <span class="route-dest">ray_serve :5000</span>
+      <span class="route-note">Management API (FastAPI)</span>
+    </div>
+
+    <div class="route-row serve">
+      <span class="route-path">/docs &nbsp; /redoc &nbsp; /openapi.json</span>
+      <span class="route-arrow">→</span>
+      <span class="route-dest">ray_serve :5000</span>
+      <span class="route-note">Swagger / ReDoc — exact match</span>
+    </div>
+
+    <div class="route-row serve">
+      <span class="route-path">/health</span>
+      <span class="route-arrow">→</span>
+      <span class="route-dest">ray_serve :5000</span>
+      <span class="route-note">liveness probe · access_log off</span>
+    </div>
+
+    <div class="route-row dash">
+      <span class="route-path">/dashboard/*</span>
+      <span class="route-arrow">→</span>
+      <span class="route-dest">ray_dashboard :8265</span>
+      <span class="route-note">WebSocket enabled · 24 h timeout</span>
+    </div>
+
+    <div class="route-row static">
+      <span class="route-path">= /</span>
+      <span class="route-arrow">→</span>
+      <span class="route-dest">static HTML</span>
+      <span class="route-note">index.html served directly by nginx</span>
+    </div>
+
+    <div class="route-row model">
+      <span class="route-path">/* &nbsp;<span style="color:#d97706;">(catch-all)</span></span>
+      <span class="route-arrow">→</span>
+      <span class="route-dest">ray_serve :5000</span>
+      <span class="route-note">/paddleocr/* &nbsp; /llama3/* &nbsp; any route_prefix</span>
+    </div>
+
+  </div>
+</div>
+
+<!-- Notes -->
+<div class="note-section">
+
+  <div class="note-card">
+    <h3>Streaming settings (every model location)</h3>
+    <ul>
+      <li><span class="dot">●</span><span><code>proxy_buffering off</code> — tokens flow immediately, not batched</span></li>
+      <li><span class="dot">●</span><span><code>proxy_read_timeout 300s</code> — default 60 s kills most LLM responses</span></li>
+      <li><span class="dot">●</span><span><code>Upgrade / Connection</code> headers — SSE &amp; WebSocket passthrough</span></li>
+      <li><span class="dot">●</span><span><code>keepalive 8</code> upstream — reuse TCP for high-throughput streams</span></li>
+    </ul>
+  </div>
+
+  <div class="note-card">
+    <h3>Config generation</h3>
+    <ul>
+      <li><span class="dot">●</span><span>Templates rendered at startup by <code>start_nginx.py</code> via Jinja2</span></li>
+      <li><span class="dot">●</span><span>Ports / timeouts controlled by env vars — no template edits needed</span></li>
+      <li><span class="dot">●</span><span><code>client_max_body_size 100M</code> — allows base64-encoded image uploads</span></li>
+      <li><span class="dot">●</span><span>TLS, auth — handled upstream by CML platform, not nginx</span></li>
+    </ul>
+  </div>
+
+</div>
+
+</body>
+</html>

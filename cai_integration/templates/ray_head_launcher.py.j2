@@ -9,12 +9,15 @@ Configuration:
   Management API    : {{ mgmt_cpu }} CPU, {{ mgmt_memory_gb }} GB RAM (pinned to this node)
 
 Full startup sequence:
+  [0/4] Ensure nginx installed    run setup_environment.py if missing
   [1/4] ray start --head          GCS :{{ ray_port }}, dashboard 127.0.0.1:{{ dashboard_port }}
   [2/4] Wait for GCS              poll 127.0.0.1:{{ ray_port }}
-  [3/4] Deploy Management API     Ray Serve on 127.0.0.1:8000, pinned to head
-  [4/4] Start nginx               renders Jinja2 templates, binds CDSW_APP_PORT
+  [3/4] Deploy Management API     subprocess → deploy_ray_app.py (venv Python)
+  [4/4] Start nginx               subprocess → start_nginx.py (venv Python)
 
 This process stays alive after startup so the CAI application remains running.
+This script only uses the stdlib — Ray is invoked via subprocesses so there
+is no dependency on which Python interpreter runs this launcher.
 """
 import os
 import socket
@@ -24,28 +27,77 @@ import time
 from pathlib import Path
 
 VENV_PYTHON = Path("{{ venv_python }}")
-PROJECT_DIR  = Path("{{ project_dir }}")
-sys.path.insert(0, str(PROJECT_DIR))
+RAY_BIN     = VENV_PYTHON.parent / "ray"   # /home/cdsw/.venv/bin/ray
+PROJECT_DIR = Path("{{ project_dir }}")
 
 if not VENV_PYTHON.exists():
     print(f"ERROR: venv not found at {VENV_PYTHON}")
+    sys.exit(1)
+if not RAY_BIN.exists():
+    print(f"ERROR: ray binary not found at {RAY_BIN}")
     sys.exit(1)
 
 print("=" * 70)
 print("Ray Head Node — startup")
 print("=" * 70)
 
+# ── Venv bin prepended to PATH ────────────────────────────────────────────────
+# Running `.venv/bin/python` directly does NOT activate the venv — the venv's
+# bin/ directory is NOT added to PATH automatically.  Prepend it now so that
+# all child processes (raylet → Ray actor → vLLM EngineCore → FlashInfer JIT)
+# can resolve binaries installed in the venv (e.g. ninja, ray, uvicorn).
+_venv_bin = str(VENV_PYTHON.parent)
+_path = os.environ.get("PATH", "")
+if _venv_bin not in _path.split(":"):
+    os.environ["PATH"] = _venv_bin + ":" + _path
+    print(f"Prepended venv bin to PATH: {_venv_bin}")
 
-# ── [1/4] Start Ray head ────────────────────────────────────────────────────
+# ── [0/4] Ensure nginx is installed ──────────────────────────────────────────
+_nginx_bin = Path("/home/cdsw/.local/bin/nginx")
+if not _nginx_bin.exists():
+    print("\n[0/4] nginx not found — running setup_environment.py ...")
+    _setup_script = PROJECT_DIR / "cai_integration" / "setup_environment.py"
+    if not _setup_script.exists():
+        print(f"ERROR: setup script not found: {_setup_script}")
+        sys.exit(1)
+    _r = subprocess.run(
+        [str(VENV_PYTHON), str(_setup_script)],
+        env={**os.environ, "PYTHONPATH": str(PROJECT_DIR)},
+    )
+    if _r.returncode != 0:
+        print(f"ERROR: setup_environment.py failed (exit {_r.returncode})")
+        sys.exit(_r.returncode)
+    if not _nginx_bin.exists():
+        print("ERROR: nginx still not found after setup_environment.py")
+        sys.exit(1)
+    print("  nginx installed successfully")
+
+# ── Write GCS address file ────────────────────────────────────────────────────
+# CDSW_IP_ADDRESS is the pod's internal IP set by CML.  Workers must connect
+# to this IP on the GCS port — the public CAI domain only exposes port 443.
+_pod_ip = os.environ.get("CDSW_IP_ADDRESS", "127.0.0.1")
+_gcs_address = f"{_pod_ip}:{{ ray_port }}"
+_gcs_file = PROJECT_DIR / "ray_gcs_address"
+_gcs_file.write_text(_gcs_address)
+print(f"GCS address     : {_gcs_address}  (written to {_gcs_file})")
+
+
+# ── [1/4] Start Ray head ─────────────────────────────────────────────────────
 print("\n[1/4] Starting Ray head node...")
 result = subprocess.run(
     [
-        str(VENV_PYTHON), "-m", "ray.scripts.ray_start",
-        "--head",
+        str(RAY_BIN),
+        "start", "--head",
         "--port", "{{ ray_port }}",
-        "--dashboard-host", "127.0.0.1",  # internal only
-        "--dashboard-port", "{{ dashboard_port }}",  # internal only
+        "--dashboard-host", "127.0.0.1",
+        "--dashboard-port", "{{ dashboard_port }}",
         "--include-dashboard", "true",
+        "--metrics-export-port", "{{ metrics_port }}",
+        # Kill idle worker processes after 60 s instead of the default
+        # (several minutes).  This directly reduces the ray::IDLE actor count
+        # visible in the dashboard between bursts of work.
+        "--system-config",
+        '{"idle_worker_killing_time_threshold_ms": 60000}',
     ],
     capture_output=True,
     text=True,
@@ -54,10 +106,10 @@ if result.returncode != 0:
     print(f"ERROR: ray start --head failed (exit {result.returncode}):")
     print(result.stderr)
     sys.exit(result.returncode)
-print("  Ray head started  (GCS :{{ ray_port }}, dashboard 127.0.0.1:{{ dashboard_port }})")
+print("  Ray head started  (GCS :{{ ray_port }}, dashboard 127.0.0.1:{{ dashboard_port }}, metrics :{{ metrics_port }})")
 
 
-# ── [2/4] Wait for GCS ─────────────────────────────────────────────────────
+# ── [2/4] Wait for GCS ───────────────────────────────────────────────────────
 print("\n[2/4] Waiting for Ray GCS on 127.0.0.1:{{ ray_port }} ...")
 for attempt in range(30):
     try:
@@ -71,115 +123,65 @@ else:
     sys.exit(1)
 
 
-# ── [3/4] Deploy Management API via Ray Serve ───────────────────────────────
-print("\n[3/4] Deploying Management API via Ray Serve on 127.0.0.1:8000 ...")
-print("  Resources: {{ mgmt_cpu }} CPU, {{ mgmt_memory_gb }} GB RAM")
-try:
-    import ray
-    from ray import serve
-    from ray.util.scheduling_strategies import NodeAffinitySchedulingStrategy
+# ── [3/4] Deploy Management API ──────────────────────────────────────────────
+print("\n[3/4] Deploying Management API via Ray Serve...")
+print("  Resources: {{ mgmt_cpu }} CPU, {{ mgmt_memory_gb }} GB RAM (pinned to head node)")
 
-    ray.init(address="auto", ignore_reinit_error=True)
-
-    # ── Identify the head node ───────────────────────────────────────────────
-    # Ray 2.x automatically assigns the resource "node:__internal_head__" to
-    # the head node.  Use that label first; fall back to the driver's own
-    # runtime-context node ID (which is also the head node when this script
-    # runs on the head).
-    head_node_id = None
-    for _node in ray.nodes():
-        if _node.get("Alive") and "node:__internal_head__" in _node.get("Resources", {}):
-            head_node_id = _node["NodeID"]
-            break
-    if head_node_id is None:
-        head_node_id = ray.get_runtime_context().get_node_id()
-    print(f"  Head node ID : {head_node_id}")
-
-    # ── Start Ray Serve (idempotent) ─────────────────────────────────────────
-    # serve.start() raises RayServeException if Serve is already running
-    # (e.g. on a second deploy attempt or after a partial restart).
-    # Catch that case and reuse the existing Serve instance.
-    try:
-        serve.start(
-            detached=True,
-            http_options={"host": "127.0.0.1", "port": 8000},
-        )
-        print("  Ray Serve started on 127.0.0.1:8000")
-    except Exception as _e:
-        if any(kw in str(_e).lower() for kw in ("already", "running", "exists")):
-            print(f"  Ray Serve already running — reusing existing instance")
-        else:
-            raise
-
-    # Propagate identity so the Management API can reach the CAI platform.
-    os.environ.setdefault("RAY_ADDRESS", "auto")
-    os.environ.setdefault(
-        "CML_PROJECT_ID",
-        os.environ.get("CDSW_PROJECT_ID", ""),
-    )
-
-    from ray_serve_cai.management.app import app as fastapi_app
-
-    # ── Deploy Management API pinned to this head node ───────────────────────
-    # route_prefix must NOT appear in @serve.deployment (deprecated / removed
-    # in Ray 2.6+).  Pass it only to serve.run() below.
-    @serve.deployment(
-        name="management-api",
-        num_replicas=1,
-        ray_actor_options={
-            "num_cpus": {{ mgmt_cpu }},
-            "memory": {{ mgmt_memory_gb }} * 1024 ** 3,
-            "scheduling_strategy": NodeAffinitySchedulingStrategy(
-                node_id=head_node_id,
-                soft=False,
-            ),
-        },
-    )
-    @serve.ingress(fastapi_app)
-    class ManagementAPI:
-        pass
-
-    serve.run(ManagementAPI.bind(), name="management-api", route_prefix="/api")
-    print("  Management API live at http://127.0.0.1:8000/api/*")
-
-except Exception as exc:
-    import traceback
-    print(f"ERROR: management API deployment failed: {exc}")
-    traceback.print_exc()
+deploy_script = PROJECT_DIR / "ray_serve_cai" / "scripts" / "deploy_ray_app.py"
+if not deploy_script.exists():
+    print(f"ERROR: deploy script not found: {deploy_script}")
     sys.exit(1)
 
+# Ray Serve proxy tuning — set only the values that were explicitly configured;
+# absent values fall through to Ray's built-in defaults.
+_serve_env = {**os.environ, "PYTHONPATH": str(PROJECT_DIR)}
+{% if proxy_health_check_period_s is not none %}_serve_env["RAY_SERVE_PROXY_HEALTH_CHECK_PERIOD_S"]  = "{{ proxy_health_check_period_s }}"
+{% endif %}{% if proxy_health_check_timeout_s is not none %}_serve_env["RAY_SERVE_PROXY_HEALTH_CHECK_TIMEOUT_S"] = "{{ proxy_health_check_timeout_s }}"
+{% endif %}{% if proxy_ready_check_timeout_s is not none %}_serve_env["RAY_SERVE_PROXY_READY_CHECK_TIMEOUT_S"]  = "{{ proxy_ready_check_timeout_s }}"
+{% endif %}{% if proxy_min_draining_period_s is not none %}_serve_env["RAY_SERVE_PROXY_MIN_DRAINING_PERIOD_S"]  = "{{ proxy_min_draining_period_s }}"
+{% endif %}
+result = subprocess.run(
+    [
+        str(VENV_PYTHON),
+        str(deploy_script),
+        "--app-import",   "ray_serve_cai.management.app:app",
+        "--name",         "management-api",
+        "--route-prefix", "/",
+        "--num-cpus",     "{{ mgmt_cpu }}",
+        "--memory-gb",    "{{ mgmt_memory_gb }}",
+        "--serve-port",   "5000",
+        "--pin-to-head",
+    ],
+    env=_serve_env,
+)
+if result.returncode != 0:
+    print(f"ERROR: Management API deployment failed (exit {result.returncode})")
+    sys.exit(result.returncode)
+print("  Management API live at http://127.0.0.1:5000/api/*")
 
-# ── [4/4] Start nginx ───────────────────────────────────────────────────────
-print("\n[4/4] Starting nginx reverse proxy ...")
+
+# ── [4/4] Start nginx (foreground — keeps this application alive) ─────────────
+print("\n[4/4] Starting nginx reverse proxy (foreground)...")
 nginx_script = PROJECT_DIR / "ray_serve_cai" / "scripts" / "start_nginx.py"
 if not nginx_script.exists():
     print(f"ERROR: nginx startup script not found: {nginx_script}")
     sys.exit(1)
 
-result = subprocess.run([str(VENV_PYTHON), str(nginx_script)])
-if result.returncode != 0:
-    print(f"ERROR: nginx failed to start (exit {result.returncode})")
-    sys.exit(result.returncode)
-
-
-# ── All services running — keep the process alive ───────────────────────────
 app_port = int(os.environ.get("CDSW_APP_PORT", 8080))
 print("\n" + "=" * 70)
 print("Ray Head Node — all services running")
 print("=" * 70)
 print(f"  External  : :{app_port}  (nginx, public)")
-print(f"  API       : http://127.0.0.1:8000/api/*  (Ray Serve, internal)")
-print(f"  Dashboard : http://127.0.0.1:{{ dashboard_port }}/       (internal)")
-print(f"  GCS       : 127.0.0.1:{{ ray_port }}               (internal)")
-print("\nProcess staying alive — stop the CAI application to shut down.")
+print(f"  API       : http://127.0.0.1:5000/api/*  (Ray Serve, internal)")
+print(f"  Dashboard : http://127.0.0.1:{{ dashboard_port }}/  (internal)")
+print(f"  GCS       : 127.0.0.1:{{ ray_port }}  (internal)")
+print("\nHanding off to nginx — application stays alive as long as nginx runs.")
+print("=" * 70)
 
-try:
-    while True:
-        time.sleep(60)
-except KeyboardInterrupt:
-    print("\nShutting down...")
-    try:
-        serve.shutdown()
-        ray.shutdown()
-    except Exception:
-        pass
+# exec into nginx via start_nginx.py --foreground; this call blocks until nginx exits.
+result = subprocess.run(
+    [str(VENV_PYTHON), str(nginx_script), "--foreground"],
+    env={**os.environ, "PYTHONPATH": str(PROJECT_DIR)},
+)
+# If we reach here nginx has exited — propagate its exit code.
+sys.exit(result.returncode)

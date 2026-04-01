@@ -28,11 +28,6 @@ http {
     keepalive_timeout {{ keepalive_timeout }};
     client_max_body_size {{ client_max_body_size }};
 
-    # Compression
-    gzip       {{ gzip }};
-    gzip_vary  on;
-    gzip_types text/plain application/json application/javascript text/css
-               text/xml application/xml application/x-javascript;
 
     include {{ conf_dir }}/conf.d/*.conf;
 }

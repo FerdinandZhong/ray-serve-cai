@@ -1,0 +1,245 @@
+INFO 2026-03-29 02:07:00,524 management-api_management-api h4whejmc -- Started initializing replica.
+INFO 2026-03-29 02:07:00,682 management-api_management-api h4whejmc -- Finished initializing replica.
+INFO 2026-03-29 02:08:44,289 management-api_management-api h4whejmc 5d93ef65-a970-492d-8f40-f24d3ec3f0f0 -- GET /api 404 1.5ms
+INFO 2026-03-29 02:08:49,414 management-api_management-api h4whejmc 71781aaa-3a80-42e9-b416-c8b2b11cc341 -- GET /api/docs 200 1.1ms
+INFO 2026-03-29 02:08:49,778 management-api_management-api h4whejmc 13f588d9-03ef-492a-bbde-42e20c8610d6 -- GET /api/openapi.json 200 51.8ms
+ERROR 2026-03-29 02:08:55,487 management-api_management-api h4whejmc 463cf424-1a51-4e00-a123-195b8a293910 -- Request failed.
+Traceback (most recent call last):
+  File "/home/cdsw/.venv/lib/python3.11/site-packages/ray/serve/_private/replica.py", line 1145, in _handle_errors_and_metrics
+    yield _status_code_callback
+  File "/home/cdsw/.venv/lib/python3.11/site-packages/ray/serve/_private/replica.py", line 1816, in _wrap_request
+    yield status_code_callback
+  File "/home/cdsw/.venv/lib/python3.11/site-packages/ray/serve/_private/replica.py", line 1378, in handle_request_with_rejection
+    raise self._maybe_wrap_grpc_exception(e, request_metadata) from e
+  File "/home/cdsw/.venv/lib/python3.11/site-packages/ray/serve/_private/replica.py", line 1358, in handle_request_with_rejection
+    async for msgs in self._user_callable_wrapper.call_http_entrypoint(
+  File "/home/cdsw/.venv/lib/python3.11/site-packages/ray/serve/_private/replica.py", line 3105, in call_http_entrypoint
+    async for messages in result_queue.fetch_messages_from_queue(call_future):
+  File "/home/cdsw/.venv/lib/python3.11/site-packages/ray/serve/_private/http_util.py", line 315, in fetch_messages_from_queue
+    raise e from None
+  File "/home/cdsw/.venv/lib/python3.11/site-packages/ray/serve/_private/replica.py", line 3159, in _call_http_entrypoint
+    result, sync_gen_consumed = await self._call_func_or_gen(
+                                ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/home/cdsw/.venv/lib/python3.11/site-packages/ray/serve/_private/replica.py", line 2835, in _call_func_or_gen
+    result = await result
+             ^^^^^^^^^^^^
+  File "/home/cdsw/.venv/lib/python3.11/site-packages/ray/serve/_private/http_util.py", line 610, in __call__
+    await self._asgi_app(
+  File "/home/cdsw/.venv/lib/python3.11/site-packages/fastapi/applications.py", line 1159, in __call__
+    await super().__call__(scope, receive, send)
+  File "/home/cdsw/.venv/lib/python3.11/site-packages/starlette/applications.py", line 107, in __call__
+    await self.middleware_stack(scope, receive, send)
+  File "/home/cdsw/.venv/lib/python3.11/site-packages/starlette/middleware/errors.py", line 186, in __call__
+    raise exc
+  File "/home/cdsw/.venv/lib/python3.11/site-packages/starlette/middleware/errors.py", line 164, in __call__
+    await self.app(scope, receive, _send)
+  File "/home/cdsw/.venv/lib/python3.11/site-packages/starlette/middleware/cors.py", line 87, in __call__
+    await self.app(scope, receive, send)
+  File "/home/cdsw/.venv/lib/python3.11/site-packages/starlette/middleware/exceptions.py", line 63, in __call__
+    await wrap_app_handling_exceptions(self.app, conn)(scope, receive, send)
+  File "/home/cdsw/.venv/lib/python3.11/site-packages/starlette/_exception_handler.py", line 53, in wrapped_app
+    raise exc
+  File "/home/cdsw/.venv/lib/python3.11/site-packages/starlette/_exception_handler.py", line 42, in wrapped_app
+    await app(scope, receive, sender)
+  File "/home/cdsw/.venv/lib/python3.11/site-packages/fastapi/middleware/asyncexitstack.py", line 18, in __call__
+    await self.app(scope, receive, send)
+  File "/home/cdsw/.venv/lib/python3.11/site-packages/starlette/routing.py", line 716, in __call__
+    await self.middleware_stack(scope, receive, send)
+  File "/home/cdsw/.venv/lib/python3.11/site-packages/starlette/routing.py", line 736, in app
+    await route.handle(scope, receive, send)
+  File "/home/cdsw/.venv/lib/python3.11/site-packages/starlette/routing.py", line 290, in handle
+    await self.app(scope, receive, send)
+  File "/home/cdsw/.venv/lib/python3.11/site-packages/fastapi/routing.py", line 134, in app
+    await wrap_app_handling_exceptions(app, request)(scope, receive, send)
+  File "/home/cdsw/.venv/lib/python3.11/site-packages/starlette/_exception_handler.py", line 53, in wrapped_app
+    raise exc
+  File "/home/cdsw/.venv/lib/python3.11/site-packages/starlette/_exception_handler.py", line 42, in wrapped_app
+    await app(scope, receive, sender)
+  File "/home/cdsw/.venv/lib/python3.11/site-packages/fastapi/routing.py", line 120, in app
+    response = await f(request)
+               ^^^^^^^^^^^^^^^^
+  File "/home/cdsw/.venv/lib/python3.11/site-packages/fastapi/routing.py", line 457, in app
+    solved_result = await solve_dependencies(
+                    ^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/home/cdsw/.venv/lib/python3.11/site-packages/fastapi/dependencies/utils.py", line 680, in solve_dependencies
+    solved = await run_in_threadpool(call, **solved_result.values)
+             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/home/cdsw/.venv/lib/python3.11/site-packages/starlette/concurrency.py", line 32, in run_in_threadpool
+    return await anyio.to_thread.run_sync(func)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/home/cdsw/.venv/lib/python3.11/site-packages/anyio/to_thread.py", line 63, in run_sync
+    return await get_async_backend().run_sync_in_worker_thread(
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/home/cdsw/.venv/lib/python3.11/site-packages/anyio/_backends/_asyncio.py", line 2518, in run_sync_in_worker_thread
+    return await future
+           ^^^^^^^^^^^^
+  File "/home/cdsw/.venv/lib/python3.11/site-packages/anyio/_backends/_asyncio.py", line 1002, in run
+    result = context.run(func, *args)
+             ^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/home/cdsw/ray_serve_cai/management/api/resources.py", line 16, in get_coordinator
+    return get_coordinator_service()
+           ^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/home/cdsw/ray_serve_cai/management/app.py", line 117, in get_coordinator_service
+    raise RuntimeError("Coordinator service not initialized")
+RuntimeError: Coordinator service not initialized
+INFO 2026-03-29 02:08:55,587 management-api_management-api h4whejmc 463cf424-1a51-4e00-a123-195b8a293910 -- GET /api/api/v1/resources/nodes 500 109.8ms
+ERROR 2026-03-29 02:11:20,001 management-api_management-api h4whejmc 48716405-cecf-49b7-ba7a-c09f43b808d0 -- Request failed.
+Traceback (most recent call last):
+  File "/home/cdsw/.venv/lib/python3.11/site-packages/ray/serve/_private/replica.py", line 1145, in _handle_errors_and_metrics
+    yield _status_code_callback
+  File "/home/cdsw/.venv/lib/python3.11/site-packages/ray/serve/_private/replica.py", line 1816, in _wrap_request
+    yield status_code_callback
+  File "/home/cdsw/.venv/lib/python3.11/site-packages/ray/serve/_private/replica.py", line 1378, in handle_request_with_rejection
+    raise self._maybe_wrap_grpc_exception(e, request_metadata) from e
+  File "/home/cdsw/.venv/lib/python3.11/site-packages/ray/serve/_private/replica.py", line 1358, in handle_request_with_rejection
+    async for msgs in self._user_callable_wrapper.call_http_entrypoint(
+  File "/home/cdsw/.venv/lib/python3.11/site-packages/ray/serve/_private/replica.py", line 3105, in call_http_entrypoint
+    async for messages in result_queue.fetch_messages_from_queue(call_future):
+  File "/home/cdsw/.venv/lib/python3.11/site-packages/ray/serve/_private/http_util.py", line 315, in fetch_messages_from_queue
+    raise e from None
+  File "/home/cdsw/.venv/lib/python3.11/site-packages/ray/serve/_private/replica.py", line 3159, in _call_http_entrypoint
+    result, sync_gen_consumed = await self._call_func_or_gen(
+                                ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/home/cdsw/.venv/lib/python3.11/site-packages/ray/serve/_private/replica.py", line 2835, in _call_func_or_gen
+    result = await result
+             ^^^^^^^^^^^^
+  File "/home/cdsw/.venv/lib/python3.11/site-packages/ray/serve/_private/http_util.py", line 610, in __call__
+    await self._asgi_app(
+  File "/home/cdsw/.venv/lib/python3.11/site-packages/fastapi/applications.py", line 1159, in __call__
+    await super().__call__(scope, receive, send)
+  File "/home/cdsw/.venv/lib/python3.11/site-packages/starlette/applications.py", line 107, in __call__
+    await self.middleware_stack(scope, receive, send)
+  File "/home/cdsw/.venv/lib/python3.11/site-packages/starlette/middleware/errors.py", line 186, in __call__
+    raise exc
+  File "/home/cdsw/.venv/lib/python3.11/site-packages/starlette/middleware/errors.py", line 164, in __call__
+    await self.app(scope, receive, _send)
+  File "/home/cdsw/.venv/lib/python3.11/site-packages/starlette/middleware/cors.py", line 87, in __call__
+    await self.app(scope, receive, send)
+  File "/home/cdsw/.venv/lib/python3.11/site-packages/starlette/middleware/exceptions.py", line 63, in __call__
+    await wrap_app_handling_exceptions(self.app, conn)(scope, receive, send)
+  File "/home/cdsw/.venv/lib/python3.11/site-packages/starlette/_exception_handler.py", line 53, in wrapped_app
+    raise exc
+  File "/home/cdsw/.venv/lib/python3.11/site-packages/starlette/_exception_handler.py", line 42, in wrapped_app
+    await app(scope, receive, sender)
+  File "/home/cdsw/.venv/lib/python3.11/site-packages/fastapi/middleware/asyncexitstack.py", line 18, in __call__
+    await self.app(scope, receive, send)
+  File "/home/cdsw/.venv/lib/python3.11/site-packages/starlette/routing.py", line 716, in __call__
+    await self.middleware_stack(scope, receive, send)
+  File "/home/cdsw/.venv/lib/python3.11/site-packages/starlette/routing.py", line 736, in app
+    await route.handle(scope, receive, send)
+  File "/home/cdsw/.venv/lib/python3.11/site-packages/starlette/routing.py", line 290, in handle
+    await self.app(scope, receive, send)
+  File "/home/cdsw/.venv/lib/python3.11/site-packages/fastapi/routing.py", line 134, in app
+    await wrap_app_handling_exceptions(app, request)(scope, receive, send)
+  File "/home/cdsw/.venv/lib/python3.11/site-packages/starlette/_exception_handler.py", line 53, in wrapped_app
+    raise exc
+  File "/home/cdsw/.venv/lib/python3.11/site-packages/starlette/_exception_handler.py", line 42, in wrapped_app
+    await app(scope, receive, sender)
+  File "/home/cdsw/.venv/lib/python3.11/site-packages/fastapi/routing.py", line 120, in app
+    response = await f(request)
+               ^^^^^^^^^^^^^^^^
+  File "/home/cdsw/.venv/lib/python3.11/site-packages/fastapi/routing.py", line 457, in app
+    solved_result = await solve_dependencies(
+                    ^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/home/cdsw/.venv/lib/python3.11/site-packages/fastapi/dependencies/utils.py", line 680, in solve_dependencies
+    solved = await run_in_threadpool(call, **solved_result.values)
+             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/home/cdsw/.venv/lib/python3.11/site-packages/starlette/concurrency.py", line 32, in run_in_threadpool
+    return await anyio.to_thread.run_sync(func)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/home/cdsw/.venv/lib/python3.11/site-packages/anyio/to_thread.py", line 63, in run_sync
+    return await get_async_backend().run_sync_in_worker_thread(
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/home/cdsw/.venv/lib/python3.11/site-packages/anyio/_backends/_asyncio.py", line 2518, in run_sync_in_worker_thread
+    return await future
+           ^^^^^^^^^^^^
+  File "/home/cdsw/.venv/lib/python3.11/site-packages/anyio/_backends/_asyncio.py", line 1002, in run
+    result = context.run(func, *args)
+             ^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/home/cdsw/ray_serve_cai/management/api/resources.py", line 16, in get_coordinator
+    return get_coordinator_service()
+           ^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/home/cdsw/ray_serve_cai/management/app.py", line 117, in get_coordinator_service
+    raise RuntimeError("Coordinator service not initialized")
+RuntimeError: Coordinator service not initialized
+INFO 2026-03-29 02:11:20,018 management-api_management-api h4whejmc 48716405-cecf-49b7-ba7a-c09f43b808d0 -- GET /api/api/v1/resources/nodes 500 19.2ms
+ERROR 2026-03-29 02:11:26,950 management-api_management-api h4whejmc 3a2b6c35-e0fe-49e9-8537-12081242f41a -- Request failed.
+Traceback (most recent call last):
+  File "/home/cdsw/.venv/lib/python3.11/site-packages/ray/serve/_private/replica.py", line 1145, in _handle_errors_and_metrics
+    yield _status_code_callback
+  File "/home/cdsw/.venv/lib/python3.11/site-packages/ray/serve/_private/replica.py", line 1816, in _wrap_request
+    yield status_code_callback
+  File "/home/cdsw/.venv/lib/python3.11/site-packages/ray/serve/_private/replica.py", line 1378, in handle_request_with_rejection
+    raise self._maybe_wrap_grpc_exception(e, request_metadata) from e
+  File "/home/cdsw/.venv/lib/python3.11/site-packages/ray/serve/_private/replica.py", line 1358, in handle_request_with_rejection
+    async for msgs in self._user_callable_wrapper.call_http_entrypoint(
+  File "/home/cdsw/.venv/lib/python3.11/site-packages/ray/serve/_private/replica.py", line 3105, in call_http_entrypoint
+    async for messages in result_queue.fetch_messages_from_queue(call_future):
+  File "/home/cdsw/.venv/lib/python3.11/site-packages/ray/serve/_private/http_util.py", line 315, in fetch_messages_from_queue
+    raise e from None
+  File "/home/cdsw/.venv/lib/python3.11/site-packages/ray/serve/_private/replica.py", line 3159, in _call_http_entrypoint
+    result, sync_gen_consumed = await self._call_func_or_gen(
+                                ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/home/cdsw/.venv/lib/python3.11/site-packages/ray/serve/_private/replica.py", line 2835, in _call_func_or_gen
+    result = await result
+             ^^^^^^^^^^^^
+  File "/home/cdsw/.venv/lib/python3.11/site-packages/ray/serve/_private/http_util.py", line 610, in __call__
+    await self._asgi_app(
+  File "/home/cdsw/.venv/lib/python3.11/site-packages/fastapi/applications.py", line 1159, in __call__
+    await super().__call__(scope, receive, send)
+  File "/home/cdsw/.venv/lib/python3.11/site-packages/starlette/applications.py", line 107, in __call__
+    await self.middleware_stack(scope, receive, send)
+  File "/home/cdsw/.venv/lib/python3.11/site-packages/starlette/middleware/errors.py", line 186, in __call__
+    raise exc
+  File "/home/cdsw/.venv/lib/python3.11/site-packages/starlette/middleware/errors.py", line 164, in __call__
+    await self.app(scope, receive, _send)
+  File "/home/cdsw/.venv/lib/python3.11/site-packages/starlette/middleware/cors.py", line 87, in __call__
+    await self.app(scope, receive, send)
+  File "/home/cdsw/.venv/lib/python3.11/site-packages/starlette/middleware/exceptions.py", line 63, in __call__
+    await wrap_app_handling_exceptions(self.app, conn)(scope, receive, send)
+  File "/home/cdsw/.venv/lib/python3.11/site-packages/starlette/_exception_handler.py", line 53, in wrapped_app
+    raise exc
+  File "/home/cdsw/.venv/lib/python3.11/site-packages/starlette/_exception_handler.py", line 42, in wrapped_app
+    await app(scope, receive, sender)
+  File "/home/cdsw/.venv/lib/python3.11/site-packages/fastapi/middleware/asyncexitstack.py", line 18, in __call__
+    await self.app(scope, receive, send)
+  File "/home/cdsw/.venv/lib/python3.11/site-packages/starlette/routing.py", line 716, in __call__
+    await self.middleware_stack(scope, receive, send)
+  File "/home/cdsw/.venv/lib/python3.11/site-packages/starlette/routing.py", line 736, in app
+    await route.handle(scope, receive, send)
+  File "/home/cdsw/.venv/lib/python3.11/site-packages/starlette/routing.py", line 290, in handle
+    await self.app(scope, receive, send)
+  File "/home/cdsw/.venv/lib/python3.11/site-packages/fastapi/routing.py", line 134, in app
+    await wrap_app_handling_exceptions(app, request)(scope, receive, send)
+  File "/home/cdsw/.venv/lib/python3.11/site-packages/starlette/_exception_handler.py", line 53, in wrapped_app
+    raise exc
+  File "/home/cdsw/.venv/lib/python3.11/site-packages/starlette/_exception_handler.py", line 42, in wrapped_app
+    await app(scope, receive, sender)
+  File "/home/cdsw/.venv/lib/python3.11/site-packages/fastapi/routing.py", line 120, in app
+    response = await f(request)
+               ^^^^^^^^^^^^^^^^
+  File "/home/cdsw/.venv/lib/python3.11/site-packages/fastapi/routing.py", line 457, in app
+    solved_result = await solve_dependencies(
+                    ^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/home/cdsw/.venv/lib/python3.11/site-packages/fastapi/dependencies/utils.py", line 680, in solve_dependencies
+    solved = await run_in_threadpool(call, **solved_result.values)
+             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/home/cdsw/.venv/lib/python3.11/site-packages/starlette/concurrency.py", line 32, in run_in_threadpool
+    return await anyio.to_thread.run_sync(func)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/home/cdsw/.venv/lib/python3.11/site-packages/anyio/to_thread.py", line 63, in run_sync
+    return await get_async_backend().run_sync_in_worker_thread(
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/home/cdsw/.venv/lib/python3.11/site-packages/anyio/_backends/_asyncio.py", line 2518, in run_sync_in_worker_thread
+    return await future
+           ^^^^^^^^^^^^
+  File "/home/cdsw/.venv/lib/python3.11/site-packages/anyio/_backends/_asyncio.py", line 1002, in run
+    result = context.run(func, *args)
+             ^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/home/cdsw/ray_serve_cai/management/api/applications.py", line 16, in get_coordinator
+    return get_coordinator_service()
+           ^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/home/cdsw/ray_serve_cai/management/app.py", line 117, in get_coordinator_service
+    raise RuntimeError("Coordinator service not initialized")
+RuntimeError: Coordinator service not initialized
+INFO 2026-03-29 02:11:26,952 management-api_management-api h4whejmc 3a2b6c35-e0fe-49e9-8537-12081242f41a -- GET /api/api/v1/applications 500 11.5ms

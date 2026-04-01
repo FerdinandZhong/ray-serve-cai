@@ -66,6 +66,44 @@ except ImportError:
 except Exception as e:
     logger.warning(f"Failed to register SGLang engine: {e}")
 
+# Try to register YOLO engine (optional, fail gracefully)
+# Requires: ultralytics, Pillow
+try:
+    from .yolo_engine import YOLOEngine
+    from .yolo_config import YOLOConfigBuilder, YOLODeploymentFactory
+
+    register_engine(
+        engine_type="yolo",
+        engine_class=YOLOEngine,
+        config_builder=YOLOConfigBuilder(),
+        deployment_factory=YOLODeploymentFactory(),
+        set_as_default=False
+    )
+    logger.info("✅ Registered YOLO engine")
+except ImportError as e:
+    logger.debug(f"YOLO engine not available (optional dependency): {e}")
+except Exception as e:
+    logger.warning(f"Failed to register YOLO engine: {e}")
+
+# Try to register MCP engine (optional, fail gracefully)
+# Requires: mcp, httpx (for tools that make HTTP calls)
+try:
+    from .mcp_engine import MCPEngine
+    from .mcp_config import MCPConfigBuilder, MCPDeploymentFactory
+
+    register_engine(
+        engine_type="mcp",
+        engine_class=MCPEngine,
+        config_builder=MCPConfigBuilder(),
+        deployment_factory=MCPDeploymentFactory(),
+        set_as_default=False
+    )
+    logger.info("✅ Registered MCP engine")
+except ImportError as e:
+    logger.debug(f"MCP engine not available (optional dependency): {e}")
+except Exception as e:
+    logger.warning(f"Failed to register MCP engine: {e}")
+
 __all__ = [
     # Legacy exports (backward compatibility)
     'VLLMEngine',
@@ -84,4 +122,12 @@ __all__ = [
     # Class-based exports
     'VLLMConfigBuilder',
     'VLLMDeploymentFactory',
+    # YOLO engine exports
+    'YOLOEngine',
+    'YOLOConfigBuilder',
+    'YOLODeploymentFactory',
+    # MCP engine exports
+    'MCPEngine',
+    'MCPConfigBuilder',
+    'MCPDeploymentFactory',
 ]

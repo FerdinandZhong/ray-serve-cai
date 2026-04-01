@@ -2,11 +2,11 @@
 # Binds to CDSW_APP_PORT and routes traffic to internal Ray services.
 
 server {
-    listen {{ app_port }};
+    listen 127.0.0.1:{{ app_port }};
     server_name _;
 
     # ------------------------------------------------------------------ #
-    # Management API  (Ray Serve, route_prefix=/api)                      #
+    # Management API  (Ray Serve, route_prefix=/)                         #
     # ------------------------------------------------------------------ #
     location /api/ {
         include {{ conf_dir }}/snippets/proxy_params.conf;
@@ -22,17 +22,17 @@ server {
     # API interactive docs
     location = /docs {
         include {{ conf_dir }}/snippets/proxy_params.conf;
-        proxy_pass http://ray_serve/api/docs;
+        proxy_pass http://ray_serve/docs;
     }
 
     location = /redoc {
         include {{ conf_dir }}/snippets/proxy_params.conf;
-        proxy_pass http://ray_serve/api/redoc;
+        proxy_pass http://ray_serve/redoc;
     }
 
     location = /openapi.json {
         include {{ conf_dir }}/snippets/proxy_params.conf;
-        proxy_pass http://ray_serve/api/openapi.json;
+        proxy_pass http://ray_serve/openapi.json;
     }
 
     # ------------------------------------------------------------------ #
@@ -46,6 +46,15 @@ server {
         proxy_set_header Connection "upgrade";
         proxy_buffering    off;
         proxy_read_timeout {{ dashboard_timeout }}s;
+    }
+
+    # ------------------------------------------------------------------ #
+    # Prometheus metrics (no access log to avoid scrape noise)            #
+    # ------------------------------------------------------------------ #
+    location /metrics {
+        include {{ conf_dir }}/snippets/proxy_params.conf;
+        proxy_pass http://ray_serve/api/v1/metrics;
+        access_log off;
     }
 
     # ------------------------------------------------------------------ #

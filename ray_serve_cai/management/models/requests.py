@@ -1,22 +1,62 @@
 """Request models for management API."""
 
-from typing import Optional, Dict, Any
-from pydantic import BaseModel, Field
+from typing import Optional, Dict, Any, List
+from pydantic import BaseModel, Field, field_validator
 
 
 class AddNodeRequest(BaseModel):
     """Request to add a new worker node to the cluster."""
 
-    cpu: int = Field(default=4, ge=1, le=32, description="CPU cores for the worker")
-    memory: int = Field(default=16, ge=4, le=128, description="Memory in GB for the worker")
     node_type: str = Field(default="worker", description="Type of node (worker, gpu-worker)")
+    cpu: Optional[int] = Field(default=None, ge=1, le=256, description="CPU cores override (uses group default when omitted)")
+    memory: Optional[int] = Field(default=None, ge=4, le=1024, description="Memory in GB override (uses group default when omitted)")
+    gpus: Optional[int] = Field(default=None, ge=0, description="GPU count override (uses group default when omitted)")
+    runtime_identifier: Optional[str] = Field(
+        default=None,
+        description="Docker runtime identifier override (uses group default from ray_cluster_info.json when omitted)",
+    )
 
     class Config:
         json_schema_extra = {
             "example": {
-                "cpu": 8,
+                "node_type": "t4-gpu-worker",
+                "cpu": 16,
                 "memory": 32,
-                "node_type": "worker"
+                "gpus": 1,
+            }
+        }
+
+
+class LaunchCaiApplicationRequest(BaseModel):
+    """Request to launch a generic CML application."""
+
+    name: str = Field(..., description="CML application name")
+    script: str = Field(..., description="Script path to run (relative to /home/cdsw)")
+    cpu: int = Field(..., ge=1, le=256, description="CPU cores")
+    memory: int = Field(..., ge=1, le=1024, description="Memory in GB")
+    gpus: int = Field(default=0, ge=0, description="Number of GPUs")
+    runtime_identifier: Optional[str] = Field(
+        default=None,
+        description="Docker runtime identifier (uses cluster default when omitted)",
+    )
+    environment: Optional[Dict[str, str]] = Field(
+        default=None,
+        description="Environment variables injected into the application",
+    )
+    bypass_authentication: bool = Field(
+        default=True,
+        description="Allow unauthenticated access to the application",
+    )
+
+    class Config:
+        json_schema_extra = {
+            "example": {
+                "name": "my-ray-app",
+                "script": "my_ray_app.py",
+                "cpu": 4,
+                "memory": 16,
+                "gpus": 1,
+                "environment": {"MY_VAR": "value"},
             }
         }
 
@@ -71,6 +111,17 @@ class DeployModelRequest(BaseModel):
         default=False,
         description="Run inference on CPU (no GPU required; slower, for testing only)",
     )
+    gpu_fraction: Optional[float] = Field(
+        default=None,
+        ge=0.0,
+        le=1.0,
+        description=(
+            "Fractional GPU resource allocated per replica (e.g. 0.5 to fit two "
+            "replicas on one GPU). Defaults to 1.0 when not set. Must be combined "
+            "with a matching gpu_memory_utilization in engine_config so vLLM only "
+            "uses that fraction of VRAM."
+        ),
+    )
     engine_config: Optional[Dict[str, Any]] = Field(
         default=None,
         description=(
@@ -79,6 +130,38 @@ class DeployModelRequest(BaseModel):
             "trust_remote_code, enable_prefix_caching, download_dir."
         ),
     )
+    placement_group_bundles: Optional[List[Dict[str, float]]] = Field(
+        default=None,
+        description=(
+            "Placement group bundles — one dict per bundle specifying resource "
+            "requirements (e.g. [{\"GPU\": 1, \"CPU\": 1}, {\"GPU\": 1, \"CPU\": 1}]). "
+            "Ray Serve creates one placement group per replica using these bundles. "
+            "When omitted, sensible defaults are auto-generated: STRICT_PACK bundles "
+            "for tensor_parallel_size > 1, PACK bundles for fractional GPU replicas."
+        ),
+    )
+    placement_group_strategy: Optional[str] = Field(
+        default=None,
+        description=(
+            "Placement group scheduling strategy. "
+            "PACK: bin-pack bundles onto as few nodes as possible (default). "
+            "STRICT_PACK: all bundles must fit on a single node — required for "
+            "tensor parallelism across GPUs on the same machine. "
+            "SPREAD: spread bundles across as many nodes as possible. "
+            "STRICT_SPREAD: each bundle on a strictly different node — use for "
+            "cross-node tensor parallelism."
+        ),
+    )
+
+    @field_validator("placement_group_strategy")
+    @classmethod
+    def validate_strategy(cls, v: Optional[str]) -> Optional[str]:
+        valid = {"PACK", "STRICT_PACK", "SPREAD", "STRICT_SPREAD"}
+        if v is not None and v not in valid:
+            raise ValueError(
+                f"placement_group_strategy must be one of {sorted(valid)}, got '{v}'"
+            )
+        return v
 
     class Config:
         json_schema_extra = {
