@@ -81,6 +81,24 @@ async def list_nodes(coordinator: CoordinatorService = Depends(get_coordinator))
         raise HTTPException(status_code=500, detail=str(e))
 
 
+@router.get("/workers", response_model=Dict[str, Any])
+async def list_workers(coordinator: CoordinatorService = Depends(get_coordinator)):
+    """
+    List CML worker applications with their app IDs.
+
+    Use the ``app_id`` from this endpoint to delete workers via
+    ``DELETE /api/v1/resources/nodes/{app_id}``.
+
+    This queries live CML applications directly — not the resource map —
+    so it always reflects the current state.
+    """
+    try:
+        workers = coordinator.get_worker_apps()
+        return {"workers": workers, "count": len(workers)}
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+
 @router.get("/capacity", response_model=ResourceCapacity)
 async def get_capacity(coordinator: CoordinatorService = Depends(get_coordinator)):
     """

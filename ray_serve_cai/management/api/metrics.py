@@ -32,11 +32,12 @@ _all_cache_ts: float = 0.0
 _ALL_CACHE_TTL = 10.0  # seconds
 
 
-async def _fetch_metrics(host: str, port: int, timeout: float = 5.0) -> str:
-    """Fetch Prometheus text from a single node.  Returns empty string on failure."""
+async def _fetch_metrics(host: str, port: int, timeout: float = 5.0,
+                         path: str = "/metrics") -> str:
+    """Fetch Prometheus text from a single endpoint.  Returns empty string on failure."""
     import httpx
 
-    url = f"http://{host}:{port}/metrics"
+    url = f"http://{host}:{port}{path}"
     try:
         async with httpx.AsyncClient(timeout=timeout) as client:
             resp = await client.get(url)
@@ -124,6 +125,60 @@ async def all_metrics():
     _all_cache_ts = now
 
     return PlainTextResponse(aggregated)
+
+
+@router.get("/metrics/apps",
+            summary="Ray Serve application metrics (vLLM, etc.)",
+            response_class=PlainTextResponse)
+async def app_metrics():
+    """
+    Scrape Prometheus metrics from all Ray Serve applications that expose
+    a ``/metrics`` endpoint (e.g. vLLM deployments).
+
+    Discovers running apps via ``serve.status()``, then fetches
+    ``http://localhost:<ray_serve_port>/<route_prefix>/metrics`` for each.
+    """
+    ray_serve_port = int(os.environ.get("RAY_SERVE_PORT", "5000"))
+
+    try:
+        from ray import serve as ray_serve
+        status = ray_serve.status()
+        apps = status.applications
+    except Exception as exc:
+        return PlainTextResponse(
+            f"# serve.status() error: {exc}\n", status_code=503,
+        )
+
+    if not apps:
+        return PlainTextResponse("# no Ray Serve applications running\n")
+
+    tasks = []
+    app_names = []
+    for name, app_status in apps.items():
+        prefix = app_status.route_prefix or ""
+        if prefix:
+            tasks.append(
+                _fetch_metrics("127.0.0.1", ray_serve_port,
+                               path=f"{prefix}/metrics")
+            )
+            app_names.append(name)
+
+    if not tasks:
+        return PlainTextResponse("# no apps with route_prefix found\n")
+
+    results = await asyncio.gather(*tasks)
+
+    parts: list[str] = []
+    for name, text in zip(app_names, results):
+        parts.append(f"# app: {name}\n")
+        if text:
+            parts.append(text)
+            if not text.endswith("\n"):
+                parts.append("\n")
+        else:
+            parts.append(f"# app {name}: no /metrics endpoint or unreachable\n")
+
+    return PlainTextResponse("".join(parts))
 
 
 @router.get("/metrics/discovery",

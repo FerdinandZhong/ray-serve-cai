@@ -11,8 +11,6 @@ class NodeInfo(BaseModel):
     node_id: str = Field(..., description="Ray node ID")
     node_name: str = Field(..., description="Node name")
     node_type: str = Field(..., description="Node type (head/worker)")
-    cml_app_id: Optional[str] = Field(None, description="CML application ID if applicable")
-    cml_app_name: Optional[str] = Field(None, description="CML application name")
     alive: bool = Field(..., description="Whether the node is alive")
     resources: Dict[str, float] = Field(..., description="Available resources")
     resources_used: Dict[str, float] = Field(..., description="Used resources")

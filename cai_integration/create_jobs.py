@@ -94,7 +94,7 @@ class JobManager:
             return runtime_id
 
         # Otherwise load from ray_cluster_config.yaml
-        config_path = Path(__file__).parent.parent / "ray_cluster_config.yaml"
+        config_path = Path(__file__).parent.parent / "configs" / "ray_cluster_config.yaml"
         try:
             with open(config_path) as f:
                 config = yaml.safe_load(f)

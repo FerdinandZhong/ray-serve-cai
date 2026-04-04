@@ -191,7 +191,7 @@ def load_config():
     }
 
     # ── Step 2: YAML overrides defaults ─────────────────────────────────────
-    config_path = Path(__file__).parent.parent / "ray_cluster_config.yaml"
+    config_path = Path(__file__).parent.parent / "configs" / "ray_cluster_config.yaml"
     if config_path.exists():
         try:
             with open(config_path) as f:

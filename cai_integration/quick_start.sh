@@ -118,7 +118,7 @@ configure_interactively() {
     worker_gpus=${worker_gpus:-1}
 
     # Update configuration file
-    config_file="../ray_cluster_config.yaml"
+    config_file="../configs/ray_cluster_config.yaml"
 
     cat > "$config_file" <<EOF
 # Ray Cluster Configuration

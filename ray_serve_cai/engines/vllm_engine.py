@@ -223,7 +223,8 @@ _vllm_app = _VLLMApp(
     title="vLLM OpenAI-Compatible API",
     description=(
         "OpenAI-compatible inference API powered by vLLM and Ray Serve.\n\n"
-        "Supports `/v1/chat/completions`, `/v1/completions`, and `/v1/models`."
+        "Supports `/v1/chat/completions`, `/v1/completions`, `/v1/models`, "
+        "and `/metrics` (Prometheus)."
     ),
     version="1.0.0",
     root_path_in_servers=True,
@@ -234,6 +235,16 @@ _vllm_app = _VLLMApp(
         {"name": "Health",      "description": "Liveness probe"},
     ],
 )
+
+# Mount vLLM's Prometheus metrics at /metrics on the FastAPI app.
+# This exposes engine-level metrics (token throughput, KV cache usage,
+# request latency, queue depth, etc.) at <route_prefix>/metrics.
+try:
+    from vllm.entrypoints.serve.instrumentator.metrics import attach_router as _attach_vllm_metrics
+    _attach_vllm_metrics(_vllm_app)
+    logger.info("vLLM Prometheus metrics mounted at /metrics")
+except ImportError:
+    logger.debug("vLLM metrics instrumentator not available (older vLLM version)")
 
 
 # ---------------------------------------------------------------------------

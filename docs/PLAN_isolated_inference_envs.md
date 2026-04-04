@@ -1,5 +1,9 @@
 # Plan: Isolated Inference Environments
 
+> **Superseded by** `PLAN_v2_platform_features.md` Section 2, which adopts this plan's
+> build-time NFS venv strategy (with `uv`, dash naming, template-driven interpreter
+> selection) and adds NFS file locking + Ray `runtime_env` wiring.
+
 ## Problem
 
 `vllm` and `sglang` cannot share a virtual environment because they require

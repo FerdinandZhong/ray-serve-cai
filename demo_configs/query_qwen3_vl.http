@@ -1,0 +1,143 @@
+### Text-only (no image)
+POST /qwen3-vl/v1/chat/completions HTTP/1.1
+Host: ray-cluster-head.ml-XXXX.example.cloudera.site
+Content-Type: application/json
+
+{
+  "model": "/home/cdsw/models/Qwen3-VL-2B-Instruct-FP8",
+  "messages": [
+    {"role": "user", "content": "What is the capital of France?"}
+  ],
+  "max_tokens": 256,
+  "temperature": 0.7,
+  "stream": false
+}
+
+###
+
+### With image URL
+POST /qwen3-vl/v1/chat/completions HTTP/1.1
+Host: ray-cluster-head.ml-XXXX.example.cloudera.site
+Content-Type: application/json
+
+{
+  "model": "/home/cdsw/models/Qwen3-VL-2B-Instruct-FP8",
+  "messages": [
+    {
+      "role": "user",
+      "content": [
+        {
+          "type": "image_url",
+          "image_url": {
+            "url": "https://upload.wikimedia.org/wikipedia/commons/thumb/3/3a/Cat03.jpg/1200px-Cat03.jpg"
+          }
+        },
+        {
+          "type": "text",
+          "text": "Describe what you see in this image."
+        }
+      ]
+    }
+  ],
+  "max_tokens": 512,
+  "temperature": 0.3,
+  "stream": false
+}
+
+###
+
+### With base64-encoded image
+### Generate the data URI from a local file:
+###   python3 -c "import base64,sys; print('data:image/png;base64,' + base64.b64encode(open(sys.argv[1],'rb').read()).decode())" /path/to/image.png
+### Then paste it as the url value below.
+POST /qwen3-vl/v1/chat/completions HTTP/1.1
+Host: ray-cluster-head.ml-XXXX.example.cloudera.site
+Content-Type: application/json
+
+{
+  "model": "/home/cdsw/models/Qwen3-VL-2B-Instruct-FP8",
+  "messages": [
+    {
+      "role": "user",
+      "content": [
+        {
+          "type": "image_url",
+          "image_url": {
+            "url": "data:image/png;base64,iVBORw0KGgoAAAANSUhEUg..."
+          }
+        },
+        {
+          "type": "text",
+          "text": "What text can you read in this image?"
+        }
+      ]
+    }
+  ],
+  "max_tokens": 512,
+  "temperature": 0.1,
+  "stream": false
+}
+
+###
+
+### Multiple images comparison
+POST /qwen3-vl/v1/chat/completions HTTP/1.1
+Host: ray-cluster-head.ml-XXXX.example.cloudera.site
+Content-Type: application/json
+
+{
+  "model": "/home/cdsw/models/Qwen3-VL-2B-Instruct-FP8",
+  "messages": [
+    {
+      "role": "user",
+      "content": [
+        {
+          "type": "image_url",
+          "image_url": {"url": "data:image/jpeg;base64,FIRST_IMAGE_BASE64_HERE"}
+        },
+        {
+          "type": "image_url",
+          "image_url": {"url": "data:image/jpeg;base64,SECOND_IMAGE_BASE64_HERE"}
+        },
+        {
+          "type": "text",
+          "text": "Compare these two images. What are the differences?"
+        }
+      ]
+    }
+  ],
+  "max_tokens": 1024,
+  "temperature": 0.5,
+  "stream": false
+}
+
+###
+
+### Streaming response
+POST /qwen3-vl/v1/chat/completions HTTP/1.1
+Host: ray-cluster-head.ml-XXXX.example.cloudera.site
+Content-Type: application/json
+
+{
+  "model": "/home/cdsw/models/Qwen3-VL-2B-Instruct-FP8",
+  "messages": [
+    {
+      "role": "user",
+      "content": [
+        {
+          "type": "image_url",
+          "image_url": {
+            "url": "https://upload.wikimedia.org/wikipedia/commons/thumb/3/3a/Cat03.jpg/1200px-Cat03.jpg"
+          }
+        },
+        {
+          "type": "text",
+          "text": "Describe this image in detail."
+        }
+      ]
+    }
+  ],
+  "max_tokens": 512,
+  "temperature": 0.3,
+  "stream": true
+}
