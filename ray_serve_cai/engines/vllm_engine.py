@@ -74,6 +74,7 @@ def _accepted_kwargs(cls, kwargs: dict) -> dict:
 
 def _requires_param(cls, param: str) -> bool:
     """Return True if cls.__init__ declares *param* (any default)."""
+    import inspect
     return param in inspect.signature(cls.__init__).parameters
 
 
