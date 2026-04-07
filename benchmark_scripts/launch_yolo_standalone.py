@@ -37,7 +37,7 @@ def _ensure_deps():
         deps = ["fastapi", "uvicorn[standard]", "ultralytics", "Pillow", "python-multipart"]
         print(f"Installing missing packages: {deps}")
         subprocess.check_call(
-            [sys.executable, "-m", "pip", "install", "--quiet"] + deps
+            [sys.executable, "-m", "pip", "install", "--user", "--quiet"] + deps
         )
         print("Dependencies installed.")
 
