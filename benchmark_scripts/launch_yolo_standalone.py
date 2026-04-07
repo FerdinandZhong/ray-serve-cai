@@ -81,44 +81,46 @@ def main():
     except NameError:
         project_root = os.getcwd()
 
-    server_script = os.path.join(project_root, "benchmark_scripts", "yolo_api_server.py")
-    launcher_script = os.path.join(project_root, "benchmark_scripts", "launch_yolo_standalone.py")
+    bench_dir = os.path.join(project_root, "benchmark_scripts")
 
-    if os.environ.get("_SERVER_MODE"):
-        # Inside the subprocess — safe to import and run uvicorn directly
-        sys.path.insert(0, os.path.dirname(server_script))
-        import uvicorn
-        from yolo_api_server import app
-        uvicorn.run(app, host=host, port=port)
-    else:
-        # CAI/Jupyter parent — spawn subprocess to avoid event loop conflicts
-        cmd = [sys.executable, launcher_script]
-        env = {**os.environ, "_SERVER_MODE": "1"}
-        print(f"Spawning server subprocess...")
-        print()
-        try:
-            process = subprocess.Popen(
-                cmd,
-                stdout=sys.stdout,
-                stderr=sys.stderr,
-                cwd=project_root,
-                env=env,
-            )
-            exit_code = process.wait()
-            if exit_code != 0:
-                print(f"\nERROR: Server exited with code {exit_code}")
-                sys.exit(exit_code)
-        except KeyboardInterrupt:
-            print("\n\nShutting down server...")
-            if "process" in locals():
-                process.terminate()
-                process.wait()
-            sys.exit(0)
-        except Exception as exc:
-            print(f"\nERROR: Failed to start server: {exc}")
-            import traceback
-            traceback.print_exc()
-            sys.exit(1)
+    # Run uvicorn directly pointing at the FastAPI app in yolo_api_server.py.
+    # This avoids re-entering this launcher and any __file__ issues in Jupyter.
+    cmd = [
+        sys.executable, "-m", "uvicorn",
+        "yolo_api_server:app",
+        "--host", host,
+        "--port", str(port),
+        "--log-level", "info",
+    ]
+
+    print("Spawning server subprocess...")
+    print(f"  cmd: {' '.join(cmd)}")
+    print(f"  cwd: {bench_dir}")
+    print()
+
+    try:
+        process = subprocess.Popen(
+            cmd,
+            stdout=sys.stdout,
+            stderr=sys.stderr,
+            cwd=bench_dir,
+            env=os.environ.copy(),
+        )
+        exit_code = process.wait()
+        if exit_code != 0:
+            print(f"\nERROR: Server exited with code {exit_code}")
+            sys.exit(exit_code)
+    except KeyboardInterrupt:
+        print("\n\nShutting down server...")
+        if "process" in locals():
+            process.terminate()
+            process.wait()
+        sys.exit(0)
+    except Exception as exc:
+        print(f"\nERROR: Failed to start server: {exc}")
+        import traceback
+        traceback.print_exc()
+        sys.exit(1)
 
 
 if __name__ == "__main__":
