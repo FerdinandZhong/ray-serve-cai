@@ -82,6 +82,7 @@ def main():
         project_root = os.getcwd()
 
     server_script = os.path.join(project_root, "benchmark_scripts", "yolo_api_server.py")
+    launcher_script = os.path.join(project_root, "benchmark_scripts", "launch_yolo_standalone.py")
 
     if os.environ.get("_SERVER_MODE"):
         # Inside the subprocess — safe to import and run uvicorn directly
@@ -91,7 +92,7 @@ def main():
         uvicorn.run(app, host=host, port=port)
     else:
         # CAI/Jupyter parent — spawn subprocess to avoid event loop conflicts
-        cmd = [sys.executable, __file__]
+        cmd = [sys.executable, launcher_script]
         env = {**os.environ, "_SERVER_MODE": "1"}
         print(f"Spawning server subprocess...")
         print()
