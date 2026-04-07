@@ -41,8 +41,10 @@ try:
     # Try full import; fall back to a placeholder class if vllm is missing.
     try:
         from .vllm_engine import VLLMEngine, create_vllm_deployment
-    except ImportError:
-        logger.info("vLLM not installed on this node — registering with stub engine class")
+    except Exception as _vllm_err:
+        logger.info("vLLM engine module not importable on this node (%s: %s) "
+                     "— registering with stub engine class",
+                     type(_vllm_err).__name__, _vllm_err)
         VLLMEngine = type("VLLMEngine", (), {})            # placeholder
         create_vllm_deployment = None
 
@@ -54,10 +56,8 @@ try:
         set_as_default=True  # vLLM is the default engine
     )
     logger.info("✅ Registered vLLM engine as default")
-except ImportError as e:
-    logger.warning(f"vLLM engine not available (vllm_config import failed): {e}")
 except Exception as e:
-    logger.warning(f"Failed to register vLLM engine: {e}")
+    logger.warning("Failed to register vLLM engine (%s): %s", type(e).__name__, e)
 
 # Try to register SGLang engine (optional, fail gracefully)
 try:
