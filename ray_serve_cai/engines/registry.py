@@ -86,8 +86,7 @@ class EngineRegistry:
         self._engines[engine_type] = components
         logger.info(f"Registered engine: {engine_type}")
 
-        # Set as default if requested or if it's the first engine
-        if set_as_default or self._default_engine is None:
+        if set_as_default:
             self._default_engine = engine_type
             logger.info(f"Set default engine: {engine_type}")
 

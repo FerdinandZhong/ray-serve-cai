@@ -24,15 +24,27 @@ validate_vllm_config = None
 VLLMConfigBuilder = None
 VLLMDeploymentFactory = None
 
-# Try to import and register vLLM engine (optional, fail gracefully)
+# Try to import and register vLLM engine.
+# vLLM may not be installed on the head node (CPU-only image).  The config
+# builder and deployment factory in vllm_config.py do NOT import vllm at
+# module level — they defer to create_vllm_deployment() which is only called
+# on a worker node.  So we import only vllm_config here (lightweight) and
+# register a placeholder engine_class.
 try:
-    from .vllm_engine import VLLMEngine, create_vllm_deployment
     from .vllm_config import (
         build_vllm_engine_config,
         validate_vllm_config,
         VLLMConfigBuilder,
         VLLMDeploymentFactory,
     )
+
+    # Try full import; fall back to a placeholder class if vllm is missing.
+    try:
+        from .vllm_engine import VLLMEngine, create_vllm_deployment
+    except ImportError:
+        logger.info("vLLM not installed on this node — registering with stub engine class")
+        VLLMEngine = type("VLLMEngine", (), {})            # placeholder
+        create_vllm_deployment = None
 
     register_engine(
         engine_type="vllm",
@@ -43,8 +55,7 @@ try:
     )
     logger.info("✅ Registered vLLM engine as default")
 except ImportError as e:
-    logger.warning(f"vLLM engine not available (import error): {e}")
-    logger.debug("vLLM may not be installed or has incompatible version")
+    logger.warning(f"vLLM engine not available (vllm_config import failed): {e}")
 except Exception as e:
     logger.warning(f"Failed to register vLLM engine: {e}")
 
