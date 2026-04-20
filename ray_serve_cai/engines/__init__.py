@@ -61,8 +61,15 @@ except Exception as e:
 
 # Try to register SGLang engine (optional, fail gracefully)
 try:
-    from .sglang_engine import SGLangEngine
     from .sglang_config import SGLangConfigBuilder, SGLangDeploymentFactory
+
+    try:
+        from .sglang_engine import SGLangEngine
+    except Exception as _sg_err:
+        logger.info("SGLang engine module not importable (%s: %s) "
+                     "— registering with stub",
+                     type(_sg_err).__name__, _sg_err)
+        SGLangEngine = type("SGLangEngine", (), {})
 
     register_engine(
         engine_type="sglang",
@@ -72,10 +79,8 @@ try:
         set_as_default=False
     )
     logger.info("✅ Registered SGLang engine")
-except ImportError:
-    logger.debug("SGLang engine not available (optional dependency)")
 except Exception as e:
-    logger.warning(f"Failed to register SGLang engine: {e}")
+    logger.warning("Failed to register SGLang engine (%s): %s", type(e).__name__, e)
 
 # Try to register YOLO engine (optional, fail gracefully)
 # Requires: ultralytics, Pillow

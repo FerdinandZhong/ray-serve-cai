@@ -1,0 +1,106 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>Dynamic Batching Comparison</title>
+<style>
+*{margin:0;padding:0;box-sizing:border-box}
+body{background:#0f1117;color:#e2e8f0;font-family:Inter,system-ui,sans-serif;padding:40px;min-height:100vh}
+h1{font-size:1.3rem;font-weight:600;margin-bottom:8px}
+.subtitle{font-size:.8rem;color:#8892a4;margin-bottom:32px}
+.comparison{display:flex;gap:32px;width:900px;margin:0 auto}
+.panel{flex:1;background:#1a1d27;border-radius:12px;padding:24px;border:1px solid #2e3147}
+.panel-title{font-size:.9rem;font-weight:700;margin-bottom:4px}
+.panel-sub{font-size:.7rem;color:#8892a4;margin-bottom:16px}
+.bad .panel-title{color:#ef4444}
+.good .panel-title{color:#22c55e}
+.timeline{position:relative;margin:16px 0}
+.timeline-row{display:flex;align-items:center;height:28px;margin-bottom:4px}
+.timeline-label{width:40px;font-size:.65rem;color:#8892a4;flex-shrink:0}
+.timeline-bar-bg{flex:1;background:#0f1117;border-radius:4px;height:20px;position:relative;overflow:hidden}
+.timeline-bar{height:100%;border-radius:4px;position:absolute;left:0;display:flex;align-items:center;justify-content:center;font-size:.55rem;font-weight:600;color:#fff}
+.bar-wait{background:#f59e0b60}
+.bar-run{background:#4f8ef7}
+.bar-batch{background:#22c55e}
+.stats{margin-top:20px;display:flex;flex-direction:column;gap:8px}
+.stat{display:flex;justify-content:space-between;font-size:.75rem;padding:6px 10px;background:#0f1117;border-radius:6px}
+.stat .label{color:#8892a4}
+.stat .value{font-weight:600;font-family:monospace}
+.stat .bad-val{color:#ef4444}
+.stat .good-val{color:#22c55e}
+.legend{display:flex;gap:16px;margin-top:24px;justify-content:center}
+.legend-item{display:flex;align-items:center;gap:6px;font-size:.68rem;color:#8892a4}
+.legend-color{width:12px;height:12px;border-radius:3px}
+.highlight{background:#1a2540;border:1px solid #4f8ef730;border-radius:10px;padding:16px;margin-top:24px;font-size:.75rem;line-height:1.5;text-align:center}
+.highlight b{color:#4f8ef7}
+</style>
+</head>
+<body>
+<h1>Dynamic Batching: Sequential vs @serve.batch</h1>
+<p class="subtitle">YOLO object detection at 24 RPS on CPU (4 cores) &mdash; real benchmark data</p>
+
+<div class="comparison">
+
+<div class="panel bad">
+<div class="panel-title">Standalone (No Batching)</div>
+<div class="panel-sub">uvicorn + FastAPI, single-threaded inference</div>
+
+<div class="timeline">
+<div class="timeline-row"><div class="timeline-label">Req 1</div><div class="timeline-bar-bg"><div class="timeline-bar bar-run" style="width:12%;left:0">230ms</div></div></div>
+<div class="timeline-row"><div class="timeline-label">Req 2</div><div class="timeline-bar-bg"><div class="timeline-bar bar-wait" style="width:12%;left:0"></div><div class="timeline-bar bar-run" style="width:12%;left:12%">230ms</div></div></div>
+<div class="timeline-row"><div class="timeline-label">Req 3</div><div class="timeline-bar-bg"><div class="timeline-bar bar-wait" style="width:24%;left:0"></div><div class="timeline-bar bar-run" style="width:12%;left:24%">230ms</div></div></div>
+<div class="timeline-row"><div class="timeline-label">Req 4</div><div class="timeline-bar-bg"><div class="timeline-bar bar-wait" style="width:36%;left:0"></div><div class="timeline-bar bar-run" style="width:12%;left:36%">230ms</div></div></div>
+<div class="timeline-row"><div class="timeline-label">Req 5</div><div class="timeline-bar-bg"><div class="timeline-bar bar-wait" style="width:48%;left:0"></div><div class="timeline-bar bar-run" style="width:12%;left:48%">230ms</div></div></div>
+<div class="timeline-row"><div class="timeline-label">Req 6</div><div class="timeline-bar-bg"><div class="timeline-bar bar-wait" style="width:60%;left:0"></div><div class="timeline-bar bar-run" style="width:12%;left:60%">230ms</div></div></div>
+<div class="timeline-row"><div class="timeline-label">Req 7</div><div class="timeline-bar-bg"><div class="timeline-bar bar-wait" style="width:72%;left:0"></div><div class="timeline-bar bar-run" style="width:12%;left:72%">230ms</div></div></div>
+<div class="timeline-row"><div class="timeline-label">Req 8</div><div class="timeline-bar-bg"><div class="timeline-bar bar-wait" style="width:84%;left:0"></div><div class="timeline-bar bar-run" style="width:12%;left:84%">230ms</div></div></div>
+</div>
+
+<div class="stats">
+<div class="stat"><span class="label">p50 latency</span><span class="value">230 ms</span></div>
+<div class="stat"><span class="label">p95 latency</span><span class="value bad-val">21,000 ms</span></div>
+<div class="stat"><span class="label">p95/p50 ratio</span><span class="value bad-val">91x</span></div>
+<div class="stat"><span class="label">Throughput</span><span class="value">~24 RPS (plateau)</span></div>
+<div class="stat"><span class="label">GPU/CPU util</span><span class="value">1 image at a time</span></div>
+</div>
+</div>
+
+<div class="panel good">
+<div class="panel-title">Ray Serve @serve.batch</div>
+<div class="panel-sub">Collects up to 8 images, processes as single batch</div>
+
+<div class="timeline">
+<div class="timeline-row"><div class="timeline-label">Req 1</div><div class="timeline-bar-bg"><div class="timeline-bar bar-wait" style="width:5%;left:0"></div><div class="timeline-bar bar-batch" style="width:18%;left:5%">batch</div></div></div>
+<div class="timeline-row"><div class="timeline-label">Req 2</div><div class="timeline-bar-bg"><div class="timeline-bar bar-wait" style="width:5%;left:0"></div><div class="timeline-bar bar-batch" style="width:18%;left:5%">batch</div></div></div>
+<div class="timeline-row"><div class="timeline-label">Req 3</div><div class="timeline-bar-bg"><div class="timeline-bar bar-wait" style="width:5%;left:0"></div><div class="timeline-bar bar-batch" style="width:18%;left:5%">batch</div></div></div>
+<div class="timeline-row"><div class="timeline-label">Req 4</div><div class="timeline-bar-bg"><div class="timeline-bar bar-wait" style="width:5%;left:0"></div><div class="timeline-bar bar-batch" style="width:18%;left:5%">batch</div></div></div>
+<div class="timeline-row"><div class="timeline-label">Req 5</div><div class="timeline-bar-bg"><div class="timeline-bar bar-wait" style="width:5%;left:0"></div><div class="timeline-bar bar-batch" style="width:18%;left:5%">batch</div></div></div>
+<div class="timeline-row"><div class="timeline-label">Req 6</div><div class="timeline-bar-bg"><div class="timeline-bar bar-wait" style="width:5%;left:0"></div><div class="timeline-bar bar-batch" style="width:18%;left:5%">batch</div></div></div>
+<div class="timeline-row"><div class="timeline-label">Req 7</div><div class="timeline-bar-bg"><div class="timeline-bar bar-wait" style="width:5%;left:0"></div><div class="timeline-bar bar-batch" style="width:18%;left:5%">batch</div></div></div>
+<div class="timeline-row"><div class="timeline-label">Req 8</div><div class="timeline-bar-bg"><div class="timeline-bar bar-wait" style="width:5%;left:0"></div><div class="timeline-bar bar-batch" style="width:18%;left:5%">batch</div></div></div>
+</div>
+
+<div class="stats">
+<div class="stat"><span class="label">p50 latency</span><span class="value">~350 ms</span></div>
+<div class="stat"><span class="label">p95 latency</span><span class="value good-val">~400 ms</span></div>
+<div class="stat"><span class="label">p95/p50 ratio</span><span class="value good-val">~1.1x</span></div>
+<div class="stat"><span class="label">Throughput</span><span class="value">~24+ RPS (stable)</span></div>
+<div class="stat"><span class="label">GPU/CPU util</span><span class="value">8 images vectorized</span></div>
+</div>
+</div>
+
+</div>
+
+<div class="legend">
+<div class="legend-item"><div class="legend-color" style="background:#f59e0b60"></div>Waiting in queue</div>
+<div class="legend-item"><div class="legend-color" style="background:#4f8ef7"></div>Sequential inference</div>
+<div class="legend-item"><div class="legend-color" style="background:#22c55e"></div>Batched inference</div>
+</div>
+
+<div class="highlight">
+Without batching, the <b>p95/p50 ratio explodes to 91x</b> under load (21s vs 230ms).<br>
+With <b>@serve.batch</b>, p50 and p95 <b>track together</b> &mdash; the ratio stays under 1.2x.
+</div>
+
+</body>
+</html>

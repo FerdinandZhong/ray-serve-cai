@@ -1,14 +1,10 @@
 """
-SGLang Engine Configuration Builder (Skeleton Implementation)
-
-This is a skeleton implementation for SGLang configuration support.
-Full implementation will be added in a future update.
-
-SGLang: https://github.com/sgl-project/sglang
+SGLang Engine Configuration Builder and Deployment Factory.
 """
 
 import logging
-from typing import Dict, Any, Optional
+from typing import Any, Dict, Optional
+
 from ray import serve
 
 logger = logging.getLogger(__name__)
@@ -16,77 +12,73 @@ logger = logging.getLogger(__name__)
 
 class SGLangConfigBuilder:
     """
-    Configuration builder for SGLang engine (Skeleton Implementation).
+    Configuration builder for the SGLang engine.
 
-    Implements ConfigBuilderProtocol for the engine registry.
-    Full implementation coming soon.
+    Translates the user-facing deploy_model payload into the engine_config
+    dict consumed by SGLangEngine.__init__().
     """
 
     def build_config(self, user_config: Dict[str, Any]) -> Dict[str, Any]:
         """
-        Build SGLang engine configuration from user configuration.
+        Build SGLang engine configuration.
 
-        Args:
-            user_config: User-provided configuration dictionary
-
-        Returns:
-            Engine-specific configuration dictionary
-
-        Raises:
-            NotImplementedError: This is a skeleton implementation
+        Recognised keys
+        ----------------
+        model (required)         — HuggingFace model ID or local path
+        tensor_parallel_size     — GPUs per replica (default 1)
+        dtype                    — Data type (auto, float16, bfloat16)
+        trust_remote_code        — Allow custom model code (default False)
+        context_length           — Max sequence length (default: model default)
+        mem_fraction_static      — KV cache memory fraction (default 0.8)
+        quantization             — Quantization method (e.g. "fp8")
         """
-        logger.warning("⚠️  SGLang config builder not fully implemented")
+        is_valid, error_msg = self.validate_config(user_config)
+        if not is_valid:
+            raise ValueError(f"Invalid SGLang configuration: {error_msg}")
 
-        # Basic config passthrough for skeleton
-        engine_config = {
-            'model': user_config.get('model') or user_config.get('model_source'),
-            'tensor_parallel_size': user_config.get('tensor_parallel_size', 1),
+        model = user_config.get("model") or user_config.get("model_source")
+
+        engine_config: Dict[str, Any] = {
+            "model": model,
+            "tensor_parallel_size": user_config.get("tensor_parallel_size", 1),
         }
 
-        raise NotImplementedError(
-            "SGLang engine configuration is not yet fully implemented. "
-            "This is a skeleton placeholder. Use vLLM engine instead."
-        )
+        # Optional passthrough keys
+        for key in ("dtype", "trust_remote_code", "context_length",
+                     "mem_fraction_static", "quantization"):
+            val = user_config.get(key)
+            if val is not None:
+                engine_config[key] = val
 
-    def validate_config(self, user_config: Dict[str, Any]) -> tuple[bool, Optional[str]]:
-        """
-        Validate user configuration.
+        logger.info("Built SGLang config: model=%s  tp=%d",
+                     model, engine_config["tensor_parallel_size"])
+        return engine_config
 
-        Args:
-            user_config: User-provided configuration dictionary
-
-        Returns:
-            Tuple of (is_valid, error_message)
-        """
-        # Basic validation for skeleton
-        model = user_config.get('model') or user_config.get('model_source')
+    def validate_config(
+        self, user_config: Dict[str, Any]
+    ) -> tuple[bool, Optional[str]]:
+        model = user_config.get("model") or user_config.get("model_source")
         if not model:
-            return False, "Model name is required"
+            return False, "model (HuggingFace model ID or local path) is required"
 
-        # Warn that this is not fully implemented
-        logger.warning("⚠️  SGLang validation not fully implemented")
-        return False, "SGLang engine is not yet fully implemented"
+        tp = user_config.get("tensor_parallel_size", 1)
+        if not isinstance(tp, int) or tp < 1:
+            return False, "tensor_parallel_size must be a positive integer"
+
+        return True, None
 
     def get_default_config(self) -> Dict[str, Any]:
-        """
-        Get default configuration values for SGLang engine.
-
-        Returns:
-            Dictionary with default configuration values
-        """
         return {
-            'tensor_parallel_size': 1,
-            'trust_remote_code': False,
-            # Add more defaults when fully implemented
+            "tensor_parallel_size": 1,
+            "trust_remote_code": False,
         }
 
 
 class SGLangDeploymentFactory:
     """
-    Deployment factory for SGLang engine (Skeleton Implementation).
+    Deployment factory for the SGLang engine.
 
     Implements DeploymentFactoryProtocol for the engine registry.
-    Full implementation coming soon.
     """
 
     def create_deployment(
@@ -95,69 +87,18 @@ class SGLangDeploymentFactory:
         num_replicas: int = 1,
         tensor_parallel_size: int = 1,
         use_cpu: bool = False,
-        **kwargs
+        max_ongoing_requests: int = 100,
+        **kwargs,
     ) -> serve.Application:
-        """
-        Create SGLang deployment with proper resource allocation.
+        from .sglang_engine import create_sglang_deployment
 
-        Args:
-            engine_config: Configuration dictionary for SGLang engine
-            num_replicas: Number of deployment replicas
-            tensor_parallel_size: Number of GPUs for tensor parallelism
-            use_cpu: Whether to use CPU-only mode
-            **kwargs: Additional deployment options
-
-        Returns:
-            Configured Ray Serve application
-
-        Raises:
-            NotImplementedError: This is a skeleton implementation
-        """
-        from .sglang_engine import SGLangEngine
-
-        logger.warning("⚠️  SGLang deployment factory not fully implemented")
-
-        raise NotImplementedError(
-            "SGLang deployment factory is not yet fully implemented. "
-            "This is a skeleton placeholder. Use vLLM engine instead."
+        return create_sglang_deployment(
+            engine_config=engine_config,
+            num_replicas=num_replicas,
+            tensor_parallel_size=tensor_parallel_size,
+            use_cpu=use_cpu,
+            max_ongoing_requests=max_ongoing_requests,
+            gpu_fraction=kwargs.get("gpu_fraction"),
+            placement_group_bundles=kwargs.get("placement_group_bundles"),
+            placement_group_strategy=kwargs.get("placement_group_strategy"),
         )
-
-
-# Future implementation notes:
-# ============================
-#
-# 1. Configuration Builder:
-#    - Map user config to SGLang runtime arguments
-#    - Support SGLang-specific features:
-#      * RadixAttention (prefix caching)
-#      * Multi-LoRA support
-#      * Structured generation
-#      * Chunked prefill
-#    - Handle model loading options
-#    - Configure memory management
-#
-# 2. Deployment Factory:
-#    - Set up proper GPU allocation for tensor parallelism
-#    - Configure placement groups for multi-node
-#    - Handle SGLang runtime initialization
-#    - Support data parallelism if needed
-#    - Configure port and serving options
-#
-# 3. Integration Points:
-#    - SGLang Runtime: sglang.runtime.Runtime
-#    - OpenAI Server: sglang.entrypoints.openai_api_server
-#    - Model Loading: Handle HF models, quantization
-#    - Request Handling: Async batch processing
-#
-# 4. Configuration Parameters:
-#    - model: Model name/path
-#    - tp_size: Tensor parallelism
-#    - trust_remote_code: Allow custom code
-#    - context_length: Max sequence length
-#    - mem_fraction_static: KV cache memory
-#    - enable_flashinfer: Use FlashInfer backend
-#    - quantization: Quantization method (e.g., "fp8")
-#
-# References:
-# - SGLang Docs: https://sgl-project.github.io/
-# - GitHub: https://github.com/sgl-project/sglang

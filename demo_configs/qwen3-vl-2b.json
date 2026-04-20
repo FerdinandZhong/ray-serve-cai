@@ -6,13 +6,13 @@
   "num_replicas": 1,
   "tensor_parallel_size": 1,
   "gpu_fraction": 0.5,
-  "placement_group_bundles": [{"GPU": 1, "CPU": 4}],
+  "placement_group_bundles": [{"GPU": 0.5, "CPU": 4}],
   "placement_group_strategy": "PACK",
   "engine_config": {
     "dtype": "float16",
     "trust_remote_code": true,
     "max_model_len": 8192,
-    "gpu_memory_utilization": 0.45,
+    "gpu_memory_utilization": 0.4,
     "enable_prefix_caching": false,
     "limit_mm_per_prompt": {"image": 4, "video": 2}
   }

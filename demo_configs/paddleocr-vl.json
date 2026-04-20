@@ -3,7 +3,7 @@
   "engine_type": "vllm",
   "model": "/home/cdsw/models/PaddleOCR-VL-1.5",
   "route_prefix": "/paddleocr",
-  "num_replicas": 2,
+  "num_replicas": 1,
   "tensor_parallel_size": 1,
   "gpu_fraction": 0.5,
   "placement_group_bundles": [{"GPU": 0.5, "CPU": 2}],

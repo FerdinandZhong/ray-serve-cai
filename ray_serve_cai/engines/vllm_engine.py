@@ -241,12 +241,6 @@ _vllm_app = FastAPI(
 )
 _vllm_app.add_middleware(_RoutePathMiddleware)
 
-# NOTE: vLLM Prometheus metrics (attach_router) are mounted in __init__,
-# NOT here at module level.  Instrumenting the FastAPI app at import time
-# adds thread locks and Prometheus registries that Ray cannot serialize
-# when shipping the deployment class to workers.
-
-
 # ---------------------------------------------------------------------------
 # Deployment
 # ---------------------------------------------------------------------------
@@ -291,7 +285,24 @@ class VLLMEngine:
                 logger.info("Set VLLM_ATTENTION_BACKEND=%s", attention_backend)
 
             self.engine_args = AsyncEngineArgs(**engine_config)
-            self.engine = AsyncLLMEngine.from_engine_args(self.engine_args)
+
+            # Use Ray-native Prometheus metrics instead of prometheus_client.
+            # RayPrometheusStatLogger wraps all vLLM metrics with
+            # ray.util.metrics so they auto-export on Ray's metrics port
+            # (9090) alongside system metrics — no FastAPI /metrics route
+            # or attach_router needed.
+            _stat_loggers = None
+            try:
+                from vllm.v1.metrics.ray_wrappers import RayPrometheusStatLogger
+                _stat_loggers = [RayPrometheusStatLogger]
+                logger.info("Using RayPrometheusStatLogger for vLLM metrics")
+            except ImportError:
+                logger.debug("RayPrometheusStatLogger not available (older vLLM)")
+
+            self.engine = AsyncLLMEngine.from_engine_args(
+                self.engine_args,
+                stat_loggers=_stat_loggers,
+            )
 
             self.model_name = engine_config.get("model", "unknown")
             self.tensor_parallel_size = engine_config.get("tensor_parallel_size", 1)
@@ -366,18 +377,6 @@ class VLLMEngine:
                         "log_error_stack":              False,
                     })
                 )
-
-            # Mount vLLM Prometheus metrics at /metrics on the FastAPI app.
-            # Must happen here (on the worker), not at module level — the
-            # instrumentator adds thread locks that break Ray serialization.
-            try:
-                from vllm.entrypoints.serve.instrumentator.metrics import (
-                    attach_router as _attach_vllm_metrics,
-                )
-                _attach_vllm_metrics(_vllm_app)
-                logger.info("vLLM Prometheus metrics mounted at /metrics")
-            except ImportError:
-                logger.debug("vLLM metrics instrumentator not available")
 
             logger.info("✅ vLLM engine initialized  model=%s  tp=%d",
                         self.model_name, self.tensor_parallel_size)

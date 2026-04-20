@@ -1,0 +1,179 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>Ray Serve CAI — Architecture Overview</title>
+<style>
+*{margin:0;padding:0;box-sizing:border-box}
+body{background:#0f1117;color:#e2e8f0;font-family:Inter,system-ui,sans-serif;padding:40px;min-height:100vh}
+h1{font-size:1.3rem;font-weight:600;margin-bottom:8px;color:#e2e8f0}
+.subtitle{font-size:.8rem;color:#8892a4;margin-bottom:32px}
+.diagram{position:relative;width:960px;margin:0 auto}
+.layer{margin-bottom:24px}
+.layer-label{font-size:.7rem;text-transform:uppercase;letter-spacing:.08em;color:#8892a4;margin-bottom:8px;padding-left:4px}
+.row{display:flex;gap:16px;justify-content:center}
+.box{border-radius:10px;padding:16px 20px;text-align:center;position:relative;transition:transform .15s,box-shadow .15s;cursor:default}
+.box:hover{transform:translateY(-2px);box-shadow:0 8px 24px rgba(0,0,0,.4)}
+.box .title{font-size:.85rem;font-weight:600;margin-bottom:4px}
+.box .desc{font-size:.7rem;color:#8892a4;line-height:1.4}
+.box .port{font-size:.65rem;color:#4f8ef7;margin-top:6px;font-family:monospace}
+.client{background:#1a1d27;border:1px solid #2e3147;width:200px}
+.nginx{background:linear-gradient(135deg,#1a3a2a,#1a2d27);border:1px solid #22c55e40;width:280px}
+.api{background:linear-gradient(135deg,#1a2540,#1a1d40);border:1px solid #4f8ef740;flex:1;max-width:280px}
+.engine{background:linear-gradient(135deg,#2a1a30,#1d1a30);border:1px solid #a855f740;flex:1;max-width:200px}
+.worker{background:linear-gradient(135deg,#2a2a1a,#302a1a);border:1px solid #f59e0b40;flex:1;max-width:200px}
+.head{background:linear-gradient(135deg,#1a2540,#1a2030);border:1px solid #4f8ef730;flex:1;max-width:440px}
+.arrow{text-align:center;color:#4f8ef7;font-size:1.2rem;margin:8px 0;opacity:.6}
+.badge{display:inline-block;font-size:.6rem;padding:2px 8px;border-radius:99px;font-weight:600;margin:2px}
+.b-green{background:#22c55e20;color:#22c55e}
+.b-blue{background:#4f8ef720;color:#4f8ef7}
+.b-purple{background:#a855f720;color:#a855f7}
+.b-orange{background:#f59e0b20;color:#f59e0b}
+.b-red{background:#ef444420;color:#ef4444}
+.connector{display:flex;justify-content:center;gap:40px;margin:8px 0}
+.connector span{color:#8892a4;font-size:.7rem}
+</style>
+</head>
+<body>
+<h1>Ray Serve on Cloudera CAI — Architecture Overview</h1>
+<p class="subtitle">Multi-engine ML serving platform with centralized management</p>
+
+<div class="diagram">
+
+<div class="layer">
+<div class="layer-label">External</div>
+<div class="row">
+<div class="box client">
+<div class="title">Clients</div>
+<div class="desc">OpenWebUI, Gradio, curl, Applications</div>
+</div>
+</div>
+</div>
+
+<div class="arrow">&#x25BC;</div>
+
+<div class="layer">
+<div class="layer-label">Ingress (Head Node Pod)</div>
+<div class="row">
+<div class="box nginx">
+<div class="title">nginx Reverse Proxy</div>
+<div class="desc">Path-based routing, SSE/WebSocket support, SSL termination</div>
+<div class="port">:8080 (CDSW_APP_PORT)</div>
+<div style="margin-top:8px">
+<span class="badge b-green">/api/* &rarr; Management API</span>
+<span class="badge b-blue">/dashboard/ &rarr; Ray Dashboard</span>
+<span class="badge b-purple">/{prefix}/* &rarr; Model Apps</span>
+<span class="badge b-orange">/metrics &rarr; Prometheus</span>
+</div>
+</div>
+</div>
+</div>
+
+<div class="arrow">&#x25BC;</div>
+
+<div class="layer">
+<div class="layer-label">Head Node Services</div>
+<div class="row">
+<div class="box head">
+<div class="title">Ray Serve (port 5000)</div>
+<div class="desc">Hosts Management API + all deployed model applications</div>
+<div style="margin-top:10px;display:flex;gap:8px;justify-content:center;flex-wrap:wrap">
+<div style="background:#0f1117;border-radius:6px;padding:8px 12px;font-size:.7rem">
+<b>Management API</b><br>
+<span style="color:#8892a4">FastAPI + Coordinator</span><br>
+<span class="badge b-blue">/api/v1/applications</span>
+<span class="badge b-blue">/api/v1/cluster</span>
+<span class="badge b-blue">/api/v1/resources</span>
+<span class="badge b-orange">/api/v1/metrics</span>
+</div>
+<div style="background:#0f1117;border-radius:6px;padding:8px 12px;font-size:.7rem">
+<b>Ray GCS + Dashboard</b><br>
+<span style="color:#8892a4">Cluster state, scheduling</span><br>
+<span class="badge b-green">:6379 GCS</span>
+<span class="badge b-green">:8265 Dashboard</span>
+<span class="badge b-orange">:9090 Metrics</span>
+</div>
+</div>
+</div>
+</div>
+</div>
+
+<div class="connector">
+<span>&#x25BC; ray start --address</span>
+<span>&#x25BC; ray start --address</span>
+</div>
+
+<div class="layer">
+<div class="layer-label">Worker Nodes (CML Application Pods)</div>
+<div class="row">
+<div class="box worker">
+<div class="title">GPU Worker</div>
+<div class="desc">T4 / A10 / L40</div>
+<div class="port">node_type:t4-gpu-worker</div>
+<div style="margin-top:6px">
+<span class="badge b-purple">vLLM</span>
+<span class="badge b-purple">SGLang</span>
+</div>
+</div>
+<div class="box worker">
+<div class="title">GPU Worker</div>
+<div class="desc">Fractional GPU (0.5)</div>
+<div class="port">node_type:t4-gpu-worker</div>
+<div style="margin-top:6px">
+<span class="badge b-purple">Qwen 2B</span>
+<span class="badge b-purple">PaddleOCR</span>
+</div>
+</div>
+<div class="box worker">
+<div class="title">CPU Worker</div>
+<div class="desc">CPU-only inference</div>
+<div class="port">node_type:cpu-worker</div>
+<div style="margin-top:6px">
+<span class="badge b-purple">YOLO</span>
+<span class="badge b-purple">MCP Tools</span>
+</div>
+</div>
+</div>
+</div>
+
+<div class="layer" style="margin-top:32px">
+<div class="layer-label">Engine Types</div>
+<div class="row">
+<div class="box engine">
+<div class="title">vLLM</div>
+<div class="desc">LLM inference<br>OpenAI-compatible</div>
+<div style="margin-top:6px">
+<span class="badge b-blue">Streaming</span>
+<span class="badge b-orange">Ray Metrics</span>
+</div>
+</div>
+<div class="box engine">
+<div class="title">SGLang</div>
+<div class="desc">LLM inference<br>Subprocess + proxy</div>
+<div style="margin-top:6px">
+<span class="badge b-blue">Native Metrics</span>
+<span class="badge b-green">RadixAttn</span>
+</div>
+</div>
+<div class="box engine">
+<div class="title">YOLO</div>
+<div class="desc">Object detection<br>@serve.batch</div>
+<div style="margin-top:6px">
+<span class="badge b-orange">Batching</span>
+<span class="badge b-orange">Ray Metrics</span>
+</div>
+</div>
+<div class="box engine">
+<div class="title">MCP</div>
+<div class="desc">Tool protocol<br>Dynamic import</div>
+<div style="margin-top:6px">
+<span class="badge b-green">FastMCP</span>
+<span class="badge b-orange">Ray Metrics</span>
+</div>
+</div>
+</div>
+</div>
+
+</div>
+</body>
+</html>

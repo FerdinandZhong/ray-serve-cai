@@ -135,27 +135,37 @@ async def app_metrics():
     Scrape Prometheus metrics from all Ray Serve applications that expose
     a ``/metrics`` endpoint (e.g. vLLM deployments).
 
-    Discovers running apps via ``serve.status()``, then fetches
+    Discovers running apps and their route prefixes via
+    ``ray.serve.list_applications()``, then fetches
     ``http://localhost:<ray_serve_port>/<route_prefix>/metrics`` for each.
     """
     ray_serve_port = int(os.environ.get("RAY_SERVE_PORT", "5000"))
 
     try:
-        from ray import serve as ray_serve
-        status = ray_serve.status()
-        apps = status.applications
+        from ray.serve.api import list_applications
+        apps = list_applications()  # returns List[Dict] with name, route_prefix, status, ...
     except Exception as exc:
-        return PlainTextResponse(
-            f"# serve.status() error: {exc}\n", status_code=503,
-        )
+        # Fallback: try the serve.status() path and get names only
+        try:
+            from ray import serve as ray_serve
+            status = ray_serve.status()
+            apps = [
+                {"name": name, "route_prefix": None}
+                for name in status.applications.keys()
+            ]
+        except Exception as exc2:
+            return PlainTextResponse(
+                f"# failed to list apps: {exc}; {exc2}\n", status_code=503,
+            )
 
     if not apps:
         return PlainTextResponse("# no Ray Serve applications running\n")
 
     tasks = []
     app_names = []
-    for name, app_status in apps.items():
-        prefix = app_status.route_prefix or ""
+    for app in apps:
+        name = app.get("name", "") if isinstance(app, dict) else str(app)
+        prefix = app.get("route_prefix", "") if isinstance(app, dict) else ""
         if prefix:
             tasks.append(
                 _fetch_metrics("127.0.0.1", ray_serve_port,
