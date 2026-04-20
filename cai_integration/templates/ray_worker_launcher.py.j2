@@ -94,8 +94,14 @@ if not HEAD_ADDRESS:
 print(f"\nConnecting to head node: {HEAD_ADDRESS}")
 
 NODE_TYPE = "{{ node_type }}"
-node_resources = json.dumps({f"node_type:{NODE_TYPE}": 1})
+ACCELERATOR_TYPE = {{ '"%s"' % accelerator_type if accelerator_type else 'None' }}
+_resources = {f"node_type:{NODE_TYPE}": 1}
+if ACCELERATOR_TYPE:
+    _resources[f"accelerator_type:{ACCELERATOR_TYPE}"] = 1
+node_resources = json.dumps(_resources)
 print(f"Node type label: node_type:{NODE_TYPE}")
+if ACCELERATOR_TYPE:
+    print(f"Accelerator type: accelerator_type:{ACCELERATOR_TYPE}")
 
 # ── Start worker info server (daemon thread) ──────────────────────────────────
 # CML requires a live process on CDSW_APP_PORT to mark the application as
