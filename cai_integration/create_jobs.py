@@ -98,7 +98,12 @@ class JobManager:
         try:
             with open(config_path) as f:
                 config = yaml.safe_load(f)
-            runtime_id = config.get("cai", {}).get("runtime_identifier")
+            cai_config = config.get("cai", {})
+            # Jobs use the head (CPU/standard) runtime — try head first, then generic
+            runtime_id = (
+                cai_config.get("head_runtime_identifier")
+                or cai_config.get("runtime_identifier")
+            )
             if runtime_id:
                 print(f"✅ Using runtime from config: {runtime_id[:80]}...")
                 return runtime_id
