@@ -1,0 +1,154 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>Engine Plugin System</title>
+<style>
+*{margin:0;padding:0;box-sizing:border-box}
+body{background:#0f1117;color:#e2e8f0;font-family:Inter,system-ui,sans-serif;padding:40px;min-height:100vh}
+h1{font-size:1.3rem;font-weight:600;margin-bottom:8px}
+.subtitle{font-size:.8rem;color:#8892a4;margin-bottom:32px}
+.diagram{width:900px;margin:0 auto;position:relative}
+.center-box{background:linear-gradient(135deg,#1a2540,#1a1d40);border:2px solid #4f8ef7;border-radius:14px;padding:24px;text-align:center;width:320px;margin:0 auto 40px}
+.center-box .title{font-size:1rem;font-weight:700;color:#4f8ef7}
+.center-box .desc{font-size:.75rem;color:#8892a4;margin-top:6px}
+.protocols{display:flex;gap:10px;justify-content:center;margin-top:12px;flex-wrap:wrap}
+.proto{font-size:.65rem;font-family:monospace;padding:3px 10px;border-radius:99px;background:#4f8ef715;color:#4f8ef7;border:1px solid #4f8ef730}
+.engines{display:flex;gap:20px;justify-content:center;flex-wrap:wrap}
+.engine{border-radius:12px;padding:20px;width:200px;text-align:center;transition:transform .15s,box-shadow .15s;cursor:default}
+.engine:hover{transform:translateY(-3px);box-shadow:0 8px 24px rgba(0,0,0,.4)}
+.engine .name{font-size:.9rem;font-weight:700;margin-bottom:4px}
+.engine .type{font-size:.65rem;color:#8892a4;margin-bottom:8px}
+.engine .detail{font-size:.7rem;color:#8892a4;line-height:1.5;text-align:left}
+.engine .detail b{color:#e2e8f0}
+.tag{display:inline-block;font-size:.6rem;padding:2px 7px;border-radius:99px;font-weight:600;margin:1px}
+.vllm{background:linear-gradient(135deg,#1a2540,#15203a);border:1px solid #4f8ef740}
+.vllm .name{color:#4f8ef7}
+.sglang{background:linear-gradient(135deg,#1a3a2a,#152a20);border:1px solid #22c55e40}
+.sglang .name{color:#22c55e}
+.yolo{background:linear-gradient(135deg,#2a2a1a,#25201a);border:1px solid #f59e0b40}
+.yolo .name{color:#f59e0b}
+.mcp{background:linear-gradient(135deg,#2a1a30,#201525);border:1px solid #a855f740}
+.mcp .name{color:#a855f7}
+.arrow-down{text-align:center;color:#4f8ef7;font-size:1rem;margin:12px 0;opacity:.5}
+.flow{display:flex;gap:12px;justify-content:center;margin-top:32px;flex-wrap:wrap}
+.flow-step{background:#1a1d27;border:1px solid #2e3147;border-radius:8px;padding:12px 16px;font-size:.72rem;text-align:center;min-width:160px}
+.flow-step .num{color:#4f8ef7;font-weight:700;font-size:.85rem}
+.flow-step .label{color:#e2e8f0;margin-top:2px}
+.flow-step .sub{color:#8892a4;font-size:.65rem;margin-top:4px}
+.flow-arrow{color:#4f8ef7;font-size:1.2rem;display:flex;align-items:center;opacity:.5}
+</style>
+</head>
+<body>
+<h1>Engine Plugin System</h1>
+<p class="subtitle">Registry pattern with lazy imports, stub fallback, and protocol-based contracts</p>
+
+<div class="diagram">
+
+<div class="center-box">
+<div class="title">EngineRegistry</div>
+<div class="desc">Singleton factory — discovers and manages engine plugins</div>
+<div class="protocols">
+<span class="proto">LLMEngineProtocol</span>
+<span class="proto">ConfigBuilderProtocol</span>
+<span class="proto">DeploymentFactoryProtocol</span>
+</div>
+</div>
+
+<div class="arrow-down">register_engine() &darr;</div>
+
+<div class="engines">
+<div class="engine vllm">
+<div class="name">vLLM</div>
+<div class="type">Default Engine</div>
+<div class="detail">
+<b>Config:</b> VLLMConfigBuilder<br>
+<b>Factory:</b> VLLMDeploymentFactory<br>
+<b>Metrics:</b> RayPrometheusStatLogger<br>
+<b>Streaming:</b> _normalize_vllm_stream_result<br>
+<b>Versions:</b> 0.13.x &mdash; 0.18+
+</div>
+<div style="margin-top:8px">
+<span class="tag" style="background:#4f8ef720;color:#4f8ef7">OpenAI API</span>
+<span class="tag" style="background:#f59e0b20;color:#f59e0b">GPU</span>
+</div>
+</div>
+
+<div class="engine sglang">
+<div class="name">SGLang</div>
+<div class="type">Subprocess Proxy</div>
+<div class="detail">
+<b>Config:</b> SGLangConfigBuilder<br>
+<b>Factory:</b> SGLangDeploymentFactory<br>
+<b>Metrics:</b> Native --enable-metrics<br>
+<b>Server:</b> sglang.launch_server<br>
+<b>Proxy:</b> httpx async client
+</div>
+<div style="margin-top:8px">
+<span class="tag" style="background:#22c55e20;color:#22c55e">OpenAI API</span>
+<span class="tag" style="background:#f59e0b20;color:#f59e0b">GPU</span>
+</div>
+</div>
+
+<div class="engine yolo">
+<div class="name">YOLO</div>
+<div class="type">Dynamic Batching</div>
+<div class="detail">
+<b>Config:</b> YOLOConfigBuilder<br>
+<b>Factory:</b> YOLODeploymentFactory<br>
+<b>Metrics:</b> ray.util.metrics<br>
+<b>Batching:</b> @serve.batch<br>
+<b>Input:</b> Multipart file upload
+</div>
+<div style="margin-top:8px">
+<span class="tag" style="background:#f59e0b20;color:#f59e0b">Detection API</span>
+<span class="tag" style="background:#22c55e20;color:#22c55e">CPU/GPU</span>
+</div>
+</div>
+
+<div class="engine mcp">
+<div class="name">MCP</div>
+<div class="type">Dynamic Module Import</div>
+<div class="detail">
+<b>Config:</b> MCPConfigBuilder<br>
+<b>Factory:</b> MCPDeploymentFactory<br>
+<b>Metrics:</b> ray.util.metrics<br>
+<b>Discovery:</b> FastMCP auto-scan<br>
+<b>Lifespan:</b> session_manager
+</div>
+<div style="margin-top:8px">
+<span class="tag" style="background:#a855f720;color:#a855f7">Tool Protocol</span>
+<span class="tag" style="background:#22c55e20;color:#22c55e">CPU</span>
+</div>
+</div>
+</div>
+
+<div class="flow" style="margin-top:40px">
+<div class="flow-step">
+<div class="num">1</div>
+<div class="label">POST /api/v1/applications/model</div>
+<div class="sub">{"engine_type": "vllm", "model": "...", ...}</div>
+</div>
+<span class="flow-arrow">&rarr;</span>
+<div class="flow-step">
+<div class="num">2</div>
+<div class="label">ConfigBuilder.build_config()</div>
+<div class="sub">Validate &amp; transform user config</div>
+</div>
+<span class="flow-arrow">&rarr;</span>
+<div class="flow-step">
+<div class="num">3</div>
+<div class="label">DeploymentFactory.create_deployment()</div>
+<div class="sub">Build Ray Serve app with resources</div>
+</div>
+<span class="flow-arrow">&rarr;</span>
+<div class="flow-step">
+<div class="num">4</div>
+<div class="label">serve.run(app, route_prefix=...)</div>
+<div class="sub">Deploy to Ray cluster workers</div>
+</div>
+</div>
+
+</div>
+</body>
+</html>

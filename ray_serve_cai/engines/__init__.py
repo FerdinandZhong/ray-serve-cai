@@ -24,15 +24,29 @@ validate_vllm_config = None
 VLLMConfigBuilder = None
 VLLMDeploymentFactory = None
 
-# Try to import and register vLLM engine (optional, fail gracefully)
+# Try to import and register vLLM engine.
+# vLLM may not be installed on the head node (CPU-only image).  The config
+# builder and deployment factory in vllm_config.py do NOT import vllm at
+# module level — they defer to create_vllm_deployment() which is only called
+# on a worker node.  So we import only vllm_config here (lightweight) and
+# register a placeholder engine_class.
 try:
-    from .vllm_engine import VLLMEngine, create_vllm_deployment
     from .vllm_config import (
         build_vllm_engine_config,
         validate_vllm_config,
         VLLMConfigBuilder,
         VLLMDeploymentFactory,
     )
+
+    # Try full import; fall back to a placeholder class if vllm is missing.
+    try:
+        from .vllm_engine import VLLMEngine, create_vllm_deployment
+    except Exception as _vllm_err:
+        logger.info("vLLM engine module not importable on this node (%s: %s) "
+                     "— registering with stub engine class",
+                     type(_vllm_err).__name__, _vllm_err)
+        VLLMEngine = type("VLLMEngine", (), {})            # placeholder
+        create_vllm_deployment = None
 
     register_engine(
         engine_type="vllm",
@@ -42,16 +56,20 @@ try:
         set_as_default=True  # vLLM is the default engine
     )
     logger.info("✅ Registered vLLM engine as default")
-except ImportError as e:
-    logger.warning(f"vLLM engine not available (import error): {e}")
-    logger.debug("vLLM may not be installed or has incompatible version")
 except Exception as e:
-    logger.warning(f"Failed to register vLLM engine: {e}")
+    logger.warning("Failed to register vLLM engine (%s): %s", type(e).__name__, e)
 
 # Try to register SGLang engine (optional, fail gracefully)
 try:
-    from .sglang_engine import SGLangEngine
     from .sglang_config import SGLangConfigBuilder, SGLangDeploymentFactory
+
+    try:
+        from .sglang_engine import SGLangEngine
+    except Exception as _sg_err:
+        logger.info("SGLang engine module not importable (%s: %s) "
+                     "— registering with stub",
+                     type(_sg_err).__name__, _sg_err)
+        SGLangEngine = type("SGLangEngine", (), {})
 
     register_engine(
         engine_type="sglang",
@@ -61,10 +79,8 @@ try:
         set_as_default=False
     )
     logger.info("✅ Registered SGLang engine")
-except ImportError:
-    logger.debug("SGLang engine not available (optional dependency)")
 except Exception as e:
-    logger.warning(f"Failed to register SGLang engine: {e}")
+    logger.warning("Failed to register SGLang engine (%s): %s", type(e).__name__, e)
 
 # Try to register YOLO engine (optional, fail gracefully)
 # Requires: ultralytics, Pillow

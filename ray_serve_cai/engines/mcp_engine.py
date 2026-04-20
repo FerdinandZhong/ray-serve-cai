@@ -101,8 +101,11 @@ async def _lifespan(app: FastAPI):
     logger.info("MCP session manager stopped")
 
 
-class _MCPApp(FastAPI):
-    """FastAPI subclass that strips root_path prefix before routing."""
+class _RoutePathMiddleware:
+    """Strip ASGI root_path prefix from scope path before FastAPI routing."""
+
+    def __init__(self, app) -> None:
+        self.app = app
 
     async def __call__(self, scope: Scope, receive: Receive, send: Send) -> None:
         if scope["type"] in ("http", "websocket"):
@@ -113,10 +116,10 @@ class _MCPApp(FastAPI):
                 if remainder == "" or remainder.startswith("/"):
                     scope = dict(scope)
                     scope["path"] = remainder or "/"
-        await super().__call__(scope, receive, send)
+        await self.app(scope, receive, send)
 
 
-_mcp_app = _MCPApp(
+_mcp_app = FastAPI(
     title="MCP Tool Server",
     description="MCP (Model Context Protocol) tool server powered by Ray Serve.",
     version="1.0.0",
@@ -126,6 +129,7 @@ _mcp_app = _MCPApp(
         {"name": "Health", "description": "Liveness probe"},
     ],
 )
+_mcp_app.add_middleware(_RoutePathMiddleware)
 
 
 # ---------------------------------------------------------------------------
@@ -151,6 +155,32 @@ class MCPEngine:
         self._mcp_module = engine_config.get("mcp_module", "")
         # Store config so the lifespan callback can read it.
         _engine_config_store["config"] = engine_config
+
+        # ── Ray Prometheus metrics ───────────────────────────────────────
+        # Auto-exported on Ray's metrics port (9090) alongside system metrics.
+        from ray.util.metrics import Counter, Histogram
+        self._m_requests = Counter(
+            "mcp_requests_total",
+            description="Total MCP requests",
+            tag_keys=("method", "status"),
+        )
+        self._m_request_latency = Histogram(
+            "mcp_request_seconds",
+            description="MCP request latency",
+            boundaries=[0.01, 0.05, 0.1, 0.25, 0.5, 1.0, 5.0, 10.0],
+        )
+        self._m_tool_calls = Counter(
+            "mcp_tool_calls_total",
+            description="Tool calls by tool name",
+            tag_keys=("tool_name",),
+        )
+        self._m_tool_latency = Histogram(
+            "mcp_tool_seconds",
+            description="Tool execution latency",
+            tag_keys=("tool_name",),
+            boundaries=[0.01, 0.05, 0.1, 0.5, 1.0, 5.0, 30.0],
+        )
+        logger.info("MCP Ray metrics initialized")
 
     @property
     def engine_type(self) -> str:

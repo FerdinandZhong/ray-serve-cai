@@ -74,6 +74,7 @@ def _accepted_kwargs(cls, kwargs: dict) -> dict:
 
 def _requires_param(cls, param: str) -> bool:
     """Return True if cls.__init__ declares *param* (any default)."""
+    import inspect
     return param in inspect.signature(cls.__init__).parameters
 
 
@@ -184,28 +185,22 @@ def _build_serving_render(engine_args: AsyncEngineArgs, model_name: str,
 
 
 # ---------------------------------------------------------------------------
-# FastAPI app — provides Swagger UI at <route_prefix>/docs
-# Defined at module level; @serve.ingress binds it to the deployment class.
-# root_path_in_servers=True tells FastAPI to use the ASGI root_path set by
-# Ray Serve (the deployment's route_prefix) as the server base URL, so the
-# "Try it out" button in Swagger UI sends requests to the correct path.
+# ASGI middleware — strips route_prefix from scope["path"] before routing.
 #
-# Path stripping: Ray Serve sets scope["root_path"] to the deployment's
-# route_prefix (e.g. "/paddleocr") but does NOT strip it from scope["path"],
-# leaving scope["path"] = "/paddleocr/v1/chat/completions".  The FastAPI
-# routes are registered without the prefix ("/v1/chat/completions"), so they
-# would not match the full path → 404.
+# Ray Serve sets scope["root_path"] to the deployment's route_prefix but does
+# NOT strip it from scope["path"].  FastAPI routes are registered without the
+# prefix, so they would not match → 404.
 #
-# We handle this by overriding __call__ to strip the prefix BEFORE Starlette
-# builds its middleware stack.  This avoids add_middleware() which inserts a
-# layer between ServerErrorMiddleware and ExceptionMiddleware and breaks
-# FastAPI's detection of StreamingResponse as a pass-through Response — it
-# instead tries to JSON-serialize the body_iterator (an async generator).
+# Must be a plain class (not a FastAPI subclass) because Ray Serve serializes
+# the module-level FastAPI instance via @serve.ingress.  A FastAPI subclass
+# breaks Ray's serializer ("cannot pickle '_thread.lock'").
 # ---------------------------------------------------------------------------
 
+class _RoutePathMiddleware:
+    """Strip ASGI root_path prefix from scope path before FastAPI routing."""
 
-class _VLLMApp(FastAPI):
-    """FastAPI subclass that strips root_path prefix before routing."""
+    def __init__(self, app) -> None:
+        self.app = app
 
     async def __call__(self, scope: Scope, receive: Receive, send: Send) -> None:
         if scope["type"] in ("http", "websocket"):
@@ -216,14 +211,24 @@ class _VLLMApp(FastAPI):
                 if remainder == "" or remainder.startswith("/"):
                     scope = dict(scope)
                     scope["path"] = remainder or "/"
-        await super().__call__(scope, receive, send)
+        await self.app(scope, receive, send)
 
 
-_vllm_app = _VLLMApp(
+# ---------------------------------------------------------------------------
+# FastAPI app — provides Swagger UI at <route_prefix>/docs
+# Defined at module level; @serve.ingress binds it to the deployment class.
+#
+# Streaming: all endpoints use response_model=None and the normaliser
+# _normalize_vllm_stream_result() to ensure StreamingResponse is never
+# JSON-encoded, regardless of middleware stack ordering.
+# ---------------------------------------------------------------------------
+
+_vllm_app = FastAPI(
     title="vLLM OpenAI-Compatible API",
     description=(
         "OpenAI-compatible inference API powered by vLLM and Ray Serve.\n\n"
-        "Supports `/v1/chat/completions`, `/v1/completions`, and `/v1/models`."
+        "Supports `/v1/chat/completions`, `/v1/completions`, `/v1/models`, "
+        "and `/metrics` (Prometheus)."
     ),
     version="1.0.0",
     root_path_in_servers=True,
@@ -234,7 +239,7 @@ _vllm_app = _VLLMApp(
         {"name": "Health",      "description": "Liveness probe"},
     ],
 )
-
+_vllm_app.add_middleware(_RoutePathMiddleware)
 
 # ---------------------------------------------------------------------------
 # Deployment
@@ -280,7 +285,24 @@ class VLLMEngine:
                 logger.info("Set VLLM_ATTENTION_BACKEND=%s", attention_backend)
 
             self.engine_args = AsyncEngineArgs(**engine_config)
-            self.engine = AsyncLLMEngine.from_engine_args(self.engine_args)
+
+            # Use Ray-native Prometheus metrics instead of prometheus_client.
+            # RayPrometheusStatLogger wraps all vLLM metrics with
+            # ray.util.metrics so they auto-export on Ray's metrics port
+            # (9090) alongside system metrics — no FastAPI /metrics route
+            # or attach_router needed.
+            _stat_loggers = None
+            try:
+                from vllm.v1.metrics.ray_wrappers import RayPrometheusStatLogger
+                _stat_loggers = [RayPrometheusStatLogger]
+                logger.info("Using RayPrometheusStatLogger for vLLM metrics")
+            except ImportError:
+                logger.debug("RayPrometheusStatLogger not available (older vLLM)")
+
+            self.engine = AsyncLLMEngine.from_engine_args(
+                self.engine_args,
+                stat_loggers=_stat_loggers,
+            )
 
             self.model_name = engine_config.get("model", "unknown")
             self.tensor_parallel_size = engine_config.get("tensor_parallel_size", 1)

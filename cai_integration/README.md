@@ -260,7 +260,7 @@ git push origin main
 
 ## Configuration
 
-### Ray Cluster Configuration (`../ray_cluster_config.yaml`)
+### Ray Cluster Configuration (`../configs/ray_cluster_config.yaml`)
 
 Customize cluster resources:
 
@@ -342,7 +342,7 @@ print(ray.cluster_resources())
 
 ### Custom Runtime
 
-To use a different Docker runtime, edit `ray_cluster_config.yaml`:
+To use a different Docker runtime, edit `configs/ray_cluster_config.yaml`:
 
 ```yaml
 cai:

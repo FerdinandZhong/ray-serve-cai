@@ -1,0 +1,139 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>Metrics Pipeline</title>
+<style>
+*{margin:0;padding:0;box-sizing:border-box}
+body{background:#0f1117;color:#e2e8f0;font-family:Inter,system-ui,sans-serif;padding:40px;min-height:100vh}
+h1{font-size:1.3rem;font-weight:600;margin-bottom:8px}
+.subtitle{font-size:.8rem;color:#8892a4;margin-bottom:32px}
+.diagram{width:880px;margin:0 auto}
+.section{margin-bottom:32px}
+.section-title{font-size:.75rem;text-transform:uppercase;letter-spacing:.08em;color:#f59e0b;font-weight:600;margin-bottom:12px;padding-left:4px}
+.row{display:flex;gap:16px;align-items:flex-start;flex-wrap:wrap}
+.box{border-radius:10px;padding:16px 18px;flex:1;min-width:180px;max-width:260px;transition:transform .15s}
+.box:hover{transform:translateY(-2px)}
+.box .title{font-size:.82rem;font-weight:600;margin-bottom:4px}
+.box .desc{font-size:.68rem;color:#8892a4;line-height:1.4}
+.box .metric{font-size:.65rem;font-family:monospace;color:#22c55e;margin-top:6px;line-height:1.5}
+.source{background:#1a2540;border:1px solid #4f8ef730}
+.source .title{color:#4f8ef7}
+.collector{background:#1a3a2a;border:1px solid #22c55e30}
+.collector .title{color:#22c55e}
+.output{background:#2a1a30;border:1px solid #a855f730}
+.output .title{color:#a855f7}
+.arrow-row{display:flex;justify-content:center;gap:60px;margin:12px 0;color:#4f8ef7;font-size:1rem;opacity:.5}
+.pipe{text-align:center;font-size:.7rem;color:#8892a4;margin:16px 0;padding:8px;border:1px dashed #2e3147;border-radius:8px}
+.tag{display:inline-block;font-size:.6rem;padding:2px 7px;border-radius:99px;font-weight:600;margin:1px}
+</style>
+</head>
+<body>
+<h1>Metrics Pipeline</h1>
+<p class="subtitle">How Prometheus metrics flow from engines to the central scraper</p>
+
+<div class="diagram">
+
+<div class="section">
+<div class="section-title">Metric Sources (per engine)</div>
+<div class="row">
+<div class="box source">
+<div class="title">vLLM</div>
+<div class="desc">RayPrometheusStatLogger<br>wraps all vLLM metrics with ray.util.metrics</div>
+<div class="metric">
+vllm:prompt_tokens_total<br>
+vllm:generation_tokens_total<br>
+vllm:time_to_first_token_seconds<br>
+vllm:e2e_request_latency_seconds<br>
+vllm:num_running_reqs
+</div>
+</div>
+<div class="box source">
+<div class="title">SGLang</div>
+<div class="desc">Native --enable-metrics<br>HTTP server on localhost:30000</div>
+<div class="metric">
+sglang:prompt_tokens_total<br>
+sglang:cache_hit_rate<br>
+sglang:time_to_first_token_seconds<br>
+sglang:gen_throughput<br>
+sglang:num_queue_reqs
+</div>
+</div>
+<div class="box source">
+<div class="title">YOLO</div>
+<div class="desc">ray.util.metrics<br>Counter + Histogram</div>
+<div class="metric">
+yolo_requests_total<br>
+yolo_inference_seconds<br>
+yolo_batch_size<br>
+yolo_detections_per_image
+</div>
+</div>
+<div class="box source">
+<div class="title">MCP</div>
+<div class="desc">ray.util.metrics<br>Counter + Histogram</div>
+<div class="metric">
+mcp_requests_total<br>
+mcp_request_seconds<br>
+mcp_tool_calls_total<br>
+mcp_tool_seconds
+</div>
+</div>
+</div>
+</div>
+
+<div class="arrow-row">
+<span>&darr; port 9090</span>
+<span>&darr; /metrics route</span>
+<span>&darr; port 9090</span>
+<span>&darr; port 9090</span>
+</div>
+
+<div class="section">
+<div class="section-title">Collection Layer (Management API)</div>
+<div class="row">
+<div class="box collector" style="max-width:400px">
+<div class="title">GET /api/v1/metrics/all</div>
+<div class="desc">Scrapes <b>every alive node</b>'s port 9090 in parallel.<br>Picks up: Ray system metrics + vLLM + YOLO + MCP (ray.util.metrics)</div>
+<div style="margin-top:6px">
+<span class="tag" style="background:#22c55e20;color:#22c55e">10s cache</span>
+<span class="tag" style="background:#4f8ef720;color:#4f8ef7">ray.nodes() discovery</span>
+</div>
+</div>
+<div class="box collector" style="max-width:400px">
+<div class="title">GET /api/v1/metrics/apps</div>
+<div class="desc">Scrapes each app's <b>{route_prefix}/metrics</b> route.<br>Picks up: SGLang native metrics (proxied via FastAPI /metrics route)</div>
+<div style="margin-top:6px">
+<span class="tag" style="background:#22c55e20;color:#22c55e">list_applications()</span>
+<span class="tag" style="background:#4f8ef720;color:#4f8ef7">per-app scrape</span>
+</div>
+</div>
+</div>
+</div>
+
+<div class="arrow-row">
+<span>&darr;</span>
+<span>&darr;</span>
+</div>
+
+<div class="section">
+<div class="section-title">External Consumers</div>
+<div class="row">
+<div class="box output">
+<div class="title">Prometheus</div>
+<div class="desc">Scrapes /metrics (nginx route) or uses /api/v1/metrics/discovery for http_sd_configs</div>
+</div>
+<div class="box output">
+<div class="title">Grafana</div>
+<div class="desc">Dashboards for TTFT, throughput, cache hit rate, batch size, queue depth</div>
+</div>
+<div class="box output">
+<div class="title">curl / Alerts</div>
+<div class="desc">Quick checks:<br>curl &lt;host&gt;/metrics</div>
+</div>
+</div>
+</div>
+
+</div>
+</body>
+</html>

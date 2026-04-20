@@ -359,7 +359,7 @@ If you continue to have issues:
 1. **Check logs**: View complete output in CML job runs
 2. **Review documentation**: See README.md for usage
 3. **Test manually**: Run setup_environment.py in CML job
-4. **Verify configuration**: Check jobs_config.yaml and ray_cluster_config.yaml
+4. **Verify configuration**: Check jobs_config.yaml and configs/ray_cluster_config.yaml
 5. **Check CML status**: Verify CML instance is healthy
 6. **Test connectivity**: Verify network access to CML
 

@@ -119,12 +119,14 @@ class CoordinatorService:
         """
         Get Ray nodes enriched with CML application information.
 
+        Cross-references Ray nodes with the resource map (which stores
+        CML app_id ↔ app_name from create_worker_node) and with live
+        CML applications to provide the correct app IDs for deletion.
+
         Returns:
             List of enriched node information
         """
         ray_nodes = self.ray_service.get_nodes()
-        state = self.load_state()
-        node_mapping = state.get("node_mapping", {})
 
         enriched_nodes = []
         for node in ray_nodes:
@@ -136,19 +138,45 @@ class CoordinatorService:
                 "alive": node.get("Alive", False),
                 "resources": node.get("Resources", {}),
                 "resources_used": node.get("ResourcesUsed", {}),
-                "cml_app_id": None,
-                "cml_app_name": None,
             }
-
-            # Add CML mapping if available
-            if node_id in node_mapping:
-                mapping = node_mapping[node_id]
-                node_info["cml_app_id"] = mapping.get("cml_app_id")
-                node_info["cml_app_name"] = mapping.get("cml_app_name")
-
             enriched_nodes.append(node_info)
 
         return enriched_nodes
+
+    def get_worker_apps(self) -> List[Dict[str, Any]]:
+        """
+        List CML worker applications with their IDs (for deletion).
+
+        Returns live CML apps whose names start with "ray-" (worker pattern),
+        filtered to running/starting status. Each entry includes the CML app_id
+        that can be passed to DELETE /api/v1/resources/nodes/{app_id}.
+        """
+        try:
+            live_apps = self.cai_service.list_applications()
+        except Exception as exc:
+            logger.error("Failed to list CML applications: %s", exc)
+            return []
+
+        workers = []
+        for app in live_apps:
+            name = app.get("name", "")
+            status = app.get("status", "")
+            # Worker apps follow naming pattern "ray-<group>-<timestamp>"
+            if name.startswith("ray-") and name != self._head_app_name():
+                workers.append({
+                    "app_id":   app["id"],
+                    "app_name": name,
+                    "status":   status,
+                })
+        return workers
+
+    def _head_app_name(self) -> str:
+        """Return the head node's CML app name from cluster info."""
+        try:
+            info = self.cai_service._load_cluster_info()
+            return info.get("head_app_name", "ray-cluster-head")
+        except Exception:
+            return "ray-cluster-head"
 
     def get_cluster_status(self) -> Dict[str, Any]:
         """
@@ -306,5 +334,23 @@ class CoordinatorService:
         return result
 
     def get_resource_map(self) -> Dict[str, Any]:
-        """Return the current resource capacity summary."""
+        """Return the current resource capacity summary.
+
+        Syncs the persisted map against live CML applications first so that
+        stale entries (crashed pods, apps deleted outside the API) are pruned.
+        Only apps with status "running" or "starting" are considered alive —
+        stopped / failed / deleted apps are treated as gone.
+        """
+        try:
+            live_apps = self.cai_service.list_applications()
+            running_ids = {
+                a["id"] for a in live_apps
+                if "id" in a and a.get("status") in ("running", "starting", "scheduling")
+            }
+            pruned = self.resource_map.sync(running_ids)
+            if pruned:
+                logger.info("Resource map sync: pruned %d stale entries", pruned)
+        except Exception as exc:
+            logger.warning("Resource map sync failed (returning stale data): %s", exc)
+
         return self.resource_map.get_summary()

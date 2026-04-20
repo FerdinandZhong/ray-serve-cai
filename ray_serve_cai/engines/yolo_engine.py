@@ -136,14 +136,15 @@ def _check_occlusion(boxes: List[List[float]], threshold: float = 0.3) -> bool:
 
 
 # ---------------------------------------------------------------------------
-# FastAPI app — provides Swagger UI at <route_prefix>/docs
-#
-# Path stripping: override __call__ to strip root_path BEFORE Starlette's
-# middleware stack, same pattern as the vLLM engine.
+# ASGI middleware — strips route_prefix from scope["path"] before routing.
+# Plain class (not FastAPI subclass) to avoid Ray serialization issues.
 # ---------------------------------------------------------------------------
 
-class _YOLOApp(FastAPI):
-    """FastAPI subclass that strips root_path prefix before routing."""
+class _RoutePathMiddleware:
+    """Strip ASGI root_path prefix from scope path before FastAPI routing."""
+
+    def __init__(self, app) -> None:
+        self.app = app
 
     async def __call__(self, scope: Scope, receive: Receive, send: Send) -> None:
         if scope["type"] in ("http", "websocket"):
@@ -154,10 +155,10 @@ class _YOLOApp(FastAPI):
                 if remainder == "" or remainder.startswith("/"):
                     scope = dict(scope)
                     scope["path"] = remainder or "/"
-        await super().__call__(scope, receive, send)
+        await self.app(scope, receive, send)
 
 
-_yolo_app = _YOLOApp(
+_yolo_app = FastAPI(
     title="YOLO Object Detection API",
     description=(
         "Object detection API powered by YOLO and Ray Serve.\n\n"
@@ -171,6 +172,7 @@ _yolo_app = _YOLOApp(
         {"name": "Info",      "description": "Model metadata"},
     ],
 )
+_yolo_app.add_middleware(_RoutePathMiddleware)
 
 
 # ---------------------------------------------------------------------------
@@ -200,6 +202,32 @@ class _YOLOBase:
         self._model.to(self._device)
         logger.info("YOLO model loaded — classes: %s", self._model.names)
 
+        # ── Ray Prometheus metrics ───────────────────────────────────────
+        # Uses ray.util.metrics — auto-exported on Ray's metrics port (9090)
+        # alongside system metrics.  No prometheus_client dependency needed.
+        from ray.util.metrics import Counter, Histogram
+        self._m_requests = Counter(
+            "yolo_requests_total",
+            description="Total detection requests",
+            tag_keys=("status",),
+        )
+        self._m_inference = Histogram(
+            "yolo_inference_seconds",
+            description="Inference latency per image (seconds)",
+            boundaries=[0.01, 0.05, 0.1, 0.25, 0.5, 1.0, 2.5, 5.0],
+        )
+        self._m_batch_size = Histogram(
+            "yolo_batch_size",
+            description="Images per batch",
+            boundaries=[1, 2, 4, 8, 16, 32],
+        )
+        self._m_detections = Histogram(
+            "yolo_detections_per_image",
+            description="Detected items per image",
+            boundaries=[0, 1, 2, 5, 10, 20, 50],
+        )
+        logger.info("YOLO Ray metrics initialized")
+
     # ── Overridden by the @serve.batch decorated method in the subclass ──
 
     async def _detect_batch(self, image_bytes: bytes) -> Dict[str, Any]:
@@ -214,6 +242,11 @@ class _YOLOBase:
 
         Returns a list of DetectionResult dicts, one per input image.
         """
+        import time
+
+        self._m_batch_size.observe(len(images))
+
+        t0 = time.perf_counter()
         results = self._model(
             images,
             conf=self._conf,
@@ -221,7 +254,16 @@ class _YOLOBase:
             device=self._device,
             verbose=False,
         )
-        return [self._build_result(r) for r in results]
+        elapsed = time.perf_counter() - t0
+
+        built = [self._build_result(r) for r in results]
+
+        per_image = elapsed / max(len(images), 1)
+        for b in built:
+            self._m_inference.observe(per_image)
+            self._m_detections.observe(b["total_count"])
+
+        return built
 
     def _build_result(self, result) -> Dict[str, Any]:
         """Convert a single ultralytics Result to a DetectionResult dict."""
@@ -255,8 +297,13 @@ class _YOLOBase:
                     response_model=None)
     async def detect(self, file: UploadFile = File(...)):
         img_bytes = await file.read()
-        result = await self._detect_batch(img_bytes)
-        return JSONResponse(result)
+        try:
+            result = await self._detect_batch(img_bytes)
+            self._m_requests.inc(tags={"status": "ok"})
+            return JSONResponse(result)
+        except Exception:
+            self._m_requests.inc(tags={"status": "error"})
+            raise
 
     @_yolo_app.get("/health", tags=["Health"],
                    summary="Liveness probe")

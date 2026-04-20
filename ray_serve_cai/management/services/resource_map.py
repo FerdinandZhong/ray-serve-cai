@@ -139,6 +139,41 @@ class ResourceMap:
         else:
             logger.warning(f"App [{app_id}] not found in resource map")
 
+    # ── Reconciliation ────────────────────────────────────────────────────────
+
+    def sync(self, live_app_ids: set) -> int:
+        """
+        Remove stale entries whose app_id no longer exists in CML.
+
+        Args:
+            live_app_ids: Set of CML application IDs that currently exist.
+
+        Returns:
+            Number of stale entries removed.
+        """
+        data = self._load()
+        removed = 0
+
+        for section in ("workers", "applications"):
+            stale = [
+                aid for aid in data[section]
+                if aid not in live_app_ids
+            ]
+            for aid in stale:
+                entry = data[section].pop(aid)
+                logger.info(
+                    "Pruned stale %s entry: %s [%s]",
+                    section.rstrip("s"),
+                    entry.get("app_name", "?"),
+                    aid,
+                )
+                removed += 1
+
+        if removed:
+            self._save(data)
+
+        return removed
+
     # ── Capacity queries ──────────────────────────────────────────────────────
 
     def get_summary(self) -> Dict[str, Any]:
