@@ -73,6 +73,7 @@ class WorkerGroupConfig:
     cpu: int                               # CPU cores per worker
     memory: int                            # memory in GB per worker
     gpus: int = 0                          # GPUs per worker  (0 = CPU-only)
+    accelerator_type: Optional[str] = None # GPU type label (e.g. "L40", "T4", "A10")
     runtime_identifier: Optional[str] = None   # Docker runtime; None = cluster default
     script_path: Optional[str] = None     # set by create_ray_launcher_scripts()
 
@@ -154,7 +155,12 @@ class CMLAPIClient:
             logger.debug(f"Payload: {payload}")
 
         response = self.session.post(url, json=payload)
-        response.raise_for_status()
+        if response.status_code >= 400:
+            logger.error(
+                "Failed to create application (HTTP %d): %s",
+                response.status_code, response.text,
+            )
+            response.raise_for_status()
 
         data = response.json()
         return ApplicationInfo(

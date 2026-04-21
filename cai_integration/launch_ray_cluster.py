@@ -136,6 +136,7 @@ def create_ray_launcher_scripts(
             "ray_port":         ray_port,
             "metrics_port":     metrics_port,
             "node_type":        group.node_type,
+            "accelerator_type": group.accelerator_type,  # e.g. "L40", "T4", None
             "worker_memory_gb": group.memory,
         }
         # Sanitise group name for use as a filename component.
@@ -357,6 +358,7 @@ def main():
                 cpu=g['cpu'],
                 memory=g['memory'],
                 gpus=g.get('gpus', 0),
+                accelerator_type=g.get('accelerator_type'),
                 runtime_identifier=g.get('runtime_identifier'),
             )
             for g in ray_config['worker_groups']

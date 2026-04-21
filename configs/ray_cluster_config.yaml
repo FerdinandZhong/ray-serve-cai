@@ -31,12 +31,13 @@ ray_cluster:
   # runtime_identifier: overrides cai.worker_runtime_identifier per group.
   #        Use the standard (non-CUDA) image for CPU-only groups.
   worker_groups:
-    - name:      t4-gpu-workers
-      node_type: t4-gpu-worker
+    - name:      l40-gpu-workers
+      node_type: l40-gpu-worker
       count:     1
       cpu:       16
       memory:    32   # GB
       gpus:      1
+      accelerator_type: L40   # Ray accelerator_type label for GPU-aware scheduling
       # inherits cai.worker_runtime_identifier (CUDA image)
 
     - name:      cpu-workers
