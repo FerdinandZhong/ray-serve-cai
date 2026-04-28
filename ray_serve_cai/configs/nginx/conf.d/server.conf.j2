@@ -53,7 +53,8 @@ server {
     # ------------------------------------------------------------------ #
     location /metrics {
         include {{ conf_dir }}/snippets/proxy_params.conf;
-        proxy_pass http://ray_serve/api/v1/metrics;
+        proxy_pass http://ray_serve/api/v1/metrics/all;
+        proxy_read_timeout 15s;
         access_log off;
     }
 

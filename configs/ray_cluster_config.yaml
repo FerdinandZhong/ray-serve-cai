@@ -35,7 +35,7 @@ ray_cluster:
       node_type: l40-gpu-worker
       count:     1
       cpu:       16
-      memory:    32   # GB
+      memory:    64   # GB
       gpus:      1
       accelerator_type: L40   # Ray accelerator_type label for GPU-aware scheduling
       # inherits cai.worker_runtime_identifier (CUDA image)
