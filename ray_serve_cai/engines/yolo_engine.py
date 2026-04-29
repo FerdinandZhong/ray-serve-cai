@@ -224,7 +224,7 @@ class _YOLOBase:
         self._m_detections = Histogram(
             "yolo_detections_per_image",
             description="Detected items per image",
-            boundaries=[0, 1, 2, 5, 10, 20, 50],
+            boundaries=[0.5, 1, 2, 5, 10, 20, 50],
         )
         logger.info("YOLO Ray metrics initialized")
 

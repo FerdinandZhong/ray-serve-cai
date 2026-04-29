@@ -74,6 +74,8 @@ class CAIService:
                     cpu=g["cpu"],
                     memory=g["memory"],
                     gpus=g.get("gpus", 0),
+                    accelerator_type=g.get("accelerator_type"),
+                    node_label=g.get("node_label"),
                     script_path=g.get("script_path"),
                     runtime_identifier=g.get("runtime_identifier"),
                 )

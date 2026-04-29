@@ -37,7 +37,9 @@ ray_cluster:
       cpu:       16
       memory:    64   # GB
       gpus:      1
-      accelerator_type: L40   # Ray accelerator_type label for GPU-aware scheduling
+      accelerator_type: L40S  # Ray accelerator_type label (matches nvidia-smi GPU name)
+      node_label:             # K8s node selector for pod placement
+        nvidia.com/gpu.product: "NVIDIA-L40S"
       # inherits cai.worker_runtime_identifier (CUDA image)
 
     - name:      cpu-workers

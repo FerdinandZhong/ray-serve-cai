@@ -6,6 +6,7 @@
   "num_replicas": 1,
   "placement_group_bundles": [{"GPU": 1, "CPU": 8}],
   "placement_group_strategy": "STRICT_PACK",
+  "node_type": "l40-gpu-worker",
   "engine_config": {
     "dtype": "auto",
     "max_model_len": 16384,

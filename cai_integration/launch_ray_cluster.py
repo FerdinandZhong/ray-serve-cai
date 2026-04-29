@@ -359,6 +359,7 @@ def main():
                 memory=g['memory'],
                 gpus=g.get('gpus', 0),
                 accelerator_type=g.get('accelerator_type'),
+                node_label=g.get('node_label'),
                 runtime_identifier=g.get('runtime_identifier'),
             )
             for g in ray_config['worker_groups']
