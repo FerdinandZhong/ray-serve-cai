@@ -1,0 +1,6 @@
+{
+  "node_type": "l40-gpu-worker",
+  "cpu": 16,
+  "memory": 64,
+  "gpus": 1
+}

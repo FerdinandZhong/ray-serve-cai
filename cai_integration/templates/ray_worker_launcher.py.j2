@@ -144,6 +144,26 @@ print(f"Worker info server launched on 127.0.0.1:{_app_port}")
 print("\nWaiting 30 s for head node to be ready...")
 time.sleep(30)
 
+# ── NCCL multi-node configuration ────────────────────────────────────────────
+# Required for cross-node tensor parallelism (multi_node=True vLLM deployments).
+# These env vars are inherited by all Ray actors on this node, including vLLM's
+# RayWorkerWrapper processes.  vLLM does NOT auto-copy NCCL_* vars to workers,
+# so they must be set at the Ray node process level here.
+#
+#   NCCL_IB_DISABLE=1       : Skip InfiniBand probe — K8s pods typically have no
+#                             IB devices; probing hangs NCCL init for minutes.
+#   NCCL_SOCKET_IFNAME=eth0 : Force NCCL to use the pod's primary network
+#                             interface for inter-node communication.
+#                             Override via NCCL_SOCKET_IFNAME env var if needed.
+#   NCCL_DEBUG=WARN         : Suppress verbose NCCL logs; set to INFO to diagnose
+#                             hangs during collective_rpc("load_model").
+os.environ.setdefault("NCCL_IB_DISABLE", "1")
+os.environ.setdefault("NCCL_SOCKET_IFNAME", os.environ.get("NCCL_SOCKET_IFNAME", "eth0"))
+os.environ.setdefault("NCCL_DEBUG", "WARN")
+print(f"NCCL config: IB_DISABLE={os.environ['NCCL_IB_DISABLE']}  "
+      f"SOCKET_IFNAME={os.environ['NCCL_SOCKET_IFNAME']}  "
+      f"DEBUG={os.environ['NCCL_DEBUG']}")
+
 # ── Heartbeat tuning ─────────────────────────────────────────────────────────
 # Increase GCS health-check tolerances so a slow or briefly congested network
 # does not immediately trigger "missing too many heartbeats" and kill the node.
