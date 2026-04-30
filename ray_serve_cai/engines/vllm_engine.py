@@ -472,6 +472,7 @@ def create_vllm_deployment(
     gpu_fraction: Optional[float] = None,
     placement_group_bundles: Optional[List[Dict[str, float]]] = None,
     placement_group_strategy: Optional[str] = None,
+    multi_node: bool = False,
 ) -> serve.Application:
     """
     Create a vLLM Ray Serve deployment with appropriate resource allocation.
@@ -484,8 +485,12 @@ def create_vllm_deployment(
     placement_group_bundles and placement_group_strategy are passed as top-level
     deployment options (not inside ray_actor_options, which Ray Serve blocks).
     When omitted, sensible defaults are auto-generated per scenario:
-      - tensor_parallel_size > 1  → [{GPU:1, CPU:1}] * tp  +  STRICT_PACK
-        (all TP shards on one node; required for NVLink/PCIe shared memory)
+      - tensor_parallel_size > 1, multi_node=False (default)
+          → [{GPU:tp, CPU:tp}] + STRICT_PACK
+          (all TP shards forced onto one node; required for NVLink/PCIe)
+      - tensor_parallel_size > 1, multi_node=True
+          → [{GPU:1, CPU:1}] * tp + PACK
+          (one bundle per shard, allows cross-node scheduling via NCCL)
       - gpu_fraction < 1          → [{GPU:gpu_fraction, CPU:1}]  +  PACK
         (bin-pack fractional replicas onto the same node's GPU pool)
 
@@ -508,18 +513,31 @@ def create_vllm_deployment(
                 "each tensor-parallel shard requires one full GPU.",
                 gpu_fraction, tensor_parallel_size,
             )
-        # ray_actor_options carries per-replica resource totals.  vLLM spawns
-        # its own internal Ray workers for TP when distributed_executor_backend
-        # is "ray"; num_gpus=tensor_parallel_size reserves the right count.
-        ray_actor_options = {
-            "num_cpus": tensor_parallel_size,
-            "num_gpus": tensor_parallel_size,
-        }
-        logger.info(
-            "Tensor-parallel deployment: %d GPU(s) per replica "
-            "(vLLM spawns internal Ray workers for TP)",
-            tensor_parallel_size,
-        )
+        if multi_node:
+            # Cross-node TP: the deployment actor (bundle 0) is the scheduler
+            # ONLY — no GPU.  vLLM's RayDistributedExecutor auto-discovers GPU
+            # bundles by scanning placement_group.bundle_specs for non-zero GPU;
+            # since bundle 0 has no GPU, it is skipped and all tp RayWorkerWrapper
+            # actors land in bundles 1..tp (num_cpus=0, num_gpus=1 each).
+            # This is a full scheduler↔executor separation.
+            ray_actor_options = {"num_cpus": 4, "num_gpus": 0}
+            logger.info(
+                "Multi-node tensor-parallel deployment: scheduler-only actor in "
+                "bundle 0, %d GPU worker(s) in bundles 1..%d",
+                tensor_parallel_size, tensor_parallel_size,
+            )
+        else:
+            # Single-node TP: actor holds all GPU/CPU resources in one bundle.
+            # vLLM spawns internal Ray workers for TP shards on the same node.
+            ray_actor_options = {
+                "num_cpus": tensor_parallel_size,
+                "num_gpus": tensor_parallel_size,
+            }
+            logger.info(
+                "Single-node tensor-parallel deployment: %d GPU(s) per replica "
+                "(vLLM spawns internal Ray workers for TP)",
+                tensor_parallel_size,
+            )
     elif gpu_fraction is not None:
         # Fractional GPU: multiple replicas share one physical GPU.
         ray_actor_options = {
@@ -538,18 +556,47 @@ def create_vllm_deployment(
     # placement_group_bundles / placement_group_strategy are top-level
     # deployment options (NOT inside ray_actor_options — Ray Serve blocks them
     # there).  Auto-generate sensible defaults when the caller omits them.
+    # ── Node type resource hint ──────────────────────────────────────────────
+    # Resolved here so it can be embedded in placement group bundles (multi-node)
+    # or injected into ray_actor_options (single-node / non-TP).
+    node_type = engine_config.get("node_type")
+
     if placement_group_bundles is None and not use_cpu:
-        if tensor_parallel_size > 1:
-            # All TP shards must share a single node to use NVLink / PCIe.
-            # The actor itself needs num_cpus=tp_size and num_gpus=tp_size
-            # (see ray_actor_options above), so the first bundle must cover
-            # those totals — use a single bundle with all TP resources.
+        if tensor_parallel_size > 1 and multi_node:
+            # Full scheduler↔executor separation:
+            #   bundle 0 : {CPU:4}       ← VLLMEngine actor (scheduler only, no GPU)
+            #   bundle 1..tp : {GPU:1}   ← one RayWorkerWrapper per TP shard
+            #
+            # vLLM auto-discovers GPU bundles by scanning bundle_specs for
+            # non-zero GPU entries (skips bundle 0), so ranks 0..tp-1 land in
+            # bundles 1..tp automatically — no VLLM_RAY_BUNDLE_INDICES needed.
+            #
+            # node_type hint goes into worker bundles so all shards land on
+            # nodes of the correct hardware type.  Actor bundle omits it since
+            # the scheduler has no GPU requirement and can run on the head node.
+            node_hint = {f"node_type:{node_type}": 0.001} if node_type else {}
+            engine_bundle: Dict[str, float] = {"CPU": 4.0}
+            executor_bundle: Dict[str, float] = {"GPU": 1.0, **node_hint}
+            placement_group_bundles = [engine_bundle] + [
+                dict(executor_bundle) for _ in range(tensor_parallel_size)
+            ]
+            placement_group_strategy = placement_group_strategy or "PACK"
+            logger.info(
+                "Auto placement group (multi-node): PACK [engine_bundle{CPU:4}] + "
+                "%d×[executor_bundle{GPU:1}%s] for TP=%d",
+                tensor_parallel_size,
+                f",node_type:{node_type}" if node_type else "",
+                tensor_parallel_size,
+            )
+        elif tensor_parallel_size > 1:
+            # Single-node TP: all shards forced onto one node via STRICT_PACK.
+            # The actor holds all GPU/CPU resources in a single bundle.
             placement_group_bundles = [
                 {"GPU": float(tensor_parallel_size), "CPU": float(tensor_parallel_size)}
             ]
             placement_group_strategy = placement_group_strategy or "STRICT_PACK"
             logger.info(
-                "Auto placement group: STRICT_PACK single bundle GPU=%d CPU=%d for TP=%d",
+                "Auto placement group (single-node): STRICT_PACK bundle GPU=%d CPU=%d for TP=%d",
                 tensor_parallel_size, tensor_parallel_size, tensor_parallel_size,
             )
         elif gpu_fraction is not None and gpu_fraction < 1.0:
@@ -563,6 +610,14 @@ def create_vllm_deployment(
                 "Auto placement group: PACK bundle for gpu_fraction=%.2f",
                 gpu_fraction,
             )
+
+    # ── Node type targeting ──────────────────────────────────────────────────
+    # For multi-node TP the hint is already embedded in each placement group
+    # bundle (see above).  For all other cases inject into ray_actor_options.
+    if node_type and not (multi_node and tensor_parallel_size > 1):
+        ray_actor_options.setdefault("resources", {})
+        ray_actor_options["resources"][f"node_type:{node_type}"] = 0.001
+        logger.info("Pinning deployment to node_type=%r via ray_actor_options", node_type)
 
     # ── Build .options() kwargs ─────────────────────────────────────────────
     opts: Dict[str, Any] = {

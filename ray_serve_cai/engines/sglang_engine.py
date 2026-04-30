@@ -338,6 +338,13 @@ def create_sglang_deployment(
             placement_group_bundles = [{"GPU": gpu_fraction, "CPU": 2.0}]
             placement_group_strategy = placement_group_strategy or "PACK"
 
+    # Node type targeting
+    node_type = engine_config.get("node_type")
+    if node_type:
+        ray_actor_options.setdefault("resources", {})
+        ray_actor_options["resources"][f"node_type:{node_type}"] = 0.001
+        logger.info("Pinning deployment to node_type=%r", node_type)
+
     opts: Dict[str, Any] = {
         "num_replicas": num_replicas,
         "ray_actor_options": ray_actor_options,

@@ -1,0 +1,15 @@
+{
+  "name": "qwen2.5-72b",
+  "engine_type": "vllm",
+  "model": "/home/cdsw/models/Qwen2.5-72B-Instruct-fp8-dynamic",
+  "route_prefix": "/qwen2.5-72b",
+  "num_replicas": 1,
+  "tensor_parallel_size": 2,
+  "multi_node": true,
+  "node_type": "l40-gpu-worker",
+  "engine_config": {
+    "dtype": "auto",
+    "gpu_memory_utilization": 0.90,
+    "max_model_len": 16384
+  }
+}

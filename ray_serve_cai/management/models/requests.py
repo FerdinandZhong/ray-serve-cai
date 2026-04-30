@@ -153,6 +153,24 @@ class DeployModelRequest(BaseModel):
         ),
     )
 
+    node_type: Optional[str] = Field(
+        default=None,
+        description=(
+            "Target worker node type for deployment placement (e.g. 'l40-gpu-worker'). "
+            "Pins replicas to Ray nodes with a matching 'node_type:<value>' resource label."
+        ),
+    )
+    multi_node: bool = Field(
+        default=False,
+        description=(
+            "Enable cross-node tensor parallelism. When True and tensor_parallel_size > 1, "
+            "placement group uses one bundle per GPU shard with PACK strategy, allowing "
+            "shards to spread across separate worker nodes connected via NCCL. "
+            "When False (default), all shards are forced onto a single node (STRICT_PACK). "
+            "Requires NCCL inter-node connectivity between worker nodes."
+        ),
+    )
+
     @field_validator("placement_group_strategy")
     @classmethod
     def validate_strategy(cls, v: Optional[str]) -> Optional[str]:

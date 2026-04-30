@@ -132,6 +132,8 @@ class RayService:
         engine_config: Optional[Dict[str, Any]] = None,
         placement_group_bundles: Optional[List[Dict[str, float]]] = None,
         placement_group_strategy: Optional[str] = None,
+        node_type: Optional[str] = None,
+        multi_node: bool = False,
     ) -> Dict[str, Any]:
         """
         Deploy a vLLM or SGLang model as a Ray Serve application.
@@ -173,6 +175,8 @@ class RayService:
             "use_cpu": use_cpu,
             **(engine_config or {}),
         }
+        if node_type:
+            user_config["node_type"] = node_type
 
         config_builder = registry.get_config_builder(engine_type)
         built_config = config_builder.build_config(user_config)
@@ -186,6 +190,7 @@ class RayService:
             gpu_fraction=gpu_fraction,
             placement_group_bundles=placement_group_bundles,
             placement_group_strategy=placement_group_strategy,
+            multi_node=multi_node,
         )
 
         # serve.run() blocks until the deployment is healthy, which can take

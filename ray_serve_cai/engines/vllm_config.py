@@ -281,4 +281,5 @@ class VLLMDeploymentFactory:
             gpu_fraction=kwargs.get("gpu_fraction"),
             placement_group_bundles=kwargs.get("placement_group_bundles"),
             placement_group_strategy=kwargs.get("placement_group_strategy"),
+            multi_node=kwargs.get("multi_node", False),
         )

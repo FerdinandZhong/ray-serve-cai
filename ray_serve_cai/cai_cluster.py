@@ -73,7 +73,8 @@ class WorkerGroupConfig:
     cpu: int                               # CPU cores per worker
     memory: int                            # memory in GB per worker
     gpus: int = 0                          # GPUs per worker  (0 = CPU-only)
-    accelerator_type: Optional[str] = None # GPU type label (e.g. "L40", "T4", "A10")
+    accelerator_type: Optional[str] = None # GPU type label (e.g. "L40S", "T4", "A10")
+    node_label: Optional[Dict[str, str]] = None  # K8s node selector labels for pod placement
     runtime_identifier: Optional[str] = None   # Docker runtime; None = cluster default
     script_path: Optional[str] = None     # set by create_ray_launcher_scripts()
 
@@ -469,6 +470,8 @@ class CAIClusterManager:
                         'cpu':                g.cpu,
                         'memory':             g.memory,
                         'gpus':               g.gpus,
+                        'accelerator_type':   g.accelerator_type,
+                        'node_label':         g.node_label,
                         'script_path':        g.script_path,
                         'runtime_identifier': g.runtime_identifier,
                     }
@@ -731,6 +734,13 @@ class CAIClusterManager:
         app_name = name or f"ray-{group.name}-{int(time.time())}"
         subdomain = app_name.replace("_", "-").lower()
 
+        # Inject node_label as environment hint for K8s admission webhooks
+        # or future CML API nodeSelector support.
+        env = dict(environment) if environment else {}
+        if group.node_label:
+            import json as _json
+            env["NODE_LABEL"] = _json.dumps(group.node_label)
+
         app = self.cml_client.create_application(
             project_id=self.project_id,
             name=app_name,
@@ -741,7 +751,7 @@ class CAIClusterManager:
             subdomain=subdomain,
             bypass_authentication=True,
             num_gpus=group.gpus,
-            environment=environment,
+            environment=env or None,
         )
         self.worker_app_ids.append(app.id)
         logger.info(f"✅ Launched worker '{app_name}': {app.id}  [node_type:{group.node_type}]")

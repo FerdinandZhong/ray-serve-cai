@@ -78,6 +78,8 @@ async def deploy_model(
             engine_config=request.engine_config,
             placement_group_bundles=request.placement_group_bundles,
             placement_group_strategy=request.placement_group_strategy,
+            node_type=request.node_type,
+            multi_node=request.multi_node,
         )
         return result
     except ValueError as e:
