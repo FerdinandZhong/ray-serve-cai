@@ -2,14 +2,21 @@
 """
 CML Job: Create isolated LiteLLM virtual environment.
 
-Creates /home/cdsw/.venv-litellm with litellm + pyyaml.
+Creates /home/cdsw/.venv-litellm with litellm[proxy] + pyyaml.
 Uses fcntl.flock so multiple CML pods can run this concurrently on NFS
 without corrupting the venv.
 
 Designed to run AFTER setup_vllm_env.py and BEFORE launch_ray_cluster_job.py.
+
+Force rebuild
+-------------
+Pass --force as a script argument, or set SETUP_FORCE_RECREATE=1 in the
+CML job environment to delete and recreate the venv from scratch.
 """
 
+import argparse
 import os
+import shutil
 import sys
 
 # Ensure the project root is on the path so we can import from cai_integration.
@@ -18,15 +25,35 @@ sys.path.insert(0, os.environ.get("CDSW_PROJECT_DIR", "/home/cdsw"))
 from cai_integration.setup_environment import setup_engine_venv  # noqa: E402
 
 LITELLM_PACKAGES = [
-    "litellm>=1.83.0",
-    "pyyaml>=6.0.3",  # used by litellm_engine.py to write the config YAML
+    "litellm[proxy]>=1.83.0",  # [proxy] pulls in websockets + apscheduler + other proxy deps
+    "pyyaml>=6.0.3",           # used by litellm_engine.py to write the config YAML
 ]
+
+_VENV_DIR = "/home/cdsw/.venv-litellm"
 
 
 def main():
+    parser = argparse.ArgumentParser(description="Set up LiteLLM isolated venv")
+    parser.add_argument(
+        "--force",
+        action="store_true",
+        default=False,
+        help="Delete and recreate the venv even if it already exists",
+    )
+    args = parser.parse_args()
+
+    force = args.force or os.environ.get("SETUP_FORCE_RECREATE", "").strip() in ("1", "true", "yes")
+
     print("=" * 70)
     print("🔧 Setting up LiteLLM isolated environment")
     print("=" * 70)
+
+    if force and os.path.exists(_VENV_DIR):
+        print(f"⚠️  --force: removing existing venv at {_VENV_DIR}")
+        shutil.rmtree(_VENV_DIR, ignore_errors=True)
+        lock = f"{_VENV_DIR}.lock"
+        if os.path.exists(lock):
+            os.remove(lock)
 
     success = setup_engine_venv("litellm", LITELLM_PACKAGES)
 
@@ -35,10 +62,9 @@ def main():
         sys.exit(1)
 
     # Verify litellm is importable
-    venv_python = "/home/cdsw/.venv-litellm/bin/python"
     import subprocess
     result = subprocess.run(
-        [venv_python, "-c",
+        [f"{_VENV_DIR}/bin/python", "-c",
          "import importlib.metadata; print(importlib.metadata.version('litellm'))"],
         capture_output=True, text=True,
     )
