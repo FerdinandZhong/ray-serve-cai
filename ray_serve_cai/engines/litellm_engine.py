@@ -137,10 +137,8 @@ class LiteLLMEngine:
         config_path = self._config_file.name
         logger.info("LiteLLM config written to %s", config_path)
 
-        # Use the 'litellm' CLI from the same bin dir as the current Python
-        # (respects virtualenv set by Ray runtime_env).
-        _litellm_bin = Path(sys.executable).parent / "litellm"
-        litellm_cmd = str(_litellm_bin) if _litellm_bin.exists() else "litellm"
+        venv_path = engine_config.get("venv_path", "/home/cdsw/.venv-litellm")
+        litellm_cmd = f"{venv_path}/bin/litellm"
 
         cmd = [
             litellm_cmd,

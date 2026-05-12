@@ -35,6 +35,12 @@ class LiteLLMConfigBuilder:
     litellm_port (int, optional)
         Port for the internal LiteLLM proxy (default: 4000).
         Use a different port if 4000 is already in use on the worker.
+
+    venv_path (str, optional)
+        Absolute path to the Python virtualenv that contains the litellm
+        package and its CLI binary (default: /home/cdsw/.venv-litellm).
+        Ray activates this venv for the actor and the subprocess is launched
+        from <venv_path>/bin/litellm.
     """
 
     def build_config(self, user_config: Dict[str, Any]) -> Dict[str, Any]:
@@ -51,6 +57,9 @@ class LiteLLMConfigBuilder:
 
         if user_config.get("litellm_port"):
             cfg["litellm_port"] = int(user_config["litellm_port"])
+
+        if user_config.get("venv_path"):
+            cfg["venv_path"] = user_config["venv_path"]
 
         logger.info(
             "Built LiteLLM config: %d model(s)", len(cfg["model_list"])
@@ -105,12 +114,13 @@ class LiteLLMDeploymentFactory:
         from pathlib import Path
         from .litellm_engine import LiteLLMEngine
 
-        ray_actor_options: Dict[str, Any] = {"num_cpus": 1, "num_gpus": 0}
-
-        _vp = "/home/cdsw/.venv-litellm"
-        if Path(_vp).exists():
-            ray_actor_options["runtime_env"] = {"virtualenv": _vp}
-            logger.info("Using isolated venv: %s", _vp)
+        venv_path = engine_config.get("venv_path", "/home/cdsw/.venv-litellm")
+        ray_actor_options: Dict[str, Any] = {
+            "num_cpus": 1,
+            "num_gpus": 0,
+            "runtime_env": {"virtualenv": venv_path},
+        }
+        logger.info("Using isolated venv: %s", venv_path)
 
         logger.info(
             "Creating LiteLLM deployment: replicas=%d  models=%d",
