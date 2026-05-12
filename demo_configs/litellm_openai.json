@@ -1,0 +1,13 @@
+{
+  "name": "openai-gateway",
+  "engine_type": "litellm",
+  "route_prefix": "/openai",
+  "num_replicas": 1,
+  "node_type": "cpu-worker",
+  "engine_config": {
+    "litellm_settings": {
+      "drop_params": true,
+      "request_timeout": 120
+    }
+  }
+}

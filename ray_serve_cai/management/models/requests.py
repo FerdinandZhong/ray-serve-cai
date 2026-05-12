@@ -86,16 +86,19 @@ class DeployApplicationRequest(BaseModel):
 
 
 class DeployModelRequest(BaseModel):
-    """Request to deploy a vLLM or SGLang model as a Ray Serve application."""
+    """Request to deploy an engine as a Ray Serve application."""
 
     name: str = Field(..., description="Application name (used as the Ray Serve app name)")
     engine_type: str = Field(
         default="vllm",
-        description="Inference engine to use: 'vllm' or 'sglang'",
+        description="Inference engine: 'vllm', 'sglang', 'litellm', 'yolo', 'mcp', or a custom type",
     )
-    model: str = Field(
-        ...,
-        description="HuggingFace model ID or local path (e.g., 'meta-llama/Llama-3.1-8B-Instruct')",
+    model: Optional[str] = Field(
+        default=None,
+        description=(
+            "HuggingFace model ID or local path. Required for vLLM and SGLang. "
+            "Not needed for LiteLLM, MCP, YOLO, or custom engines (use engine_config instead)."
+        ),
     )
     route_prefix: str = Field(
         default="/",
