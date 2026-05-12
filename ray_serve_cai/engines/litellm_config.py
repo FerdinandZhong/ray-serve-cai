@@ -19,8 +19,10 @@ class LiteLLMConfigBuilder:
 
     Recognised engine_config keys
     ------------------------------
-    model_list (required)
-        List of model definitions. Each entry must have:
+    model_list (optional)
+        List of model definitions. When omitted the proxy starts with no
+        pre-configured models; add them later via the LiteLLM /models API.
+        Each entry must have:
           model_name (str)          — alias used in API calls
           litellm_params (dict)     — passed to LiteLLM, must include "model"
                                       e.g. {"model": "openai/gpt-4o",
@@ -41,7 +43,7 @@ class LiteLLMConfigBuilder:
             raise ValueError(f"Invalid LiteLLM configuration: {err}")
 
         cfg: Dict[str, Any] = {
-            "model_list": user_config["model_list"],
+            "model_list": user_config.get("model_list") or [],
         }
 
         if user_config.get("litellm_settings"):
@@ -59,10 +61,10 @@ class LiteLLMConfigBuilder:
         self, user_config: Dict[str, Any]
     ) -> Tuple[bool, Optional[str]]:
         model_list = user_config.get("model_list")
-        if not model_list or not isinstance(model_list, list):
-            return False, "model_list (list of model definitions) is required"
+        if model_list is not None and not isinstance(model_list, list):
+            return False, "model_list must be a list"
 
-        for i, entry in enumerate(model_list):
+        for i, entry in enumerate(model_list or []):
             if not isinstance(entry, dict):
                 return False, f"model_list[{i}] must be a dict"
             if not entry.get("model_name"):

@@ -128,10 +128,17 @@ class CAIService:
 
         worker_name = f"ray-{group.name}-{int(time.time())}"
 
-        # The worker launcher script reads RAY_HEAD_ADDRESS at runtime when
-        # no head address was baked in at render time.  Inject it via env.
+        # The worker launcher script reads these env vars at runtime:
+        #   RAY_HEAD_ADDRESS — GCS address when not baked into the script
+        #   WORKER_CPUS / WORKER_MEMORY_GB / WORKER_GPUS — passed to the
+        #     worker info server (worker_app.py) so GET /info reports the
+        #     correct resources, especially when cpu/memory are overridden.
         cluster_info = self._load_cluster_info()
-        env = {}
+        env: dict = {
+            "WORKER_CPUS":      str(group.cpu),
+            "WORKER_MEMORY_GB": str(group.memory),
+            "WORKER_GPUS":      str(group.gpus),
+        }
         head_address = cluster_info.get("head_address")
         if head_address:
             env["RAY_HEAD_ADDRESS"] = head_address

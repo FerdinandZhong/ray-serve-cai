@@ -120,7 +120,7 @@ class LiteLLMEngine:
 
         # Write LiteLLM config YAML to a temp file
         litellm_cfg: Dict[str, Any] = {
-            "model_list": engine_config["model_list"],
+            "model_list": engine_config.get("model_list") or [],
         }
         if engine_config.get("litellm_settings"):
             litellm_cfg["litellm_settings"] = engine_config["litellm_settings"]
@@ -137,8 +137,13 @@ class LiteLLMEngine:
         config_path = self._config_file.name
         logger.info("LiteLLM config written to %s", config_path)
 
+        # Use the 'litellm' CLI from the same bin dir as the current Python
+        # (respects virtualenv set by Ray runtime_env).
+        _litellm_bin = Path(sys.executable).parent / "litellm"
+        litellm_cmd = str(_litellm_bin) if _litellm_bin.exists() else "litellm"
+
         cmd = [
-            sys.executable, "-m", "litellm.proxy.server",
+            litellm_cmd,
             "--config", config_path,
             "--port", str(self._port),
             "--host", "127.0.0.1",
