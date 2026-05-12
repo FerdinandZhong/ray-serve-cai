@@ -267,10 +267,14 @@ class VLLMDeploymentFactory:
             - Placement groups: https://docs.ray.io/en/latest/serve/llm/user-guides/cross-node-parallelism.html
             - vLLM distributed: https://docs.vllm.ai/en/stable/serving/distributed_serving.html
         """
+        from pathlib import Path
         # Import here to avoid circular dependency
         from .vllm_engine import create_vllm_deployment
 
         logger.info(f"Creating vLLM deployment with tensor_parallel_size={tensor_parallel_size}")
+
+        _vp = "/home/cdsw/.venv-vllm"
+        venv_path = _vp if Path(_vp).exists() else None
 
         return create_vllm_deployment(
             engine_config=engine_config,
@@ -282,4 +286,5 @@ class VLLMDeploymentFactory:
             placement_group_bundles=kwargs.get("placement_group_bundles"),
             placement_group_strategy=kwargs.get("placement_group_strategy"),
             multi_node=kwargs.get("multi_node", False),
+            venv_path=venv_path,
         )

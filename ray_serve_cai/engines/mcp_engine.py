@@ -203,6 +203,7 @@ def create_mcp_deployment(
     engine_config: Dict[str, Any],
     num_replicas: int = 1,
     use_cpu: bool = True,
+    venv_path: Optional[str] = None,
     **kwargs,
 ) -> serve.Application:
     """
@@ -219,6 +220,10 @@ def create_mcp_deployment(
     """
     num_cpus = engine_config.get("num_cpus", 0.2)
     ray_actor_options: Dict[str, Any] = {"num_cpus": num_cpus, "num_gpus": 0}
+
+    if venv_path:
+        ray_actor_options["runtime_env"] = {"virtualenv": venv_path}
+        logger.info("Using isolated venv: %s", venv_path)
 
     opts: Dict[str, Any] = {
         "num_replicas": num_replicas,

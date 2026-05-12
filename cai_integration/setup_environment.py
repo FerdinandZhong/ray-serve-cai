@@ -184,6 +184,54 @@ def install_nginx():
         return False
 
 
+def setup_engine_venv(engine: str, packages: list, venv_base: str = "/home/cdsw") -> bool:
+    """Create /home/cdsw/.venv-<engine> with fcntl.flock for NFS-safe concurrent creation."""
+    import fcntl
+
+    venv_dir = f"{venv_base}/.venv-{engine}"
+    lock_path = f"{venv_base}/.venv-{engine}.lock"
+
+    if is_venv_ready(venv_dir):
+        print(f"✅ {engine} venv already ready at {venv_dir}")
+        return True
+
+    print(f"\n🔧 Creating {engine} venv at {venv_dir} ...")
+    lock_fd = open(lock_path, "w")
+    try:
+        fcntl.flock(lock_fd, fcntl.LOCK_EX)
+        if is_venv_ready(venv_dir):
+            print(f"✅ {engine} venv created by another process")
+            return True
+
+        if not run_command(f"uv venv {venv_dir}"):
+            print(f"❌ Failed to create {engine} venv")
+            return False
+
+        uv_install = f"uv pip install --python {venv_dir}/bin/python"
+        for pkg in packages:
+            if not run_command(f"{uv_install} '{pkg}'"):
+                print(f"⚠️  {pkg} failed for {engine} venv — continuing")
+
+        ready = is_venv_ready(venv_dir)
+        if ready:
+            print(f"✅ {engine} venv ready")
+        else:
+            print(f"❌ {engine} venv not ready after install")
+        return ready
+    finally:
+        fcntl.flock(lock_fd, fcntl.LOCK_UN)
+        lock_fd.close()
+
+
+_ENGINE_PACKAGES = {
+    "vllm":    ["vllm>=0.13.0", "ninja"],
+    "sglang":  ["sglang>=0.5.7"],
+    "yolo":    ["ultralytics>=8.0.0", "Pillow>=9.0.0", "opencv-python-headless>=4.8.0"],
+    "mcp":     ["mcp>=1.0.0", "httpx>=0.27.0"],
+    "litellm": ["litellm>=1.83.0"],
+}
+
+
 def main():
     """Main setup function."""
     import argparse
@@ -288,25 +336,6 @@ def main():
             print(f"\n📦 Installing {package}...")
             if not run_command(f"{uv_install} {package}"):
                 print(f"⚠️  Warning: Could not install {package}")
-
-    # Install inference engines independently — they conflict with each other
-    # so we install whichever succeeds (vllm takes precedence).
-    print("\n📦 Installing inference engine (vllm)...")
-    if run_command(f"{uv_install} 'vllm>=0.13.0'"):
-        print("✅ vllm installed")
-        # ninja is required by FlashInfer's JIT compilation, which vLLM triggers on
-        # older GPUs (e.g. T4/SM7.5) that lack pre-compiled flash-attn kernels.
-        # Install the ninja pip package so `.venv/bin/ninja` is available on PATH.
-        if run_command(f"{uv_install} ninja"):
-            print("✅ ninja installed (FlashInfer JIT dependency)")
-        else:
-            print("⚠️  ninja installation failed — FlashInfer JIT may fail on older GPUs")
-    else:
-        print("⚠️  vllm failed — trying sglang...")
-        if run_command(f"{uv_install} 'sglang>=0.5.7'"):
-            print("✅ sglang installed")
-        else:
-            print("⚠️  Neither vllm nor sglang could be installed — inference workers will fail")
 
     # Install YOLO dependencies (ultralytics + Pillow).
     # These are lightweight and do not conflict with vllm/sglang.

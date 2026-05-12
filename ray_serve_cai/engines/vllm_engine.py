@@ -473,6 +473,7 @@ def create_vllm_deployment(
     placement_group_bundles: Optional[List[Dict[str, float]]] = None,
     placement_group_strategy: Optional[str] = None,
     multi_node: bool = False,
+    venv_path: Optional[str] = None,
 ) -> serve.Application:
     """
     Create a vLLM Ray Serve deployment with appropriate resource allocation.
@@ -618,6 +619,10 @@ def create_vllm_deployment(
         ray_actor_options.setdefault("resources", {})
         ray_actor_options["resources"][f"node_type:{node_type}"] = 0.001
         logger.info("Pinning deployment to node_type=%r via ray_actor_options", node_type)
+
+    if venv_path:
+        ray_actor_options["runtime_env"] = {"virtualenv": venv_path}
+        logger.info("Using isolated venv: %s", venv_path)
 
     # ── Build .options() kwargs ─────────────────────────────────────────────
     opts: Dict[str, Any] = {
