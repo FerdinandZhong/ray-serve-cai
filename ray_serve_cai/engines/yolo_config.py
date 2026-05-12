@@ -180,6 +180,12 @@ class YOLODeploymentFactory:
             ray_actor_options["resources"] = {f"node_type:{node_type}": 0.001}
             logger.info(f"Pinning deployment to node_type={node_type!r}")
 
+        from pathlib import Path
+        _vp = "/home/cdsw/.venv-yolo"
+        if Path(_vp).exists():
+            ray_actor_options["runtime_env"] = {"virtualenv": _vp}
+            logger.info("Using isolated venv: %s", _vp)
+
         logger.info(
             f"Creating YOLO deployment: replicas={num_replicas}  "
             f"num_gpus={num_gpus}  num_cpus={num_cpus}  "

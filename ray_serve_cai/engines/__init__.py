@@ -120,6 +120,30 @@ except ImportError as e:
 except Exception as e:
     logger.warning(f"Failed to register MCP engine: {e}")
 
+# Try to register LiteLLM engine (optional, fail gracefully)
+# Requires: litellm>=1.83.0, pyyaml (isolated in .venv-litellm)
+try:
+    from .litellm_config import LiteLLMConfigBuilder, LiteLLMDeploymentFactory
+
+    try:
+        from .litellm_engine import LiteLLMEngine
+    except Exception as _lt_err:
+        logger.info("LiteLLM engine module not importable (%s: %s) "
+                     "— registering with stub",
+                     type(_lt_err).__name__, _lt_err)
+        LiteLLMEngine = type("LiteLLMEngine", (), {})
+
+    register_engine(
+        engine_type="litellm",
+        engine_class=LiteLLMEngine,
+        config_builder=LiteLLMConfigBuilder(),
+        deployment_factory=LiteLLMDeploymentFactory(),
+        set_as_default=False
+    )
+    logger.info("✅ Registered LiteLLM engine")
+except Exception as e:
+    logger.warning("Failed to register LiteLLM engine (%s): %s", type(e).__name__, e)
+
 __all__ = [
     # Legacy exports (backward compatibility)
     'VLLMEngine',

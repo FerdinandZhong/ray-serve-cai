@@ -309,6 +309,7 @@ def create_sglang_deployment(
     gpu_fraction: Optional[float] = None,
     placement_group_bundles: Optional[List[Dict[str, float]]] = None,
     placement_group_strategy: Optional[str] = None,
+    venv_path: Optional[str] = None,
 ) -> serve.Application:
     """Create an SGLang Ray Serve deployment."""
     logger.info("Creating SGLang deployment  replicas=%d  tp=%d  cpu=%s",
@@ -344,6 +345,10 @@ def create_sglang_deployment(
         ray_actor_options.setdefault("resources", {})
         ray_actor_options["resources"][f"node_type:{node_type}"] = 0.001
         logger.info("Pinning deployment to node_type=%r", node_type)
+
+    if venv_path:
+        ray_actor_options["runtime_env"] = {"virtualenv": venv_path}
+        logger.info("Using isolated venv: %s", venv_path)
 
     opts: Dict[str, Any] = {
         "num_replicas": num_replicas,
