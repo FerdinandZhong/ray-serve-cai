@@ -38,7 +38,8 @@ def main():
     venv_python = "/home/cdsw/.venv-litellm/bin/python"
     import subprocess
     result = subprocess.run(
-        [venv_python, "-c", "import litellm; print(litellm.__version__)"],
+        [venv_python, "-c",
+         "import importlib.metadata; print(importlib.metadata.version('litellm'))"],
         capture_output=True, text=True,
     )
     if result.returncode == 0:

@@ -39,7 +39,8 @@ def main():
     venv_python = "/home/cdsw/.venv-vllm/bin/python"
     import subprocess
     result = subprocess.run(
-        [venv_python, "-c", "import vllm; print(vllm.__version__)"],
+        [venv_python, "-c",
+         "import importlib.metadata; print(importlib.metadata.version('vllm'))"],
         capture_output=True, text=True,
     )
     if result.returncode == 0:
