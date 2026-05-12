@@ -138,10 +138,14 @@ class LiteLLMEngine:
         logger.info("LiteLLM config written to %s", config_path)
 
         venv_path = engine_config.get("venv_path", "/home/cdsw/.venv-litellm")
-        litellm_cmd = f"{venv_path}/bin/litellm"
+        # Run the litellm CLI script via the venv's own Python to avoid
+        # shebang interpreter mismatch (the script's shebang may point to a
+        # Python version not present on the worker, e.g. python3.13).
+        python_bin = f"{venv_path}/bin/python"
+        litellm_script = f"{venv_path}/bin/litellm"
 
         cmd = [
-            litellm_cmd,
+            python_bin, litellm_script,
             "--config", config_path,
             "--port", str(self._port),
             "--host", "127.0.0.1",

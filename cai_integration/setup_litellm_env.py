@@ -55,7 +55,7 @@ def main():
         if os.path.exists(lock):
             os.remove(lock)
 
-    success = setup_engine_venv("litellm", LITELLM_PACKAGES)
+    success = setup_engine_venv("litellm", LITELLM_PACKAGES, python="python3.11")
 
     if not success:
         print("❌ LiteLLM venv setup failed")
