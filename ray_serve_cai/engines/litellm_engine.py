@@ -271,6 +271,7 @@ class LiteLLMEngine:
 
     @_litellm_app.get("/health")
     async def health_check(self):
+        # NOTE: health_check is defined before the catch-all so it takes priority.
         alive = self._process.poll() is None
         return {
             "status": "healthy" if alive else "unhealthy",
@@ -279,3 +280,21 @@ class LiteLLMEngine:
             "litellm_pid": self._process.pid if hasattr(self, "_process") else None,
             "litellm_alive": alive,
         }
+
+    @_litellm_app.api_route("/{path:path}", methods=["GET", "POST", "PUT", "DELETE", "PATCH"])
+    async def proxy_catchall(self, path: str, request: Request):
+        """Forward any unmatched path to the LiteLLM subprocess (e.g. /ui, /ui/*)."""
+        body = await request.body()
+        async with httpx.AsyncClient(base_url=self._base_url, timeout=60) as client:
+            resp = await client.request(
+                method=request.method,
+                url=f"/{path}",
+                content=body,
+                headers={k: v for k, v in request.headers.items() if k.lower() != "host"},
+                params=dict(request.query_params),
+            )
+        return Response(
+            content=resp.content,
+            status_code=resp.status_code,
+            headers=dict(resp.headers),
+        )
