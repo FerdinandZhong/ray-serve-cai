@@ -285,7 +285,11 @@ class LiteLLMEngine:
     async def proxy_catchall(self, path: str, request: Request):
         """Forward any unmatched path to the LiteLLM subprocess (e.g. /ui, /ui/*)."""
         body = await request.body()
-        async with httpx.AsyncClient(base_url=self._base_url, timeout=60) as client:
+        async with httpx.AsyncClient(
+            base_url=self._base_url,
+            timeout=60,
+            follow_redirects=False,  # handle redirects ourselves so we can rewrite Location
+        ) as client:
             resp = await client.request(
                 method=request.method,
                 url=f"/{path}",
@@ -293,8 +297,19 @@ class LiteLLMEngine:
                 headers={k: v for k, v in request.headers.items() if k.lower() != "host"},
                 params=dict(request.query_params),
             )
+
+        headers = dict(resp.headers)
+
+        # Rewrite Location headers: strip the internal base URL so the browser
+        # follows a path-relative redirect instead of hitting 127.0.0.1 directly.
+        if "location" in headers:
+            loc = headers["location"]
+            internal_prefix = self._base_url  # e.g. http://127.0.0.1:4000
+            if loc.startswith(internal_prefix):
+                headers["location"] = loc[len(internal_prefix):]
+
         return Response(
             content=resp.content,
             status_code=resp.status_code,
-            headers=dict(resp.headers),
+            headers=headers,
         )
