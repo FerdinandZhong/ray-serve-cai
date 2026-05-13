@@ -300,13 +300,14 @@ class LiteLLMEngine:
 
         headers = dict(resp.headers)
 
-        # Rewrite Location headers: strip the internal base URL so the browser
-        # follows a path-relative redirect instead of hitting 127.0.0.1 directly.
+        # Rewrite Location headers: replace the internal base URL with the
+        # public route prefix so the browser stays on the correct public path.
+        # e.g. http://127.0.0.1:4000/ui → /openai/ui
         if "location" in headers:
             loc = headers["location"]
-            internal_prefix = self._base_url  # e.g. http://127.0.0.1:4000
-            if loc.startswith(internal_prefix):
-                headers["location"] = loc[len(internal_prefix):]
+            if loc.startswith(self._base_url):
+                root_path = request.scope.get("root_path", "")
+                headers["location"] = root_path + loc[len(self._base_url):]
 
         return Response(
             content=resp.content,
