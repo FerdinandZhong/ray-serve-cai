@@ -124,6 +124,10 @@ class LiteLLMEngine:
         }
         if engine_config.get("litellm_settings"):
             litellm_cfg["litellm_settings"] = engine_config["litellm_settings"]
+        if engine_config.get("server_root_path"):
+            litellm_cfg["general_settings"] = {
+                "server_root_path": engine_config["server_root_path"],
+            }
 
         # Use a named temp file so the subprocess can read it after open()
         self._config_file = tempfile.NamedTemporaryFile(

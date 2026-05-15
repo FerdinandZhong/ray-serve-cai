@@ -173,6 +173,7 @@ class RayService:
             "model": model,
             "tensor_parallel_size": tensor_parallel_size,
             "use_cpu": use_cpu,
+            "route_prefix": route_prefix,
             **(engine_config or {}),
         }
         if node_type:

@@ -61,6 +61,16 @@ class LiteLLMConfigBuilder:
         if user_config.get("venv_path"):
             cfg["venv_path"] = user_config["venv_path"]
 
+        # server_root_path tells LiteLLM (via uvicorn) its mount prefix so the
+        # Next.js UI generates correct asset paths.  Prefer an explicit value in
+        # engine_config; fall back to the deployment's route_prefix.
+        root_path = (
+            user_config.get("server_root_path")
+            or user_config.get("route_prefix")
+        )
+        if root_path and root_path != "/":
+            cfg["server_root_path"] = root_path
+
         logger.info(
             "Built LiteLLM config: %d model(s)", len(cfg["model_list"])
         )
