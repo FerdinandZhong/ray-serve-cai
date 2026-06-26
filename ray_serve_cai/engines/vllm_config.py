@@ -120,6 +120,9 @@ def build_vllm_engine_config(user_config: Dict[str, Any]) -> Dict[str, Any]:
     if user_config.get('attention_backend'):
         engine_config['attention_backend'] = user_config['attention_backend']
 
+    if user_config.get('autoscaling_config'):
+        engine_config['autoscaling_config'] = user_config['autoscaling_config']
+
     logger.info(f"Built vLLM engine config: {engine_config}")
 
     return engine_config

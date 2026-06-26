@@ -71,6 +71,9 @@ class LiteLLMConfigBuilder:
         if root_path and root_path != "/":
             cfg["server_root_path"] = root_path
 
+        if user_config.get("autoscaling_config"):
+            cfg["autoscaling_config"] = user_config["autoscaling_config"]
+
         logger.info(
             "Built LiteLLM config: %d model(s)", len(cfg["model_list"])
         )
@@ -138,7 +141,11 @@ class LiteLLMDeploymentFactory:
             len(engine_config.get("model_list", [])),
         )
 
-        return LiteLLMEngine.options(
-            num_replicas=num_replicas,
-            ray_actor_options=ray_actor_options,
-        ).bind(engine_config)
+        autoscaling = engine_config.get("autoscaling_config")
+        deploy_opts: Dict[str, Any] = {"ray_actor_options": ray_actor_options}
+        if autoscaling:
+            deploy_opts["autoscaling_config"] = autoscaling
+        else:
+            deploy_opts["num_replicas"] = num_replicas
+
+        return LiteLLMEngine.options(**deploy_opts).bind(engine_config)

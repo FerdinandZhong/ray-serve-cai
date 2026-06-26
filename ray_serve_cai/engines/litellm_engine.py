@@ -303,6 +303,7 @@ class LiteLLMEngine:
             )
 
         headers = dict(resp.headers)
+        root_path = request.scope.get("root_path", "")
 
         # Rewrite Location headers: replace the internal base URL with the
         # public route prefix so the browser stays on the correct public path.
@@ -310,11 +311,23 @@ class LiteLLMEngine:
         if "location" in headers:
             loc = headers["location"]
             if loc.startswith(self._base_url):
-                root_path = request.scope.get("root_path", "")
                 headers["location"] = root_path + loc[len(self._base_url):]
 
+        content = resp.content
+
+        # Rewrite root-relative asset paths in HTML so the Next.js UI requests
+        # assets through the correct route prefix instead of the bare root.
+        # Next.js hardcodes /_next/... paths; without this the browser fetches
+        # them from / which bypasses our /openai prefix entirely → 404.
+        if root_path and "text/html" in resp.headers.get("content-type", ""):
+            text = content.decode("utf-8", errors="replace")
+            text = text.replace("/_next/", f"{root_path}/_next/")
+            text = text.replace('"/_openapi', f'"{root_path}/_openapi')
+            content = text.encode("utf-8")
+            headers.pop("content-length", None)  # length changed after rewrite
+
         return Response(
-            content=resp.content,
+            content=content,
             status_code=resp.status_code,
             headers=headers,
         )

@@ -73,6 +73,9 @@ class YOLOConfigBuilder:
             "node_type":            user_config.get("node_type"),
         }
 
+        if user_config.get("autoscaling_config"):
+            engine_config["autoscaling_config"] = user_config["autoscaling_config"]
+
         logger.info(
             f"Built YOLO engine config: model={model_path!r}  "
             f"device={engine_config['device']}  "
@@ -193,7 +196,11 @@ class YOLODeploymentFactory:
             f"batch_wait_timeout_s={batch_wait_timeout_s}"
         )
 
-        return YOLODeployment.options(
-            num_replicas=num_replicas,
-            ray_actor_options=ray_actor_options,
-        ).bind(engine_config)
+        autoscaling = engine_config.get("autoscaling_config")
+        deploy_opts: Dict[str, Any] = {"ray_actor_options": ray_actor_options}
+        if autoscaling:
+            deploy_opts["autoscaling_config"] = autoscaling
+        else:
+            deploy_opts["num_replicas"] = num_replicas
+
+        return YOLODeployment.options(**deploy_opts).bind(engine_config)

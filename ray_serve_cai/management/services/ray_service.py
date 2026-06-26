@@ -134,6 +134,7 @@ class RayService:
         placement_group_strategy: Optional[str] = None,
         node_type: Optional[str] = None,
         multi_node: bool = False,
+        autoscaling_config: Optional[Dict[str, Any]] = None,
     ) -> Dict[str, Any]:
         """
         Deploy a vLLM or SGLang model as a Ray Serve application.
@@ -178,6 +179,8 @@ class RayService:
         }
         if node_type:
             user_config["node_type"] = node_type
+        if autoscaling_config:
+            user_config["autoscaling_config"] = autoscaling_config
 
         config_builder = registry.get_config_builder(engine_type)
         built_config = config_builder.build_config(user_config)

@@ -350,11 +350,15 @@ def create_sglang_deployment(
         ray_actor_options["runtime_env"] = {"virtualenv": venv_path}
         logger.info("Using isolated venv: %s", venv_path)
 
+    autoscaling = engine_config.get("autoscaling_config")
     opts: Dict[str, Any] = {
-        "num_replicas": num_replicas,
         "ray_actor_options": ray_actor_options,
         "max_ongoing_requests": max_ongoing_requests,
     }
+    if autoscaling:
+        opts["autoscaling_config"] = autoscaling
+    else:
+        opts["num_replicas"] = num_replicas
     if placement_group_bundles is not None:
         opts["placement_group_bundles"] = placement_group_bundles
         if placement_group_strategy:

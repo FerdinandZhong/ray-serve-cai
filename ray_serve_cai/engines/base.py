@@ -34,6 +34,9 @@ logger = logging.getLogger(__name__)
 @runtime_checkable
 class LLMEngineProtocol(Protocol):
     """
+    DEPRECATED: No engine implements this protocol. Use ConfigBuilderProtocol
+    and DeploymentFactoryProtocol instead — those are the real contracts.
+
     Protocol that all LLM engines must implement.
 
     This defines the interface for engine deployment classes that handle

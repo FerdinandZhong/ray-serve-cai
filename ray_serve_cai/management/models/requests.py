@@ -173,6 +173,15 @@ class DeployModelRequest(BaseModel):
             "Requires NCCL inter-node connectivity between worker nodes."
         ),
     )
+    autoscaling_config: Optional[Dict[str, Any]] = Field(
+        default=None,
+        description=(
+            "Ray Serve autoscaling configuration. When set, num_replicas is ignored. "
+            "Example: {\"min_replicas\": 1, \"max_replicas\": 4, "
+            "\"target_ongoing_requests\": 5, \"upscale_delay_s\": 30, "
+            "\"downscale_delay_s\": 300}"
+        ),
+    )
 
     @field_validator("placement_group_strategy")
     @classmethod
@@ -182,6 +191,20 @@ class DeployModelRequest(BaseModel):
             raise ValueError(
                 f"placement_group_strategy must be one of {sorted(valid)}, got '{v}'"
             )
+        return v
+
+    @field_validator("autoscaling_config")
+    @classmethod
+    def validate_autoscaling_config(
+        cls, v: Optional[Dict[str, Any]], info
+    ) -> Optional[Dict[str, Any]]:
+        if v is not None:
+            num_replicas = info.data.get("num_replicas", 1)
+            if num_replicas > 1:
+                raise ValueError(
+                    "autoscaling_config and num_replicas > 1 are mutually exclusive. "
+                    "Set num_replicas=1 (the default) when using autoscaling_config."
+                )
         return v
 
     class Config:
