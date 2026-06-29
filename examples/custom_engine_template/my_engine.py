@@ -108,7 +108,7 @@ class MyEngineDeploymentFactory:
         from pathlib import Path
         _vp = "/home/cdsw/.venv-my_engine"
         if Path(_vp).exists():
-            ray_actor_options["runtime_env"] = {"virtualenv": _vp}
+            ray_actor_options["runtime_env"] = {"py_executable": f"{_vp}/bin/python"}
 
         return MyEngine.options(
             num_replicas=num_replicas,

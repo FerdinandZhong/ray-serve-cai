@@ -45,7 +45,7 @@ class SGLangConfigBuilder:
 
         # Optional passthrough keys
         for key in ("dtype", "trust_remote_code", "context_length",
-                     "mem_fraction_static", "quantization"):
+                     "mem_fraction_static", "quantization", "autoscaling_config"):
             val = user_config.get(key)
             if val is not None:
                 engine_config[key] = val

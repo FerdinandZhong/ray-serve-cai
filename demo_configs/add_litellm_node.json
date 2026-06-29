@@ -1,0 +1,6 @@
+{
+  "node_type": "litellm-worker",
+  "cpu": 8,
+  "memory": 16,
+  "gpus": 0
+}

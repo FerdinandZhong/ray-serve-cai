@@ -184,8 +184,21 @@ def install_nginx():
         return False
 
 
-def setup_engine_venv(engine: str, packages: list, venv_base: str = "/home/cdsw") -> bool:
-    """Create /home/cdsw/.venv-<engine> with fcntl.flock for NFS-safe concurrent creation."""
+def setup_engine_venv(
+    engine: str,
+    packages: list,
+    venv_base: str = "/home/cdsw",
+    python: str = None,
+) -> bool:
+    """Create /home/cdsw/.venv-<engine> with fcntl.flock for NFS-safe concurrent creation.
+
+    Args:
+        engine:    Engine name (used as the venv suffix, e.g. 'litellm').
+        packages:  List of pip requirement strings to install.
+        venv_base: Parent directory for the venv (default /home/cdsw).
+        python:    Python interpreter for uv venv, e.g. 'python3.11'.
+                   When None, uv picks its default interpreter.
+    """
     import fcntl
 
     venv_dir = f"{venv_base}/.venv-{engine}"
@@ -195,7 +208,8 @@ def setup_engine_venv(engine: str, packages: list, venv_base: str = "/home/cdsw"
         print(f"✅ {engine} venv already ready at {venv_dir}")
         return True
 
-    print(f"\n🔧 Creating {engine} venv at {venv_dir} ...")
+    python_flag = f"--python {python}" if python else ""
+    print(f"\n🔧 Creating {engine} venv at {venv_dir} (python={python or 'default'}) ...")
     lock_fd = open(lock_path, "w")
     try:
         fcntl.flock(lock_fd, fcntl.LOCK_EX)
@@ -203,7 +217,7 @@ def setup_engine_venv(engine: str, packages: list, venv_base: str = "/home/cdsw"
             print(f"✅ {engine} venv created by another process")
             return True
 
-        if not run_command(f"uv venv {venv_dir}"):
+        if not run_command(f"uv venv {python_flag} {venv_dir}".strip()):
             print(f"❌ Failed to create {engine} venv")
             return False
 

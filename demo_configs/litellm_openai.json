@@ -1,0 +1,25 @@
+{
+  "name": "openai-gateway",
+  "engine_type": "litellm",
+  "route_prefix": "/openai",
+  "num_replicas": 1,
+  "node_type": "l40-gpu-worker",
+  "ray_actor_options": {
+    "num_cpus": 8
+  },
+  "engine_config": {
+    "venv_path": "/home/cdsw/.venv-litellm",
+    "model_list": [
+      {
+        "model_name": "gpt-4o",
+        "litellm_params": {
+          "model": "openai/gpt-4o"
+        }
+      }
+    ],
+    "litellm_settings": {
+      "drop_params": true,
+      "request_timeout": 120
+    }
+  }
+}

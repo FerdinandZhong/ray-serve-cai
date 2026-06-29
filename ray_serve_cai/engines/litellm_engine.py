@@ -120,10 +120,14 @@ class LiteLLMEngine:
 
         # Write LiteLLM config YAML to a temp file
         litellm_cfg: Dict[str, Any] = {
-            "model_list": engine_config["model_list"],
+            "model_list": engine_config.get("model_list") or [],
         }
         if engine_config.get("litellm_settings"):
             litellm_cfg["litellm_settings"] = engine_config["litellm_settings"]
+        if engine_config.get("server_root_path"):
+            litellm_cfg["general_settings"] = {
+                "server_root_path": engine_config["server_root_path"],
+            }
 
         # Use a named temp file so the subprocess can read it after open()
         self._config_file = tempfile.NamedTemporaryFile(
@@ -137,8 +141,15 @@ class LiteLLMEngine:
         config_path = self._config_file.name
         logger.info("LiteLLM config written to %s", config_path)
 
+        venv_path = engine_config.get("venv_path", "/home/cdsw/.venv-litellm")
+        # Run the litellm CLI script via the venv's own Python to avoid
+        # shebang interpreter mismatch (the script's shebang may point to a
+        # Python version not present on the worker, e.g. python3.13).
+        python_bin = f"{venv_path}/bin/python"
+        litellm_script = f"{venv_path}/bin/litellm"
+
         cmd = [
-            sys.executable, "-m", "litellm.proxy.server",
+            python_bin, litellm_script,
             "--config", config_path,
             "--port", str(self._port),
             "--host", "127.0.0.1",
@@ -264,6 +275,7 @@ class LiteLLMEngine:
 
     @_litellm_app.get("/health")
     async def health_check(self):
+        # NOTE: health_check is defined before the catch-all so it takes priority.
         alive = self._process.poll() is None
         return {
             "status": "healthy" if alive else "unhealthy",
@@ -272,3 +284,50 @@ class LiteLLMEngine:
             "litellm_pid": self._process.pid if hasattr(self, "_process") else None,
             "litellm_alive": alive,
         }
+
+    @_litellm_app.api_route("/{path:path}", methods=["GET", "POST", "PUT", "DELETE", "PATCH"])
+    async def proxy_catchall(self, path: str, request: Request):
+        """Forward any unmatched path to the LiteLLM subprocess (e.g. /ui, /ui/*)."""
+        body = await request.body()
+        async with httpx.AsyncClient(
+            base_url=self._base_url,
+            timeout=60,
+            follow_redirects=False,  # handle redirects ourselves so we can rewrite Location
+        ) as client:
+            resp = await client.request(
+                method=request.method,
+                url=f"/{path}",
+                content=body,
+                headers={k: v for k, v in request.headers.items() if k.lower() != "host"},
+                params=dict(request.query_params),
+            )
+
+        headers = dict(resp.headers)
+        root_path = request.scope.get("root_path", "")
+
+        # Rewrite Location headers: replace the internal base URL with the
+        # public route prefix so the browser stays on the correct public path.
+        # e.g. http://127.0.0.1:4000/ui → /openai/ui
+        if "location" in headers:
+            loc = headers["location"]
+            if loc.startswith(self._base_url):
+                headers["location"] = root_path + loc[len(self._base_url):]
+
+        content = resp.content
+
+        # Rewrite root-relative asset paths in HTML so the Next.js UI requests
+        # assets through the correct route prefix instead of the bare root.
+        # Next.js hardcodes /_next/... paths; without this the browser fetches
+        # them from / which bypasses our /openai prefix entirely → 404.
+        if root_path and "text/html" in resp.headers.get("content-type", ""):
+            text = content.decode("utf-8", errors="replace")
+            text = text.replace("/_next/", f"{root_path}/_next/")
+            text = text.replace('"/_openapi', f'"{root_path}/_openapi')
+            content = text.encode("utf-8")
+            headers.pop("content-length", None)  # length changed after rewrite
+
+        return Response(
+            content=content,
+            status_code=resp.status_code,
+            headers=headers,
+        )

@@ -19,8 +19,10 @@ class LiteLLMConfigBuilder:
 
     Recognised engine_config keys
     ------------------------------
-    model_list (required)
-        List of model definitions. Each entry must have:
+    model_list (optional)
+        List of model definitions. When omitted the proxy starts with no
+        pre-configured models; add them later via the LiteLLM /models API.
+        Each entry must have:
           model_name (str)          — alias used in API calls
           litellm_params (dict)     — passed to LiteLLM, must include "model"
                                       e.g. {"model": "openai/gpt-4o",
@@ -33,6 +35,12 @@ class LiteLLMConfigBuilder:
     litellm_port (int, optional)
         Port for the internal LiteLLM proxy (default: 4000).
         Use a different port if 4000 is already in use on the worker.
+
+    venv_path (str, optional)
+        Absolute path to the Python virtualenv that contains the litellm
+        package and its CLI binary (default: /home/cdsw/.venv-litellm).
+        Ray activates this venv for the actor and the subprocess is launched
+        from <venv_path>/bin/litellm.
     """
 
     def build_config(self, user_config: Dict[str, Any]) -> Dict[str, Any]:
@@ -41,7 +49,7 @@ class LiteLLMConfigBuilder:
             raise ValueError(f"Invalid LiteLLM configuration: {err}")
 
         cfg: Dict[str, Any] = {
-            "model_list": user_config["model_list"],
+            "model_list": user_config.get("model_list") or [],
         }
 
         if user_config.get("litellm_settings"):
@@ -49,6 +57,22 @@ class LiteLLMConfigBuilder:
 
         if user_config.get("litellm_port"):
             cfg["litellm_port"] = int(user_config["litellm_port"])
+
+        if user_config.get("venv_path"):
+            cfg["venv_path"] = user_config["venv_path"]
+
+        # server_root_path tells LiteLLM (via uvicorn) its mount prefix so the
+        # Next.js UI generates correct asset paths.  Prefer an explicit value in
+        # engine_config; fall back to the deployment's route_prefix.
+        root_path = (
+            user_config.get("server_root_path")
+            or user_config.get("route_prefix")
+        )
+        if root_path and root_path != "/":
+            cfg["server_root_path"] = root_path
+
+        if user_config.get("autoscaling_config"):
+            cfg["autoscaling_config"] = user_config["autoscaling_config"]
 
         logger.info(
             "Built LiteLLM config: %d model(s)", len(cfg["model_list"])
@@ -59,10 +83,10 @@ class LiteLLMConfigBuilder:
         self, user_config: Dict[str, Any]
     ) -> Tuple[bool, Optional[str]]:
         model_list = user_config.get("model_list")
-        if not model_list or not isinstance(model_list, list):
-            return False, "model_list (list of model definitions) is required"
+        if model_list is not None and not isinstance(model_list, list):
+            return False, "model_list must be a list"
 
-        for i, entry in enumerate(model_list):
+        for i, entry in enumerate(model_list or []):
             if not isinstance(entry, dict):
                 return False, f"model_list[{i}] must be a dict"
             if not entry.get("model_name"):
@@ -103,12 +127,13 @@ class LiteLLMDeploymentFactory:
         from pathlib import Path
         from .litellm_engine import LiteLLMEngine
 
-        ray_actor_options: Dict[str, Any] = {"num_cpus": 1, "num_gpus": 0}
-
-        _vp = "/home/cdsw/.venv-litellm"
-        if Path(_vp).exists():
-            ray_actor_options["runtime_env"] = {"virtualenv": _vp}
-            logger.info("Using isolated venv: %s", _vp)
+        venv_path = engine_config.get("venv_path", "/home/cdsw/.venv-litellm")
+        ray_actor_options: Dict[str, Any] = {
+            "num_cpus": 1,
+            "num_gpus": 0,
+            "runtime_env": {"py_executable": f"{venv_path}/bin/python"},
+        }
+        logger.info("Using isolated venv: %s", venv_path)
 
         logger.info(
             "Creating LiteLLM deployment: replicas=%d  models=%d",
@@ -116,7 +141,11 @@ class LiteLLMDeploymentFactory:
             len(engine_config.get("model_list", [])),
         )
 
-        return LiteLLMEngine.options(
-            num_replicas=num_replicas,
-            ray_actor_options=ray_actor_options,
-        ).bind(engine_config)
+        autoscaling = engine_config.get("autoscaling_config")
+        deploy_opts: Dict[str, Any] = {"ray_actor_options": ray_actor_options}
+        if autoscaling:
+            deploy_opts["autoscaling_config"] = autoscaling
+        else:
+            deploy_opts["num_replicas"] = num_replicas
+
+        return LiteLLMEngine.options(**deploy_opts).bind(engine_config)
