@@ -165,8 +165,8 @@ def load_config():
     Head node has no GPUs — only workers carry GPU resources.
     """
     # ── Step 1: built-in defaults ────────────────────────────────────────────
-    _STD  = "docker.repository.cloudera.com/cloudera/cdsw/ml-runtime-pbj-jupyterlab-python3.11-standard:2026.01.1-b6"
-    _CUDA = "docker.repository.cloudera.com/cloudera/cdsw/ml-runtime-pbj-jupyterlab-python3.11-cuda:2026.01.1-b6"
+    _STD  = "docker.repository.cloudera.com/cloudera/cdsw/ml-runtime-pbj-jupyterlab-python3.11-standard:2026.04.1-b7"
+    _CUDA = "docker.repository.cloudera.com/cloudera/cdsw/ml-runtime-pbj-jupyterlab-python3.11-cuda:2026.04.1-b7"
     config = {
         'num_workers':              1,
         'head_cpu':                 8,
