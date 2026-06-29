@@ -186,7 +186,7 @@ class YOLODeploymentFactory:
         from pathlib import Path
         _vp = "/home/cdsw/.venv-yolo"
         if Path(_vp).exists():
-            ray_actor_options["runtime_env"] = {"virtualenv": _vp}
+            ray_actor_options["runtime_env"] = {"py_executable": f"{_vp}/bin/python"}
             logger.info("Using isolated venv: %s", _vp)
 
         logger.info(

@@ -222,7 +222,7 @@ def create_mcp_deployment(
     ray_actor_options: Dict[str, Any] = {"num_cpus": num_cpus, "num_gpus": 0}
 
     if venv_path:
-        ray_actor_options["runtime_env"] = {"virtualenv": venv_path}
+        ray_actor_options["runtime_env"] = {"py_executable": f"{venv_path}/bin/python"}
         logger.info("Using isolated venv: %s", venv_path)
 
     opts: Dict[str, Any] = {

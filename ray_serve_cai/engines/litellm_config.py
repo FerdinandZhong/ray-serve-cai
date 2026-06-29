@@ -131,7 +131,7 @@ class LiteLLMDeploymentFactory:
         ray_actor_options: Dict[str, Any] = {
             "num_cpus": 1,
             "num_gpus": 0,
-            "runtime_env": {"virtualenv": venv_path},
+            "runtime_env": {"py_executable": f"{venv_path}/bin/python"},
         }
         logger.info("Using isolated venv: %s", venv_path)
 

@@ -125,9 +125,12 @@ class SGLangEngine:
         self._sglang_port = engine_config.get("sglang_port", _DEFAULT_SGLANG_PORT)
         self._base_url = f"http://127.0.0.1:{self._sglang_port}"
 
-        # Build sglang launch command
+        # Build sglang launch command using the isolated venv Python so sglang
+        # is resolved from .venv-sglang, not the root venv.
+        _sglang_venv = engine_config.get("venv_path", "/home/cdsw/.venv-sglang")
+        _python_bin = f"{_sglang_venv}/bin/python"
         cmd = [
-            sys.executable, "-m", "sglang.launch_server",
+            _python_bin, "-m", "sglang.launch_server",
             "--model-path", engine_config["model"],
             "--port", str(self._sglang_port),
             "--host", "127.0.0.1",
@@ -347,7 +350,7 @@ def create_sglang_deployment(
         logger.info("Pinning deployment to node_type=%r", node_type)
 
     if venv_path:
-        ray_actor_options["runtime_env"] = {"virtualenv": venv_path}
+        ray_actor_options["runtime_env"] = {"py_executable": f"{venv_path}/bin/python"}
         logger.info("Using isolated venv: %s", venv_path)
 
     autoscaling = engine_config.get("autoscaling_config")

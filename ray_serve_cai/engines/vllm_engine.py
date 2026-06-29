@@ -621,7 +621,7 @@ def create_vllm_deployment(
         logger.info("Pinning deployment to node_type=%r via ray_actor_options", node_type)
 
     if venv_path:
-        ray_actor_options["runtime_env"] = {"virtualenv": venv_path}
+        ray_actor_options["runtime_env"] = {"py_executable": f"{venv_path}/bin/python"}
         logger.info("Using isolated venv: %s", venv_path)
 
     # ── Build .options() kwargs ─────────────────────────────────────────────
