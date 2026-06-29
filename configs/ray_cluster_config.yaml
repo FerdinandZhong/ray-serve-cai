@@ -48,7 +48,7 @@ ray_cluster:
       cpu:       16
       memory:    32  # GB
       gpus:      0
-      runtime_identifier: "docker.repository.cloudera.com/cloudera/cdsw/ml-runtime-pbj-jupyterlab-python3.11-standard:2026.01.1-b6"
+      runtime_identifier: "docker.repository.cloudera.com/cloudera/cdsw/ml-runtime-pbj-jupyterlab-python3.11-standard:2026.04.1-b7"
 
   # ── Ray daemon ports ──────────────────────────────────────────────────────
   ray_port:       6379
@@ -60,8 +60,8 @@ cai:
   # head_runtime_identifier: CPU-only standard image for the head node (GCS + Management API).
   # worker_runtime_identifier: CUDA image for worker nodes that carry GPUs.
   #   If worker_gpus = 0, you can use the standard image instead.
-  head_runtime_identifier:   "docker.repository.cloudera.com/cloudera/cdsw/ml-runtime-pbj-jupyterlab-python3.11-standard:2026.01.1-b6"
-  worker_runtime_identifier: "docker.repository.cloudera.com/cloudera/cdsw/ml-runtime-pbj-jupyterlab-python3.11-cuda:2026.01.1-b6"
+  head_runtime_identifier:   "docker.repository.cloudera.com/cloudera/cdsw/ml-runtime-pbj-jupyterlab-python3.11-standard:2026.04.1-b7"
+  worker_runtime_identifier: "docker.repository.cloudera.com/cloudera/cdsw/ml-runtime-pbj-jupyterlab-python3.11-cuda:2026.04.1-b7"
 
   project_name: "ray-cluster"
 
