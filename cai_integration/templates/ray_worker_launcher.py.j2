@@ -98,10 +98,24 @@ ACCELERATOR_TYPE = {{ '"%s"' % accelerator_type if accelerator_type else 'None' 
 _resources = {f"node_type:{NODE_TYPE}": 1}
 if ACCELERATOR_TYPE:
     _resources[f"accelerator_type:{ACCELERATOR_TYPE}"] = 1
+
+# Merge any extra Ray resource labels injected at add-node time.
+# RAY_EXTRA_RESOURCES is a JSON object, e.g.:
+#   {"zone:us-east-1d": 1, "instance-group:ig-n4bsnv8r": 1}
+_extra = os.environ.get("RAY_EXTRA_RESOURCES", "")
+if _extra:
+    try:
+        _extra_resources = json.loads(_extra)
+        _resources.update(_extra_resources)
+        print(f"Extra Ray labels merged: {list(_extra_resources.keys())}")
+    except Exception as _e:
+        print(f"WARNING: Could not parse RAY_EXTRA_RESOURCES ({_e}) — skipped")
+
 node_resources = json.dumps(_resources)
 print(f"Node type label: node_type:{NODE_TYPE}")
 if ACCELERATOR_TYPE:
     print(f"Accelerator type: accelerator_type:{ACCELERATOR_TYPE}")
+print(f"Full resources: {node_resources}")
 
 # ── Start worker info server (daemon thread) ──────────────────────────────────
 # CML requires a live process on CDSW_APP_PORT to mark the application as

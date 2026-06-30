@@ -30,6 +30,8 @@ async def add_node(request: AddNodeRequest, coordinator: CoordinatorService = De
             memory=request.memory,
             gpus=request.gpus,
             runtime_identifier=request.runtime_identifier,
+            node_label=request.node_label,
+            ray_labels=request.ray_labels,
         )
         return result
     except Exception as e:

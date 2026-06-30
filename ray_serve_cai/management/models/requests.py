@@ -15,14 +15,45 @@ class AddNodeRequest(BaseModel):
         default=None,
         description="Docker runtime identifier override (uses group default from ray_cluster_info.json when omitted)",
     )
+    node_label: Optional[Dict[str, str]] = Field(
+        default=None,
+        description=(
+            "Kubernetes node-selector label(s) used to steer the worker pod onto a "
+            "specific K8s node.  The first entry is used as NODE_SELECTOR_KEY/VALUE "
+            "for CML pod placement (K8s layer).  Each entry is also auto-derived into "
+            "a short-key Ray resource label so actors can target the same node "
+            "(Ray layer) — e.g. 'liftie.cloudera.com/instance-group-id': 'ig-n4bsnv8r' "
+            "becomes Ray resource 'instance-group-id:ig-n4bsnv8r=1'. "
+            "Overrides the node_label baked into the worker group at cluster-start time. "
+            "The correct label key depends on your infra provider: "
+            "Cloudera/Liftie uses 'liftie.cloudera.com/instance-group-id', "
+            "EKS uses 'node.kubernetes.io/instance-type', "
+            "NVIDIA GFD uses 'nvidia.com/gpu.product'."
+        ),
+    )
+    ray_labels: Optional[Dict[str, float]] = Field(
+        default=None,
+        description=(
+            "Additional Ray resource labels merged into ray start --resources "
+            "on top of the auto-derived ones.  Values must be >= 0. "
+            "Use for ad-hoc actor scheduling affinity not covered by node_label "
+            "auto-derivation, e.g. {\"zone:us-east-1d\": 1}."
+        ),
+    )
 
     class Config:
         json_schema_extra = {
             "example": {
-                "node_type": "t4-gpu-worker",
+                "node_type": "l40-gpu-worker",
                 "cpu": 16,
-                "memory": 32,
+                "memory": 64,
                 "gpus": 1,
+                "node_label": {
+                    "liftie.cloudera.com/instance-group-id": "ig-n4bsnv8r",
+                },
+                "ray_labels": {
+                    "zone:us-east-1d": 1,
+                },
             }
         }
 

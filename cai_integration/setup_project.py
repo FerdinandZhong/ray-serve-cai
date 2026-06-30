@@ -124,7 +124,7 @@ class ProjectSetup:
             "PATCH",
             f"projects/{project_id}",
             data={
-                "shared_memory_limit":        10000,
+                "shared_memory_limit":        40000,
                 "ephemeral_storage_request_mb": 0,
                 "ephemeral_storage_limit_mb":   307200,
             },
