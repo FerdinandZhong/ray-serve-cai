@@ -30,7 +30,7 @@ async def add_node(request: AddNodeRequest, coordinator: CoordinatorService = De
             memory=request.memory,
             gpus=request.gpus,
             runtime_identifier=request.runtime_identifier,
-            environment_vars=request.environment_vars,
+            node_label=request.node_label,
             ray_labels=request.ray_labels,
         )
         return result

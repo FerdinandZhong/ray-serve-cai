@@ -228,14 +228,14 @@ class CoordinatorService:
         memory: int = None,
         gpus: int = None,
         runtime_identifier: str = None,
-        environment_vars: dict = None,
+        node_label: dict = None,
         ray_labels: dict = None,
     ) -> Dict[str, Any]:
         """Add a new worker node, register it in the resource map, and track the mapping."""
         result = self.cai_service.create_worker_node(
             node_type=node_type, cpu=cpu, memory=memory, gpus=gpus,
             runtime_identifier=runtime_identifier,
-            environment_vars=environment_vars,
+            node_label=node_label,
             ray_labels=ray_labels,
         )
         self.resource_map.register_worker(

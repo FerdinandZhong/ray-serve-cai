@@ -15,21 +15,29 @@ class AddNodeRequest(BaseModel):
         default=None,
         description="Docker runtime identifier override (uses group default from ray_cluster_info.json when omitted)",
     )
-    environment_vars: Optional[Dict[str, str]] = Field(
+    node_label: Optional[Dict[str, str]] = Field(
         default=None,
         description=(
-            "Extra environment variables injected into the CML application. "
-            "Use Kubernetes node-selector labels here to steer the pod onto a specific K8s node, "
-            "e.g. {\"NODE_SELECTOR_KEY\": \"liftie.cloudera.com/instance-group-id\", "
-            "\"NODE_SELECTOR_VALUE\": \"ig-n4bsnv8r\"}."
+            "Kubernetes node-selector label(s) used to steer the worker pod onto a "
+            "specific K8s node.  The first entry is used as NODE_SELECTOR_KEY/VALUE "
+            "for CML pod placement (K8s layer).  Each entry is also auto-derived into "
+            "a short-key Ray resource label so actors can target the same node "
+            "(Ray layer) — e.g. 'liftie.cloudera.com/instance-group-id': 'ig-n4bsnv8r' "
+            "becomes Ray resource 'instance-group-id:ig-n4bsnv8r=1'. "
+            "Overrides the node_label baked into the worker group at cluster-start time. "
+            "The correct label key depends on your infra provider: "
+            "Cloudera/Liftie uses 'liftie.cloudera.com/instance-group-id', "
+            "EKS uses 'node.kubernetes.io/instance-type', "
+            "NVIDIA GFD uses 'nvidia.com/gpu.product'."
         ),
     )
     ray_labels: Optional[Dict[str, float]] = Field(
         default=None,
         description=(
-            "Custom Ray resource labels registered by the worker node via --resources. "
-            "Values must be >= 0. Use these for Ray actor scheduling and admin tracking, "
-            "e.g. {\"zone:us-east-1d\": 1, \"instance-group:ig-n4bsnv8r\": 1}."
+            "Additional Ray resource labels merged into ray start --resources "
+            "on top of the auto-derived ones.  Values must be >= 0. "
+            "Use for ad-hoc actor scheduling affinity not covered by node_label "
+            "auto-derivation, e.g. {\"zone:us-east-1d\": 1}."
         ),
     )
 
@@ -40,13 +48,11 @@ class AddNodeRequest(BaseModel):
                 "cpu": 16,
                 "memory": 64,
                 "gpus": 1,
-                "environment_vars": {
-                    "NODE_SELECTOR_KEY":   "liftie.cloudera.com/instance-group-id",
-                    "NODE_SELECTOR_VALUE": "ig-n4bsnv8r",
+                "node_label": {
+                    "liftie.cloudera.com/instance-group-id": "ig-n4bsnv8r",
                 },
                 "ray_labels": {
-                    "zone:us-east-1d":           1,
-                    "instance-group:ig-n4bsnv8r": 1,
+                    "zone:us-east-1d": 1,
                 },
             }
         }

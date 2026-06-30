@@ -1,0 +1,646 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Ray Label Management — Worker &amp; App Side</title>
+<style>
+  :root {
+    --bg: #0f1117;
+    --surface: #1a1d27;
+    --surface2: #222536;
+    --border: #2e3250;
+    --accent: #5b8dee;
+    --accent2: #a78bfa;
+    --green: #34d399;
+    --yellow: #fbbf24;
+    --red: #f87171;
+    --orange: #fb923c;
+    --teal: #2dd4bf;
+    --text: #e2e8f0;
+    --muted: #8892b0;
+    --code-bg: #111827;
+  }
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body {
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+    background: var(--bg);
+    color: var(--text);
+    line-height: 1.6;
+    padding: 2rem;
+  }
+  h1 { font-size: 1.8rem; font-weight: 700; margin-bottom: 0.3rem; color: #fff; }
+  h2 { font-size: 1.2rem; font-weight: 600; margin-bottom: 1rem; color: var(--accent); text-transform: uppercase; letter-spacing: 0.05em; }
+  h3 { font-size: 1rem; font-weight: 600; margin-bottom: 0.5rem; color: #fff; }
+  .subtitle { color: var(--muted); margin-bottom: 2.5rem; font-size: 0.95rem; }
+  .grid2 { display: grid; grid-template-columns: 1fr 1fr; gap: 1.5rem; margin-bottom: 1.5rem; }
+  .grid3 { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 1.2rem; margin-bottom: 1.5rem; }
+  @media (max-width: 900px) { .grid2, .grid3 { grid-template-columns: 1fr; } }
+  .card {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 10px;
+    padding: 1.3rem 1.5rem;
+  }
+  .card.accent-blue   { border-top: 3px solid var(--accent); }
+  .card.accent-purple { border-top: 3px solid var(--accent2); }
+  .card.accent-green  { border-top: 3px solid var(--green); }
+  .card.accent-orange { border-top: 3px solid var(--orange); }
+  .card.accent-yellow { border-top: 3px solid var(--yellow); }
+  .card.accent-teal   { border-top: 3px solid var(--teal); }
+  .card.accent-red    { border-top: 3px solid var(--red); }
+  pre, code {
+    font-family: "JetBrains Mono", "Fira Code", "Cascadia Code", monospace;
+    font-size: 0.82rem;
+  }
+  pre {
+    background: var(--code-bg);
+    border: 1px solid var(--border);
+    border-radius: 7px;
+    padding: 1rem 1.2rem;
+    overflow-x: auto;
+    margin: 0.7rem 0;
+  }
+  code { background: var(--code-bg); padding: 0.1em 0.4em; border-radius: 4px; color: #93c5fd; }
+  .pill {
+    display: inline-block;
+    border-radius: 999px;
+    padding: 0.2em 0.75em;
+    font-size: 0.78rem;
+    font-family: monospace;
+    font-weight: 600;
+    margin: 0.2rem 0.15rem;
+  }
+  .pill.gpu    { background: #1a3a1a; color: #86efac; border: 1px solid #166534; }
+  .pill.cpu    { background: #1e3a5f; color: #93c5fd; border: 1px solid #1d4ed8; }
+  .pill.custom { background: #2d1b69; color: #c4b5fd; border: 1px solid #6d28d9; }
+  .pill.accel  { background: #431407; color: #fdba74; border: 1px solid #c2410c; }
+  .pill.derived{ background: #0d3330; color: #5eead4; border: 1px solid #0f766e; }
+  .flow {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    flex-wrap: wrap;
+    margin: 0.6rem 0;
+    font-size: 0.82rem;
+  }
+  .flow-box {
+    background: var(--surface2);
+    border: 1px solid var(--border);
+    border-radius: 6px;
+    padding: 0.3rem 0.8rem;
+    font-family: monospace;
+    font-size: 0.78rem;
+    line-height: 1.4;
+  }
+  .flow-box.k8s   { border-color: #0f766e; color: #5eead4; }
+  .flow-box.ray   { border-color: #6d28d9; color: #c4b5fd; }
+  .flow-box.input { border-color: #5b8dee; color: #93c5fd; }
+  .arrow { color: var(--muted); font-size: 1rem; }
+  table { width: 100%; border-collapse: collapse; font-size: 0.85rem; }
+  th {
+    background: var(--surface2);
+    color: var(--muted);
+    font-weight: 600;
+    text-transform: uppercase;
+    font-size: 0.72rem;
+    letter-spacing: 0.06em;
+    padding: 0.6rem 1rem;
+    text-align: left;
+    border-bottom: 1px solid var(--border);
+  }
+  td { padding: 0.6rem 1rem; border-bottom: 1px solid var(--border); vertical-align: top; }
+  tr:last-child td { border-bottom: none; }
+  .section { margin-bottom: 2.5rem; }
+  .rule {
+    background: var(--surface2);
+    border-left: 3px solid var(--accent);
+    border-radius: 0 6px 6px 0;
+    padding: 0.6rem 1rem;
+    margin: 0.5rem 0;
+    font-size: 0.85rem;
+  }
+  .rule.teal   { border-left-color: var(--teal); }
+  .rule.green  { border-left-color: var(--green); }
+  .rule.orange { border-left-color: var(--orange); }
+  .rule.red    { border-left-color: var(--red); }
+  .rule strong { color: var(--accent); }
+  .rule.teal strong   { color: var(--teal); }
+  .rule.green strong  { color: var(--green); }
+  .rule.orange strong { color: var(--orange); }
+  .rule.red strong    { color: var(--red); }
+  .divider { border: none; border-top: 1px solid var(--border); margin: 2rem 0; }
+  .node-box {
+    background: var(--surface2);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    padding: 1rem 1.2rem;
+    margin: 0.5rem 0;
+  }
+  .node-box .node-title {
+    font-size: 0.8rem; font-weight: 700; text-transform: uppercase;
+    letter-spacing: 0.07em; color: var(--muted); margin-bottom: 0.5rem;
+  }
+  .layer-badge {
+    display: inline-block; padding: 0.2em 0.7em; border-radius: 4px;
+    font-size: 0.7rem; font-weight: 700; text-transform: uppercase; letter-spacing: 0.05em;
+  }
+  .layer-k8s { background: #0d2340; color: #60a5fa; }
+  .layer-ray { background: #1e1040; color: #a78bfa; }
+  .badge-auto { background: #0d3330; color: #5eead4; border-radius: 4px; padding: .1em .5em; font-size: .72rem; font-weight: 700; }
+  .badge-user { background: #2d1b69; color: #c4b5fd; border-radius: 4px; padding: .1em .5em; font-size: .72rem; font-weight: 700; }
+</style>
+</head>
+<body>
+
+<h1>Ray Label Management</h1>
+<p class="subtitle">Single source of truth: <code>node_label</code> drives both K8s pod placement and Ray actor scheduling. Node selection order: CPU/GPU resources first, then <code>node_label</code> as tiebreaker.</p>
+
+<!-- ── SECTION 1: Design principle ────────────────────────────────────── -->
+<div class="section">
+  <h2>1 · Design Principle — One Field, Two Layers</h2>
+
+  <div class="grid2">
+    <div class="card accent-blue">
+      <h3>Why a single <code>node_label</code> field?</h3>
+      <p style="color:var(--muted);font-size:.85rem;margin:.5rem 0 .8rem">
+        K8s node labels are <strong>provider-specific</strong> — there is no universal GPU label.
+        Hardcoding any of them would break across infra providers.
+      </p>
+      <table>
+        <thead><tr><th>Provider</th><th>Typical GPU node label</th></tr></thead>
+        <tbody>
+          <tr><td>Cloudera / Liftie</td><td><code style="font-size:.75rem">liftie.cloudera.com/instance-group-id</code></td></tr>
+          <tr><td>EKS (instance type)</td><td><code style="font-size:.75rem">node.kubernetes.io/instance-type</code></td></tr>
+          <tr><td>NVIDIA GFD</td><td><code style="font-size:.75rem">nvidia.com/gpu.product</code></td></tr>
+          <tr><td>GKE</td><td><code style="font-size:.75rem">cloud.google.com/gke-accelerator</code></td></tr>
+        </tbody>
+      </table>
+      <p style="color:var(--muted);font-size:.82rem;margin-top:.6rem">
+        The user supplies the right label for their cluster. The system auto-derives everything else.
+      </p>
+    </div>
+
+    <div class="card accent-teal">
+      <h3>Node selection order</h3>
+      <div class="rule teal" style="margin-top:.5rem">
+        <strong>Step 1 — Hard resources (CPU / memory / GPU count)</strong><br>
+        CML sizes the pod. K8s will only schedule it on nodes that have enough CPU, memory, and GPUs. This filters to the candidate set.
+      </div>
+      <div class="rule teal">
+        <strong>Step 2 — node_label (tiebreaker / pinning)</strong><br>
+        <code>NODE_SELECTOR_KEY/VALUE</code> env vars steer the pod to the exact K8s node within the candidate set. Without this, any node with enough resources is eligible.
+      </div>
+      <div class="rule teal">
+        <strong>Step 3 — Ray actor scheduling</strong><br>
+        Auto-derived Ray labels (from <code>node_label</code>) pin actors to the same node the pod landed on. Ensures actors don't drift to a different Ray worker.
+      </div>
+    </div>
+  </div>
+</div>
+
+<hr class="divider">
+
+<!-- ── SECTION 2: Derivation flow ─────────────────────────────────────── -->
+<div class="section">
+  <h2>2 · Automatic Derivation — One Input, Three Outputs</h2>
+  <p style="color:var(--muted);font-size:.85rem;margin-bottom:1rem">
+    Providing <code>node_label</code> once (in YAML or at request time) produces all three targeting artifacts automatically.
+  </p>
+
+  <div class="card" style="margin-bottom:1.2rem">
+    <div class="flow">
+      <div class="flow-box input">node_label:<br>"liftie.cloudera.com/instance-group-id": "ig-n4bsnv8r"</div>
+      <span class="arrow">→</span>
+      <div style="display:flex;flex-direction:column;gap:.4rem">
+        <div class="flow-box k8s"><span class="layer-badge layer-k8s">K8s</span> NODE_SELECTOR_KEY = liftie.cloudera.com/instance-group-id<br>NODE_SELECTOR_VALUE = ig-n4bsnv8r</div>
+        <div class="flow-box ray"><span class="layer-badge layer-ray">Ray</span> node_type:l40-gpu-worker = 1 &nbsp; <span class="badge-auto">built-in</span><br>accelerator_type:L40S = 1 &nbsp; <span class="badge-auto">built-in</span><br>instance-group-id:ig-n4bsnv8r = 1 &nbsp; <span class="badge-auto">derived</span></div>
+      </div>
+    </div>
+    <p style="color:var(--muted);font-size:.8rem;margin-top:.7rem">
+      <span class="badge-auto">auto</span> = system derives it &nbsp;|&nbsp;
+      <span class="badge-user">user</span> = user supplies it &nbsp;|&nbsp;
+      Derivation: strip domain prefix from the label key → <code>instance-group-id:&lt;value&gt;</code>
+    </p>
+  </div>
+
+  <div class="grid2">
+    <div class="card accent-green">
+      <h3>cai_service.py — derivation code</h3>
+      <pre><span style="color:var(--muted)"># 1. built-in Ray labels (always)</span>
+_ray = {f"node_type:{group.node_type}": 1}
+if group.accelerator_type:
+    _ray[f"accelerator_type:{group.accelerator_type}"] = 1
+
+<span style="color:#34d399"># 2. derived from node_label (auto)</span>
+_nl = node_label or group.node_label
+if _nl:
+    for _k, _v in _nl.items():
+        _short = _k.split("/")[-1]
+        _ray[f"{_short}:{_v}"] = 1
+
+<span style="color:var(--muted)"># 3. explicit overrides (optional)</span>
+if ray_labels:
+    _ray.update(ray_labels)
+
+env["RAY_EXTRA_RESOURCES"] = json.dumps(_ray)</pre>
+    </div>
+
+    <div class="card accent-blue">
+      <h3>cai_cluster.py — K8s selector output</h3>
+      <pre><span style="color:var(--muted)"># launch_worker() — node_label → K8s pod placement</span>
+if group.node_label:
+    _nl_key, _nl_val = next(
+        iter(group.node_label.items())
+    )
+    env["NODE_SELECTOR_KEY"]   = _nl_key
+    env["NODE_SELECTOR_VALUE"] = _nl_val</pre>
+      <p style="color:var(--muted);font-size:.82rem;margin-top:.5rem">
+        CML reads <code>NODE_SELECTOR_KEY/VALUE</code> to apply a Kubernetes node-selector to the pod before it starts. This happens at the K8s scheduler level — before Ray even runs.
+      </p>
+    </div>
+  </div>
+</div>
+
+<hr class="divider">
+
+<!-- ── SECTION 3: Worker node labels ──────────────────────────────────── -->
+<div class="section">
+  <h2>3 · Worker Node — Final Ray Resource Set</h2>
+
+  <div class="grid2">
+    <div>
+      <div class="node-box">
+        <div class="node-title">L40S GPU Worker (Cloudera cluster)</div>
+        <pre><span style="color:var(--muted)"># ray start --resources (merged)</span>
+{
+  <span style="color:#8892b0">"node_type:l40-gpu-worker":     1,</span>  <span class="badge-auto">auto</span>
+  <span style="color:#8892b0">"accelerator_type:L40S":        1,</span>  <span class="badge-auto">auto</span>
+  <span style="color:#5eead4">"instance-group-id:ig-n4bsnv8r":1</span>   <span class="badge-auto">derived</span>
+}</pre>
+        <div>
+          <span class="pill custom">node_type:l40-gpu-worker</span>
+          <span class="pill accel">accelerator_type:L40S</span>
+          <span class="pill derived">instance-group-id:ig-n4bsnv8r</span>
+        </div>
+      </div>
+
+      <div class="node-box" style="margin-top:.8rem">
+        <div class="node-title">L40S GPU Worker (EKS, instance-type label)</div>
+        <pre>{
+  <span style="color:#8892b0">"node_type:l40-gpu-worker":     1,</span>  <span class="badge-auto">auto</span>
+  <span style="color:#8892b0">"accelerator_type:L40S":        1,</span>  <span class="badge-auto">auto</span>
+  <span style="color:#5eead4">"instance-type:g6e.xlarge":     1</span>   <span class="badge-auto">derived</span>
+}</pre>
+        <div>
+          <span class="pill custom">node_type:l40-gpu-worker</span>
+          <span class="pill accel">accelerator_type:L40S</span>
+          <span class="pill derived">instance-type:g6e.xlarge</span>
+        </div>
+      </div>
+    </div>
+
+    <div class="card accent-purple">
+      <h3>YAML configuration — user supplies node_label once</h3>
+      <pre><span style="color:var(--muted)"># configs/ray_cluster_config.yaml</span>
+- name:      l40-gpu-workers
+  node_type: l40-gpu-worker
+  cpu:       16
+  memory:    64
+  gpus:      1
+  accelerator_type: L40S
+
+  node_label:  <span style="color:#c4b5fd"># provider-specific — user sets this</span>
+    <span style="color:#c4b5fd">liftie.cloudera.com/instance-group-id: ig-n4bsnv8r</span>
+    <span style="color:var(--muted"># OR for EKS:</span>
+    <span style="color:var(--muted)"># node.kubernetes.io/instance-type: g6e.xlarge</span>
+    <span style="color:var(--muted)"># OR for NVIDIA GFD:</span>
+    <span style="color:var(--muted)"># nvidia.com/gpu.product: NVIDIA-L40S</span></pre>
+      <p style="color:var(--muted);font-size:.82rem;margin-top:.5rem">
+        Everything else (K8s selector, Ray labels) is derived automatically. No other config needed.
+      </p>
+    </div>
+  </div>
+</div>
+
+<hr class="divider">
+
+<!-- ── SECTION 4: App / deployment side ───────────────────────────────── -->
+<div class="section">
+  <h2>4 · Application Side — Actor Pinning</h2>
+  <p style="color:var(--muted);font-size:.85rem;margin-bottom:1rem">
+    Deployment factories inject <code>node_type:&lt;type&gt; = 0.001</code> into <code>ray_actor_options["resources"]</code>.
+    Actors can also target derived labels for finer-grained pinning.
+  </p>
+
+  <div class="grid2">
+    <div class="card accent-orange">
+      <h3>Factory code (vllm_engine.py)</h3>
+      <pre><span style="color:var(--muted)"># node_type from DeployModelRequest</span>
+if node_type:
+    ray_actor_options.setdefault("resources", {})
+    ray_actor_options["resources"][
+        f"node_type:{node_type}"
+    ] = 0.001
+
+<span style="color:var(--muted)"># Result for L40S vLLM deployment:</span>
+{
+  "num_cpus": 2,
+  "num_gpus": 1,
+  "resources": {
+    "node_type:l40-gpu-worker": 0.001
+  },
+  "runtime_env": {
+    "py_executable":
+      "/home/cdsw/.venv-vllm/bin/python"
+  }
+}</pre>
+    </div>
+
+    <div>
+      <div class="card accent-yellow">
+        <h3>Why 0.001 for custom labels?</h3>
+        <table>
+          <thead><tr><th>Value</th><th>Max concurrent actors</th></tr></thead>
+          <tbody>
+            <tr><td><code>1.0</code></td><td>1 (blocks all others)</td></tr>
+            <tr><td><code>0.1</code></td><td>10</td></tr>
+            <tr><td><code>0.001</code> ✓</td><td><strong>1000</strong></td></tr>
+          </tbody>
+        </table>
+        <p style="color:var(--muted);font-size:.82rem;margin-top:.6rem">
+          0.001 = affinity without capacity consumption. Ray's minimum precision is 0.0001.
+        </p>
+      </div>
+      <div class="card accent-blue" style="margin-top:1rem">
+        <h3>GPU is a real resource</h3>
+        <p style="color:var(--muted);font-size:.85rem">
+          <code>num_gpus=1</code> reserves an actual GPU tracked by Ray. Cannot exceed the node's physical GPU count. Custom labels (node_type, derived) are logical only.
+        </p>
+      </div>
+    </div>
+  </div>
+</div>
+
+<hr class="divider">
+
+<!-- ── SECTION 5: AddNodeRequest schema ───────────────────────────────── -->
+<div class="section">
+  <h2>5 · AddNodeRequest — Simplified Schema</h2>
+  <div class="card">
+    <p style="color:var(--muted);font-size:.85rem;margin-bottom:1rem">
+      <code>environment_vars</code> has been removed. <code>node_label</code> is the single field that drives both K8s pod placement and Ray label derivation.
+    </p>
+    <table>
+      <thead>
+        <tr><th>Field</th><th>Type</th><th>Default</th><th>Description</th></tr>
+      </thead>
+      <tbody>
+        <tr>
+          <td><code>node_type</code></td>
+          <td><code>str</code></td>
+          <td><code>"worker"</code></td>
+          <td>Logical group name; must match a group in <code>ray_cluster_info.json</code></td>
+        </tr>
+        <tr>
+          <td><code>cpu</code></td>
+          <td><code>int</code></td>
+          <td>group default</td>
+          <td>CPU cores override. K8s will refuse to schedule if no node has enough CPU.</td>
+        </tr>
+        <tr>
+          <td><code>memory</code></td>
+          <td><code>int</code></td>
+          <td>group default</td>
+          <td>Memory in GB. Same hard constraint as CPU.</td>
+        </tr>
+        <tr>
+          <td><code>gpus</code></td>
+          <td><code>int</code></td>
+          <td>group default</td>
+          <td>GPU count. Real resource — K8s only schedules on nodes with this many GPUs available.</td>
+        </tr>
+        <tr>
+          <td><code>runtime_identifier</code></td>
+          <td><code>str</code></td>
+          <td>group default</td>
+          <td>Docker runtime override.</td>
+        </tr>
+        <tr>
+          <td><code style="color:#5eead4">node_label</code></td>
+          <td><code>Dict[str, str]</code></td>
+          <td><code>null</code> (uses YAML)</td>
+          <td>
+            K8s node-selector label(s). First entry → <code>NODE_SELECTOR_KEY/VALUE</code> for pod placement.
+            Each entry also auto-derives a short-key Ray resource label
+            (e.g. <code>"liftie.cloudera.com/instance-group-id": "ig-n4bsnv8r"</code>
+            → Ray <code>instance-group-id:ig-n4bsnv8r=1</code>).
+            Overrides YAML <code>node_label</code> when provided.
+          </td>
+        </tr>
+        <tr>
+          <td><code style="color:#c4b5fd">ray_labels</code></td>
+          <td><code>Dict[str, float]</code></td>
+          <td><code>null</code></td>
+          <td>
+            Additional Ray resource labels merged on top of auto-derived ones.
+            Use for ad-hoc affinity not covered by <code>node_label</code>
+            (e.g. <code>{"zone:us-east-1d": 1}</code>).
+          </td>
+        </tr>
+      </tbody>
+    </table>
+  </div>
+</div>
+
+<hr class="divider">
+
+<!-- ── SECTION 6: Payload examples ────────────────────────────────────── -->
+<div class="section">
+  <h2>6 · API Payload Examples</h2>
+  <div class="grid3">
+    <div class="card accent-teal">
+      <h3>Cloudera / Liftie cluster</h3>
+      <pre>POST /api/v1/resources/nodes/add
+{
+  "node_type": "l40-gpu-worker",
+  "cpu":    16,
+  "memory": 64,
+  "gpus":   1,
+  "node_label": {
+    <span style="color:#5eead4">"liftie.cloudera.com/
+      instance-group-id":
+      "ig-n4bsnv8r"</span>
+  }
+}</pre>
+      <p style="color:var(--muted);font-size:.78rem;margin-top:.4rem">
+        Auto-derives:<br>
+        <code style="font-size:.72rem">NODE_SELECTOR_KEY=liftie.../instance-group-id</code><br>
+        Ray: <code style="font-size:.72rem">instance-group-id:ig-n4bsnv8r=1</code>
+      </p>
+    </div>
+
+    <div class="card accent-blue">
+      <h3>EKS — instance type label</h3>
+      <pre>POST /api/v1/resources/nodes/add
+{
+  "node_type": "l40-gpu-worker",
+  "cpu":    16,
+  "memory": 64,
+  "gpus":   1,
+  "node_label": {
+    <span style="color:#93c5fd">"node.kubernetes.io/
+      instance-type":
+      "g6e.xlarge"</span>
+  }
+}</pre>
+      <p style="color:var(--muted);font-size:.78rem;margin-top:.4rem">
+        Auto-derives:<br>
+        Ray: <code style="font-size:.72rem">instance-type:g6e.xlarge=1</code>
+      </p>
+    </div>
+
+    <div class="card accent-purple">
+      <h3>No node_label — any GPU node</h3>
+      <pre>POST /api/v1/resources/nodes/add
+{
+  "node_type": "l40-gpu-worker",
+  "cpu":    16,
+  "memory": 64,
+  "gpus":   1
+}</pre>
+      <p style="color:var(--muted);font-size:.78rem;margin-top:.4rem">
+        K8s schedules on any node with ≥16 CPU, ≥64 GB, ≥1 GPU.<br>
+        Ray registers only built-in labels:<br>
+        <code style="font-size:.72rem">node_type:l40-gpu-worker=1</code><br>
+        <code style="font-size:.72rem">accelerator_type:L40S=1</code>
+      </p>
+    </div>
+  </div>
+
+  <div class="grid2">
+    <div class="card accent-orange">
+      <h3>Deploy vLLM on L40S node</h3>
+      <pre>POST /api/v1/applications/model
+{
+  "name":        "qwen3-7b",
+  "engine_type": "vllm",
+  "model":       "/home/cdsw/models/...",
+  "route_prefix":"/qwen3",
+  "node_type":   "l40-gpu-worker",
+  "num_replicas": 1
+}</pre>
+      <p style="color:var(--muted);font-size:.8rem;margin-top:.5rem">
+        Actor gets <code>num_gpus=1</code> + <code>node_type:l40-gpu-worker=0.001</code>.<br>
+        Ray only places it on a node with that label — the same node the worker pod landed on.
+      </p>
+    </div>
+
+    <div class="card accent-green">
+      <h3>Deploy LiteLLM (CPU, no pinning)</h3>
+      <pre>POST /api/v1/applications/model
+{
+  "name":        "openai-gw",
+  "engine_type": "litellm",
+  "route_prefix":"/openai",
+  "engine_config": {
+    "model_list": [{
+      "model_name":    "gpt-4o",
+      "litellm_params":{"model":"openai/gpt-4o"}
+    }]
+  }
+}</pre>
+      <p style="color:var(--muted);font-size:.8rem;margin-top:.5rem">
+        No <code>node_type</code> → Ray schedules on least-loaded node. <code>num_gpus=0</code>.
+      </p>
+    </div>
+  </div>
+</div>
+
+<hr class="divider">
+
+<!-- ── SECTION 7: Full label reference ────────────────────────────────── -->
+<div class="section">
+  <h2>7 · Full Label Reference</h2>
+  <div class="card">
+    <table>
+      <thead>
+        <tr><th>Label</th><th>Source</th><th>Layer</th><th>Node value</th><th>Actor requests</th><th>Effect</th></tr>
+      </thead>
+      <tbody>
+        <tr>
+          <td><span class="pill custom">node_type:l40-gpu-worker</span></td>
+          <td><span class="badge-auto">auto</span> template</td>
+          <td><span class="layer-badge layer-ray">Ray</span></td>
+          <td><code>1</code></td>
+          <td><code>0.001</code></td>
+          <td>Pins actor to this worker group</td>
+        </tr>
+        <tr>
+          <td><span class="pill accel">accelerator_type:L40S</span></td>
+          <td><span class="badge-auto">auto</span> template</td>
+          <td><span class="layer-badge layer-ray">Ray</span></td>
+          <td><code>1</code></td>
+          <td>optional</td>
+          <td>GPU model label for placement group targeting</td>
+        </tr>
+        <tr>
+          <td><span class="pill derived">instance-group-id:ig-n4bsnv8r</span></td>
+          <td><span class="badge-auto">derived</span> from node_label</td>
+          <td><span class="layer-badge layer-ray">Ray</span></td>
+          <td><code>1</code></td>
+          <td>optional override</td>
+          <td>Ties actor to the exact K8s instance group the pod landed on</td>
+        </tr>
+        <tr>
+          <td><code>NODE_SELECTOR_KEY/VALUE</code></td>
+          <td><span class="badge-auto">derived</span> from node_label</td>
+          <td><span class="layer-badge layer-k8s">K8s</span></td>
+          <td>env var in CML app</td>
+          <td>n/a</td>
+          <td>Steers pod to matching K8s node at scheduler time</td>
+        </tr>
+        <tr>
+          <td><span class="pill gpu">GPU</span> (<code>num_gpus</code>)</td>
+          <td>CML / Ray agent</td>
+          <td><span class="layer-badge layer-ray">Ray</span></td>
+          <td>physical count</td>
+          <td><code>1</code> (or fractional)</td>
+          <td>Real GPU reservation — hard constraint</td>
+        </tr>
+        <tr>
+          <td><code>node:__internal_head__</code></td>
+          <td>Ray built-in</td>
+          <td><span class="layer-badge layer-ray">Ray</span></td>
+          <td><code>0.001</code></td>
+          <td><code>0.001</code></td>
+          <td>Pins Management API to head node</td>
+        </tr>
+      </tbody>
+    </table>
+  </div>
+</div>
+
+<hr class="divider">
+
+<!-- ── SECTION 8: Key rules ────────────────────────────────────────────── -->
+<div class="section">
+  <h2>8 · Key Rules</h2>
+  <div class="grid2">
+    <div>
+      <div class="rule teal"><strong>node_label is the single source of truth.</strong> Set it in the YAML once per worker group. It drives both K8s pod placement and the derived Ray labels — no separate fields to keep in sync.</div>
+      <div class="rule teal"><strong>No node_label = any node with enough resources.</strong> CPU/GPU count is still a hard K8s constraint. The pod simply isn't pinned to a specific node type.</div>
+      <div class="rule"><strong>Label key format is provider-specific — there is no standard GPU label.</strong> Use the label your infra provider assigns: <code>liftie.cloudera.com/instance-group-id</code> for Cloudera, <code>node.kubernetes.io/instance-type</code> for instance-type-based targeting on EKS.</div>
+      <div class="rule"><strong>Derived Ray label = short suffix:value.</strong> Domain prefix is stripped: <code>liftie.cloudera.com/instance-group-id → instance-group-id:&lt;val&gt;</code>. This is what actors target when they need finer-grained pinning beyond <code>node_type</code>.</div>
+    </div>
+    <div>
+      <div class="rule orange"><strong>GPU is a real resource; node_type is logical.</strong> Requesting more <code>num_gpus</code> than a node has leaves the actor unschedulable. Custom labels cannot cause this — Ray ignores them if the value is small enough.</div>
+      <div class="rule"><strong>Precision floor is 0.0001.</strong> Use 0.001 as the standard affinity value for custom labels. 1.0 would limit the node to a single actor of that type.</div>
+      <div class="rule"><strong>Labels are immutable at runtime.</strong> Once a node joins, its resource set cannot change without restarting the ray node process.</div>
+      <div class="rule"><strong>ray_labels is an escape hatch.</strong> Use it for ad-hoc labels not derivable from node_label (e.g. <code>zone:us-east-1d</code> if the zone label isn't in node_label). Merged on top of auto-derived labels.</div>
+    </div>
+  </div>
+</div>
+
+</body>
+</html>

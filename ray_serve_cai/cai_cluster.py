@@ -734,12 +734,16 @@ class CAIClusterManager:
         app_name = name or f"ray-{group.name}-{int(time.time())}"
         subdomain = app_name.replace("_", "-").lower()
 
-        # Inject node_label as environment hint for K8s admission webhooks
-        # or future CML API nodeSelector support.
         env = dict(environment) if environment else {}
         if group.node_label:
-            import json as _json
-            env["NODE_LABEL"] = _json.dumps(group.node_label)
+            # Take the first key/value pair as the K8s node-selector.
+            # CML reads NODE_SELECTOR_KEY/VALUE to steer the pod onto the
+            # matching K8s node before Ray even starts.  The label key is
+            # infra-provider-specific (Liftie, EKS, GKE, vanilla K8s) and is
+            # supplied by the user in ray_cluster_config.yaml or at add-node time.
+            _nl_key, _nl_val = next(iter(group.node_label.items()))
+            env["NODE_SELECTOR_KEY"]   = _nl_key
+            env["NODE_SELECTOR_VALUE"] = _nl_val
 
         app = self.cml_client.create_application(
             project_id=self.project_id,

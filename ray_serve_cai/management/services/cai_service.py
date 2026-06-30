@@ -94,7 +94,7 @@ class CAIService:
         memory: int = None,
         gpus: int = None,
         runtime_identifier: str = None,
-        environment_vars: dict = None,
+        node_label: dict = None,
         ray_labels: dict = None,
     ) -> Dict[str, Any]:
         """
@@ -145,15 +145,34 @@ class CAIService:
         if head_address:
             env["RAY_HEAD_ADDRESS"] = head_address
 
-        # Merge caller-supplied environment variables (e.g. K8s node-selector hints).
-        if environment_vars:
-            env.update(environment_vars)
+        # K8s node placement: if the caller supplies a node_label override it takes
+        # precedence over whatever was baked into the worker group at cluster-start
+        # time.  launch_worker() in cai_cluster.py derives NODE_SELECTOR_KEY/VALUE
+        # from group.node_label; we override that group field here so the same
+        # derivation path is used regardless of whether the label came from YAML or
+        # from the API request.
+        if node_label:
+            group.node_label = node_label
 
-        # Serialize custom Ray resource labels so the worker launcher can merge
-        # them into --resources at start time without touching the baked script.
+        # Build Ray resource labels:
+        #   1. built-in:  node_type:<type> + accelerator_type:<GPU>
+        #   2. derived:   short-key version of each node_label entry so actors can
+        #                 target the same node the pod landed on without knowing the
+        #                 full K8s label key
+        #      e.g.  "liftie.cloudera.com/instance-group-id": "ig-n4bsnv8r"
+        #            → "instance-group-id:ig-n4bsnv8r": 1
+        #   3. explicit:  caller-supplied ray_labels override/extend the above
+        _ray: dict = {f"node_type:{group.node_type}": 1}
+        if group.accelerator_type:
+            _ray[f"accelerator_type:{group.accelerator_type}"] = 1
+        _nl = node_label or group.node_label
+        if _nl:
+            for _k, _v in _nl.items():
+                _short = _k.split("/")[-1]   # strip domain prefix
+                _ray[f"{_short}:{_v}"] = 1
         if ray_labels:
-            import json
-            env["RAY_EXTRA_RESOURCES"] = json.dumps(ray_labels)
+            _ray.update(ray_labels)
+        env["RAY_EXTRA_RESOURCES"] = json.dumps(_ray)
 
         app_info = self.manager.launch_worker(
             group=group,
