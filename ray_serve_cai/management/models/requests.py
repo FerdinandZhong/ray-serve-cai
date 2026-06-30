@@ -15,14 +15,39 @@ class AddNodeRequest(BaseModel):
         default=None,
         description="Docker runtime identifier override (uses group default from ray_cluster_info.json when omitted)",
     )
+    environment_vars: Optional[Dict[str, str]] = Field(
+        default=None,
+        description=(
+            "Extra environment variables injected into the CML application. "
+            "Use Kubernetes node-selector labels here to steer the pod onto a specific K8s node, "
+            "e.g. {\"NODE_SELECTOR_KEY\": \"liftie.cloudera.com/instance-group-id\", "
+            "\"NODE_SELECTOR_VALUE\": \"ig-n4bsnv8r\"}."
+        ),
+    )
+    ray_labels: Optional[Dict[str, float]] = Field(
+        default=None,
+        description=(
+            "Custom Ray resource labels registered by the worker node via --resources. "
+            "Values must be >= 0. Use these for Ray actor scheduling and admin tracking, "
+            "e.g. {\"zone:us-east-1d\": 1, \"instance-group:ig-n4bsnv8r\": 1}."
+        ),
+    )
 
     class Config:
         json_schema_extra = {
             "example": {
-                "node_type": "t4-gpu-worker",
+                "node_type": "l40-gpu-worker",
                 "cpu": 16,
-                "memory": 32,
+                "memory": 64,
                 "gpus": 1,
+                "environment_vars": {
+                    "NODE_SELECTOR_KEY":   "liftie.cloudera.com/instance-group-id",
+                    "NODE_SELECTOR_VALUE": "ig-n4bsnv8r",
+                },
+                "ray_labels": {
+                    "zone:us-east-1d":           1,
+                    "instance-group:ig-n4bsnv8r": 1,
+                },
             }
         }
 

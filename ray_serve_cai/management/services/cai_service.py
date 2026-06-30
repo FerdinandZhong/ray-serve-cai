@@ -94,6 +94,8 @@ class CAIService:
         memory: int = None,
         gpus: int = None,
         runtime_identifier: str = None,
+        environment_vars: dict = None,
+        ray_labels: dict = None,
     ) -> Dict[str, Any]:
         """
         Launch a new worker node as a CML application.
@@ -142,6 +144,16 @@ class CAIService:
         head_address = cluster_info.get("head_address")
         if head_address:
             env["RAY_HEAD_ADDRESS"] = head_address
+
+        # Merge caller-supplied environment variables (e.g. K8s node-selector hints).
+        if environment_vars:
+            env.update(environment_vars)
+
+        # Serialize custom Ray resource labels so the worker launcher can merge
+        # them into --resources at start time without touching the baked script.
+        if ray_labels:
+            import json
+            env["RAY_EXTRA_RESOURCES"] = json.dumps(ray_labels)
 
         app_info = self.manager.launch_worker(
             group=group,
