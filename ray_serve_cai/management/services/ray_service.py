@@ -87,6 +87,24 @@ class RayService:
         """
         self.connect()
 
+        # Allowlist check mirrors the guard in management/api/engines.py.
+        # Only modules whose dotted prefix starts with a permitted value can be
+        # imported — prevents arbitrary code execution via crafted import_path.
+        import os as _os
+        _allowed = [
+            p.strip()
+            for p in _os.environ.get(
+                "ALLOWED_ENGINE_MODULES", "custom_engines,ray_serve_cai"
+            ).split(",")
+            if p.strip()
+        ]
+        module_part = import_path.rsplit(":", 1)[0]
+        if not any(module_part == p or module_part.startswith(p + ".") for p in _allowed):
+            raise ValueError(
+                f"import_path module '{module_part}' is not in the allowlist "
+                f"{_allowed}. Set ALLOWED_ENGINE_MODULES env var to add more prefixes."
+            )
+
         try:
             # Parse import path (module.submodule:ClassName or module:app_handle)
             module_path, attr_name = import_path.rsplit(":", 1)

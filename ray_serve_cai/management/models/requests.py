@@ -1,7 +1,23 @@
 """Request models for management API."""
 
+import re
 from typing import Any, Dict, List, Literal, Optional
 from pydantic import BaseModel, Field, field_validator, model_validator
+
+# Environment variable keys that must never be injected into actor processes.
+# These can be used for dynamic linker hijacking, Python startup code execution,
+# or credential theft — all achievable before the actor's own code runs.
+_ENV_VAR_DENYLIST = frozenset({
+    "LD_PRELOAD",
+    "LD_LIBRARY_PATH",
+    "LD_AUDIT",
+    "LD_DEBUG",
+    "DYLD_INSERT_LIBRARIES",
+    "DYLD_LIBRARY_PATH",
+    "PYTHONSTARTUP",
+    "PYTHONPATH",
+    "PATH",
+})
 
 
 class AddNodeRequest(BaseModel):
@@ -151,6 +167,20 @@ class SchedulingConfig(BaseModel):
             "{\"HF_HOME\": \"/mnt/models\"} — override HuggingFace cache path."
         ),
     )
+
+    @field_validator("env_vars")
+    @classmethod
+    def validate_env_vars(cls, v: Optional[Dict[str, str]]) -> Optional[Dict[str, str]]:
+        if v is None:
+            return v
+        blocked = _ENV_VAR_DENYLIST & set(v.keys())
+        if blocked:
+            raise ValueError(
+                f"env_vars contains disallowed keys that could be used for "
+                f"dynamic-linker or interpreter hijacking: {sorted(blocked)}. "
+                f"Remove these keys from scheduling.env_vars."
+            )
+        return v
 
     class Config:
         json_schema_extra = {
@@ -307,6 +337,19 @@ class DeployApplicationRequest(BaseModel):
     )
 
     # ── Validators ─────────────────────────────────────────────────────────────
+    @field_validator("import_path")
+    @classmethod
+    def validate_import_path(cls, v: Optional[str]) -> Optional[str]:
+        if v is None:
+            return v
+        # Must be module.submodule:attribute — no relative imports, no path traversal.
+        if not re.fullmatch(r"[A-Za-z_][A-Za-z0-9_.]*:[A-Za-z_][A-Za-z0-9_]*", v):
+            raise ValueError(
+                "import_path must be in 'module:attribute' format "
+                "(e.g. 'my_module:app'). Relative imports and path components are not allowed."
+            )
+        return v
+
     @model_validator(mode="after")
     def check_discriminator(self) -> "DeployApplicationRequest":
         has_engine = self.engine_type is not None
