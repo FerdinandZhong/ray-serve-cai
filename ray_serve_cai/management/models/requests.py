@@ -194,6 +194,17 @@ class DeployModelRequest(BaseModel):
             "Pins replicas to Ray nodes with a matching 'node_type:<value>' resource label."
         ),
     )
+    venv_name: Optional[str] = Field(
+        default=None,
+        description=(
+            "Name of the isolated environment to run the actor in, resolved to "
+            "/home/cdsw/.venv-<venv_name>. Defaults to the engine_type (e.g. 'vllm' "
+            "→ .venv-vllm). Use a custom name to run a specific engine version "
+            "(e.g. 'vllm-013') or to share one env across engines. The env must "
+            "already exist — create it via POST /api/v1/environments. An explicit "
+            "name that does not exist is rejected with 400."
+        ),
+    )
     multi_node: bool = Field(
         default=False,
         description=(

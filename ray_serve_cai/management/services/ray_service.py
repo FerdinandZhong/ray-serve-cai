@@ -135,6 +135,7 @@ class RayService:
         node_type: Optional[str] = None,
         multi_node: bool = False,
         autoscaling_config: Optional[Dict[str, Any]] = None,
+        venv_name: Optional[str] = None,
     ) -> Dict[str, Any]:
         """
         Deploy a vLLM or SGLang model as a Ray Serve application.
@@ -184,6 +185,12 @@ class RayService:
 
         config_builder = registry.get_config_builder(engine_type)
         built_config = config_builder.build_config(user_config)
+
+        # Inject the deployment-level venv selection so the factory's
+        # resolve_venv_path() picks it up.  Kept out of build_config (which is
+        # engine-model config) because the venv is a deployment concern.
+        if venv_name:
+            built_config["venv_name"] = venv_name
 
         deployment_factory = registry.get_deployment_factory(engine_type)
         app = deployment_factory.create_deployment(

@@ -90,11 +90,10 @@ class SGLangDeploymentFactory:
         max_ongoing_requests: int = 100,
         **kwargs,
     ) -> serve.Application:
-        from pathlib import Path
         from .sglang_engine import create_sglang_deployment
+        from .venv_utils import resolve_venv_path
 
-        _vp = "/home/cdsw/.venv-sglang"
-        venv_path = _vp if Path(_vp).exists() else None
+        venv_path = resolve_venv_path(engine_config, default_name="sglang")
 
         return create_sglang_deployment(
             engine_config=engine_config,

@@ -352,6 +352,9 @@ def create_sglang_deployment(
 
     if venv_path:
         ray_actor_options["runtime_env"] = {"py_executable": f"{venv_path}/bin/python"}
+        # Propagate to engine_config so the actor's SGLang subprocess launches
+        # its server from the SAME venv (it reads engine_config["venv_path"]).
+        engine_config["venv_path"] = venv_path
         logger.info("Using isolated venv: %s", venv_path)
 
     autoscaling = engine_config.get("autoscaling_config")

@@ -81,6 +81,7 @@ async def deploy_model(
             node_type=request.node_type,
             multi_node=request.multi_node,
             autoscaling_config=request.autoscaling_config,
+            venv_name=request.venv_name,
         )
         return result
     except ValueError as e:

@@ -184,9 +184,9 @@ class YOLODeploymentFactory:
             ray_actor_options["resources"] = {f"node_type:{node_type}": 0.001}
             logger.info(f"Pinning deployment to node_type={node_type!r}")
 
-        from pathlib import Path
-        _vp = "/home/cdsw/.venv-yolo"
-        if Path(_vp).exists():
+        from .venv_utils import resolve_venv_path
+        _vp = resolve_venv_path(engine_config, default_name="yolo")
+        if _vp:
             ray_actor_options["runtime_env"] = {"py_executable": f"{_vp}/bin/python"}
             logger.info("Using isolated venv: %s", _vp)
 
