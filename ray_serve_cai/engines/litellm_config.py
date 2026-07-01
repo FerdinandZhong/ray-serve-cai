@@ -148,7 +148,8 @@ class LiteLLMDeploymentFactory:
             "runtime_env": rt_env,
         }
         if scheduling_resources:
-            ray_actor_options["resources"] = scheduling_resources
+            ray_actor_options.setdefault("resources", {})
+            ray_actor_options["resources"].update(scheduling_resources)
             logger.info("Scheduling resources applied: %s", scheduling_resources)
         logger.info("Using isolated venv: %s", venv_path)
 

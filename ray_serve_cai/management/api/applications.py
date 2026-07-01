@@ -17,6 +17,19 @@ def get_coordinator() -> CoordinatorService:
     return get_coordinator_service()
 
 
+@router.post("/model", include_in_schema=False)
+async def deploy_model_compat():
+    """
+    Permanent redirect to the unified POST /applications endpoint.
+
+    This path was removed in favour of POST /api/v1/applications which now
+    handles both engine-registry and raw Ray Serve deployments via a
+    discriminated union body.  Update your client to use that endpoint.
+    """
+    from fastapi.responses import RedirectResponse
+    return RedirectResponse(url="/api/v1/applications", status_code=308)
+
+
 @router.post("", response_model=Dict[str, Any])
 async def deploy_application(
     request: DeployApplicationRequest,

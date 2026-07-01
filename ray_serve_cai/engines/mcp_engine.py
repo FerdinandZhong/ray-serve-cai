@@ -236,7 +236,8 @@ def create_mcp_deployment(
     if rt_env:
         ray_actor_options["runtime_env"] = rt_env
     if scheduling_resources:
-        ray_actor_options["resources"] = scheduling_resources
+        ray_actor_options.setdefault("resources", {})
+        ray_actor_options["resources"].update(scheduling_resources)
         logger.info("Scheduling resources applied: %s", scheduling_resources)
 
     opts: Dict[str, Any] = {

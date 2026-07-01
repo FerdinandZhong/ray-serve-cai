@@ -2,7 +2,7 @@
 
 import re
 from typing import Any, Dict, List, Literal, Optional
-from pydantic import BaseModel, Field, field_validator, model_validator
+from pydantic import BaseModel, ConfigDict, Field, field_validator, model_validator
 
 # Environment variable keys that must never be injected into actor processes.
 # These can be used for dynamic linker hijacking, Python startup code execution,
@@ -222,9 +222,18 @@ class DeployApplicationRequest(BaseModel):
         The ``scheduling`` field provides full control over actor resources,
         placement group bundles, and runtime env vars for BOTH paths.
         When ``node_type`` is set without ``scheduling``, it auto-expands to
-        ``scheduling.resources = {\"node_type:<value>\": 0.001}`` for backward
+        ``scheduling.resources = {"node_type:<value>": 0.001}`` for backward
         compatibility.  When both are set, ``scheduling`` takes full precedence.
+
+    .. note::
+        ``placement_group_bundles`` and ``placement_group_strategy`` were
+        top-level fields on the old ``DeployModelRequest`` (used with
+        ``POST /applications/model``).  They must now be provided inside the
+        ``scheduling`` sub-object.  Passing them at the top level raises 422
+        due to ``extra="forbid"``.
     """
+
+    model_config = ConfigDict(extra="forbid")
 
     name: str = Field(..., description="Ray Serve application name (must be unique within the cluster)")
 

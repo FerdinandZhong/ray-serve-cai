@@ -282,8 +282,8 @@ class VLLMDeploymentFactory:
         # Pop them so they don't leak into the vLLM AsyncEngineArgs.
         scheduling_resources = engine_config.pop("scheduling_resources", None)
         scheduling_env_vars  = engine_config.pop("scheduling_env_vars", None)
-        pg_bundles  = kwargs.get("placement_group_bundles") or engine_config.pop("scheduling_pg_bundles", None)
-        pg_strategy = kwargs.get("placement_group_strategy") or engine_config.pop("scheduling_pg_strategy", None)
+        pg_bundles  = kwargs.get("placement_group_bundles")
+        pg_strategy = kwargs.get("placement_group_strategy")
 
         return create_vllm_deployment(
             engine_config=engine_config,

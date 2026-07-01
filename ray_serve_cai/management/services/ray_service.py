@@ -1,10 +1,14 @@
 """Service for Ray cluster operations."""
 
 import concurrent.futures
+import logging
+from typing import TYPE_CHECKING, Any, Dict, List, Optional
+
 import ray
 from ray import serve
-from typing import List, Dict, Any, Optional
-import logging
+
+if TYPE_CHECKING:
+    from ..models.requests import SchedulingConfig
 
 logger = logging.getLogger(__name__)
 
@@ -141,7 +145,7 @@ class RayService:
         self,
         name: str,
         engine_type: str,
-        model: str,
+        model: Optional[str],
         route_prefix: str = "/",
         num_replicas: int = 1,
         tensor_parallel_size: int = 1,
@@ -154,7 +158,7 @@ class RayService:
         multi_node: bool = False,
         autoscaling_config: Optional[Dict[str, Any]] = None,
         venv_name: Optional[str] = None,
-        scheduling: Optional[Any] = None,
+        scheduling: Optional["SchedulingConfig"] = None,
     ) -> Dict[str, Any]:
         """
         Deploy a vLLM or SGLang model as a Ray Serve application.
