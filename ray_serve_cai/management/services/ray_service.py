@@ -136,6 +136,7 @@ class RayService:
         multi_node: bool = False,
         autoscaling_config: Optional[Dict[str, Any]] = None,
         venv_name: Optional[str] = None,
+        scheduling: Optional[Any] = None,
     ) -> Dict[str, Any]:
         """
         Deploy a vLLM or SGLang model as a Ray Serve application.
@@ -191,6 +192,25 @@ class RayService:
         # engine-model config) because the venv is a deployment concern.
         if venv_name:
             built_config["venv_name"] = venv_name
+
+        # Resolve scheduling constraints.
+        # Priority: explicit scheduling block > node_type shorthand.
+        # scheduling.placement_group_bundles / strategy override the caller's
+        # positional placement_group_bundles / placement_group_strategy args.
+        if scheduling is not None:
+            if scheduling.resources:
+                built_config["scheduling_resources"] = scheduling.resources
+            if scheduling.placement_group_bundles:
+                placement_group_bundles = scheduling.placement_group_bundles
+            if scheduling.placement_group_strategy:
+                placement_group_strategy = scheduling.placement_group_strategy
+            if scheduling.env_vars:
+                built_config["scheduling_env_vars"] = scheduling.env_vars
+        elif node_type:
+            # Backward-compat shorthand: auto-expand into scheduling_resources.
+            # node_type is ALSO kept in user_config (already in built_config via
+            # build_vllm_engine_config) so multi-node bundle hints still work.
+            built_config["scheduling_resources"] = {f"node_type:{node_type}": 0.001}
 
         deployment_factory = registry.get_deployment_factory(engine_type)
         app = deployment_factory.create_deployment(

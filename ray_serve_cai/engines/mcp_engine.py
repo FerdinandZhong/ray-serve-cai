@@ -205,6 +205,8 @@ def create_mcp_deployment(
     num_replicas: int = 1,
     use_cpu: bool = True,
     venv_path: Optional[str] = None,
+    scheduling_resources: Optional[Dict[str, float]] = None,
+    scheduling_env_vars: Optional[Dict[str, str]] = None,
     **kwargs,
 ) -> serve.Application:
     """
@@ -214,6 +216,8 @@ def create_mcp_deployment(
         engine_config: Must contain ``mcp_module`` (dotted module path).
         num_replicas: Number of replicas (default 1).
         use_cpu: Always True for MCP (no GPU needed).
+        scheduling_resources: Optional Ray resource constraints for actor placement.
+        scheduling_env_vars: Optional env vars merged into the actor's runtime_env.
         **kwargs: Ignored.
 
     Returns:
@@ -222,9 +226,18 @@ def create_mcp_deployment(
     num_cpus = engine_config.get("num_cpus", 0.2)
     ray_actor_options: Dict[str, Any] = {"num_cpus": num_cpus, "num_gpus": 0}
 
+    rt_env: Dict[str, Any] = {}
     if venv_path:
-        ray_actor_options["runtime_env"] = {"py_executable": f"{venv_path}/bin/python"}
+        rt_env["py_executable"] = f"{venv_path}/bin/python"
         logger.info("Using isolated venv: %s", venv_path)
+    if scheduling_env_vars:
+        rt_env["env_vars"] = scheduling_env_vars
+        logger.info("Scheduling env_vars applied: %s", list(scheduling_env_vars.keys()))
+    if rt_env:
+        ray_actor_options["runtime_env"] = rt_env
+    if scheduling_resources:
+        ray_actor_options["resources"] = scheduling_resources
+        logger.info("Scheduling resources applied: %s", scheduling_resources)
 
     opts: Dict[str, Any] = {
         "num_replicas": num_replicas,

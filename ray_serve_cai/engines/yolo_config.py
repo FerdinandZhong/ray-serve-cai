@@ -177,18 +177,28 @@ class YOLODeploymentFactory:
         }
 
         if node_type:
-            # Require a tiny fraction of the custom resource registered by
-            # the worker launcher (node_type:<node_type> = 1).  This pins
-            # every replica to nodes of exactly this type without consuming
-            # a meaningful share of the resource.
             ray_actor_options["resources"] = {f"node_type:{node_type}": 0.001}
             logger.info(f"Pinning deployment to node_type={node_type!r}")
 
+        # Explicit scheduling resources (override node_type shorthand)
+        scheduling_resources = engine_config.pop("scheduling_resources", None)
+        scheduling_env_vars  = engine_config.pop("scheduling_env_vars", None)
+        if scheduling_resources:
+            ray_actor_options["resources"] = {}
+            ray_actor_options["resources"].update(scheduling_resources)
+            logger.info("Scheduling resources applied: %s", scheduling_resources)
+
         from .venv_utils import resolve_venv_path
         _vp = resolve_venv_path(engine_config, default_name="yolo")
+        rt_env: Dict[str, Any] = {}
         if _vp:
-            ray_actor_options["runtime_env"] = {"py_executable": f"{_vp}/bin/python"}
+            rt_env["py_executable"] = f"{_vp}/bin/python"
             logger.info("Using isolated venv: %s", _vp)
+        if scheduling_env_vars:
+            rt_env["env_vars"] = scheduling_env_vars
+            logger.info("Scheduling env_vars applied: %s", list(scheduling_env_vars.keys()))
+        if rt_env:
+            ray_actor_options["runtime_env"] = rt_env
 
         logger.info(
             f"Creating YOLO deployment: replicas={num_replicas}  "

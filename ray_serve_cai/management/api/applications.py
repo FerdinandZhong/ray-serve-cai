@@ -1,9 +1,10 @@
 """Application management API endpoints."""
+from __future__ import annotations
 
-from fastapi import APIRouter, HTTPException, Depends
-from typing import Dict, Any
+from fastapi import APIRouter, Depends, HTTPException
+from typing import Any, Dict
 
-from ..models.requests import DeployApplicationRequest, DeployModelRequest
+from ..models.requests import DeployApplicationRequest
 from ..models.responses import ApplicationInfo, ApplicationsListResponse
 from ..services.coordinator import CoordinatorService
 
@@ -19,126 +20,120 @@ def get_coordinator() -> CoordinatorService:
 @router.post("", response_model=Dict[str, Any])
 async def deploy_application(
     request: DeployApplicationRequest,
-    coordinator: CoordinatorService = Depends(get_coordinator)
+    coordinator: CoordinatorService = Depends(get_coordinator),
 ):
     """
-    Deploy a new Ray Serve application.
+    Deploy a Ray Serve application.
 
-    The application will be imported from the specified import_path and deployed
-    with the given configuration.
+    Exactly one of ``engine_type`` or ``import_path`` must be provided:
+
+    **Engine-registry path** (``engine_type`` set):
+    Deploy a model or service using a registered inference engine (vLLM, SGLang,
+    LiteLLM, YOLO, MCP, or a custom engine).  Engine-specific parameters go in
+    ``engine_config``; ``model`` is required for vLLM and SGLang.
+
+    **Raw Ray Serve path** (``import_path`` set):
+    Import and deploy any ``@serve.deployment``-decorated class or bound
+    ``serve.Application`` from a Python module on the head node's PYTHONPATH.
+    Use ``ray_actor_options`` for resource requirements.
+
+    **Scheduling** (both paths):
+    Use the ``scheduling`` field for explicit Ray actor resource constraints,
+    custom placement group bundle layouts, and actor env vars (e.g.
+    ``VLLM_RAY_PER_WORKER_GPUS``, ``VLLM_RAY_BUNDLE_INDICES``).  The legacy
+    ``node_type`` shorthand auto-expands to
+    ``scheduling.resources = {"node_type:<value>": 0.001}`` when ``scheduling``
+    is not provided.
+
+    The application name must be unique within Ray Serve.  Re-deploying with
+    the same name performs a rolling update.
     """
     try:
-        result = coordinator.ray_service.deploy_application(
-            name=request.name,
-            import_path=request.import_path,
-            route_prefix=request.route_prefix,
-            num_replicas=request.num_replicas,
-            ray_actor_options=request.ray_actor_options
-        )
-        return result
-    except Exception as e:
-        raise HTTPException(status_code=500, detail=str(e))
+        if request.engine_type:
+            result = coordinator.ray_service.deploy_model(
+                name=request.name,
+                engine_type=request.engine_type,
+                model=request.model,
+                route_prefix=request.route_prefix,
+                num_replicas=request.num_replicas,
+                tensor_parallel_size=request.tensor_parallel_size,
+                use_cpu=request.use_cpu,
+                gpu_fraction=request.gpu_fraction,
+                engine_config=request.engine_config,
+                placement_group_bundles=None,   # resolved via scheduling
+                placement_group_strategy=None,  # resolved via scheduling
+                node_type=request.node_type,
+                multi_node=request.multi_node,
+                autoscaling_config=request.autoscaling_config,
+                venv_name=request.venv_name,
+                scheduling=request.scheduling,
+            )
+        else:
+            # Raw Ray Serve import path.
+            # Merge scheduling constraints into ray_actor_options before dispatch.
+            actor_opts: Dict[str, Any] = dict(request.ray_actor_options or {})
+            if request.scheduling:
+                sc = request.scheduling
+                if sc.resources:
+                    actor_opts.setdefault("resources", {})
+                    actor_opts["resources"].update(sc.resources)
+                if sc.env_vars:
+                    rt = dict(actor_opts.get("runtime_env") or {})
+                    rt["env_vars"] = {**rt.get("env_vars", {}), **sc.env_vars}
+                    actor_opts["runtime_env"] = rt
 
-
-@router.post("/model", response_model=Dict[str, Any])
-async def deploy_model(
-    request: DeployModelRequest,
-    coordinator: CoordinatorService = Depends(get_coordinator)
-):
-    """
-    Deploy a vLLM or SGLang model as a Ray Serve application.
-
-    The model is loaded by the chosen inference engine and served via
-    OpenAI-compatible endpoints under `route_prefix`:
-
-    - `POST {route_prefix}/v1/completions`
-    - `POST {route_prefix}/v1/chat/completions`
-    - `GET  {route_prefix}/v1/models`
-    - `GET  {route_prefix}/health`
-
-    Use `tensor_parallel_size > 1` to split a large model across multiple GPUs
-    on a single worker node.  To spread replicas across multiple worker nodes,
-    increase `num_replicas` and ensure enough GPU-equipped nodes are registered
-    in the cluster.
-
-    The application name must be unique within Ray Serve.  To update a running
-    model, call this endpoint again with the same name — Ray Serve will perform
-    a rolling update.
-    """
-    try:
-        result = coordinator.ray_service.deploy_model(
-            name=request.name,
-            engine_type=request.engine_type,
-            model=request.model,
-            route_prefix=request.route_prefix,
-            num_replicas=request.num_replicas,
-            tensor_parallel_size=request.tensor_parallel_size,
-            use_cpu=request.use_cpu,
-            gpu_fraction=request.gpu_fraction,
-            engine_config=request.engine_config,
-            placement_group_bundles=request.placement_group_bundles,
-            placement_group_strategy=request.placement_group_strategy,
-            node_type=request.node_type,
-            multi_node=request.multi_node,
-            autoscaling_config=request.autoscaling_config,
-            venv_name=request.venv_name,
-        )
+            result = coordinator.ray_service.deploy_application(
+                name=request.name,
+                import_path=request.import_path,
+                route_prefix=request.route_prefix,
+                num_replicas=request.num_replicas,
+                ray_actor_options=actor_opts or None,
+            )
         return result
     except ValueError as e:
-        raise HTTPException(status_code=400, detail=str(e))
+        raise HTTPException(status_code=400, detail=str(e)) from e
     except Exception as e:
-        raise HTTPException(status_code=500, detail=str(e))
-
+        raise HTTPException(status_code=500, detail=str(e)) from e
 
 
 @router.delete("/{app_name}", response_model=Dict[str, Any])
 async def delete_application(
     app_name: str,
-    coordinator: CoordinatorService = Depends(get_coordinator)
+    coordinator: CoordinatorService = Depends(get_coordinator),
 ):
-    """
-    Undeploy a Ray Serve application.
-
-    This will stop all replicas and remove the application from Ray Serve.
-    """
+    """Undeploy a Ray Serve application. Stops all replicas."""
     try:
         result = coordinator.ray_service.delete_application(app_name)
         return result
     except Exception as e:
-        raise HTTPException(status_code=500, detail=str(e))
+        raise HTTPException(status_code=500, detail=str(e)) from e
 
 
 @router.get("", response_model=ApplicationsListResponse)
 async def list_applications(coordinator: CoordinatorService = Depends(get_coordinator)):
-    """
-    List all Ray Serve applications currently deployed.
-    """
+    """List all Ray Serve applications currently deployed."""
     try:
         apps = coordinator.ray_service.list_applications()
-
         return ApplicationsListResponse(
             applications=[ApplicationInfo(**app) for app in apps],
-            total_applications=len(apps)
+            total_applications=len(apps),
         )
     except Exception as e:
-        raise HTTPException(status_code=500, detail=str(e))
+        raise HTTPException(status_code=500, detail=str(e)) from e
 
 
 @router.get("/{app_name}", response_model=ApplicationInfo)
 async def get_application(
     app_name: str,
-    coordinator: CoordinatorService = Depends(get_coordinator)
+    coordinator: CoordinatorService = Depends(get_coordinator),
 ):
-    """
-    Get detailed information about a specific application.
-    """
+    """Get detailed information about a specific application."""
     try:
         app = coordinator.ray_service.get_application_status(app_name)
         if not app:
             raise HTTPException(status_code=404, detail=f"Application {app_name} not found")
-
         return ApplicationInfo(**app)
     except HTTPException:
         raise
     except Exception as e:
-        raise HTTPException(status_code=500, detail=str(e))
+        raise HTTPException(status_code=500, detail=str(e)) from e

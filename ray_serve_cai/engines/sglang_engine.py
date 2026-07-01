@@ -32,10 +32,8 @@ References:
 """
 from __future__ import annotations
 
-import asyncio
 import logging
 import subprocess
-import sys
 import time
 from typing import Any, Dict, List, Optional
 
@@ -314,6 +312,8 @@ def create_sglang_deployment(
     placement_group_bundles: Optional[List[Dict[str, float]]] = None,
     placement_group_strategy: Optional[str] = None,
     venv_path: Optional[str] = None,
+    scheduling_resources: Optional[Dict[str, float]] = None,
+    scheduling_env_vars: Optional[Dict[str, str]] = None,
 ) -> serve.Application:
     """Create an SGLang Ray Serve deployment."""
     logger.info("Creating SGLang deployment  replicas=%d  tp=%d  cpu=%s",
@@ -343,19 +343,31 @@ def create_sglang_deployment(
             placement_group_bundles = [{"GPU": gpu_fraction, "CPU": 2.0}]
             placement_group_strategy = placement_group_strategy or "PACK"
 
-    # Node type targeting
+    # Node type targeting (legacy — skipped when scheduling_resources is set)
     node_type = engine_config.get("node_type")
-    if node_type:
+    if node_type and not scheduling_resources:
         ray_actor_options.setdefault("resources", {})
         ray_actor_options["resources"][f"node_type:{node_type}"] = 0.001
         logger.info("Pinning deployment to node_type=%r", node_type)
 
+    # Explicit scheduling resources
+    if scheduling_resources:
+        ray_actor_options.setdefault("resources", {})
+        ray_actor_options["resources"].update(scheduling_resources)
+        logger.info("Scheduling resources applied: %s", scheduling_resources)
+
+    # Runtime env: venv + scheduling env_vars
+    rt_env: Dict[str, Any] = {}
     if venv_path:
-        ray_actor_options["runtime_env"] = {"py_executable": f"{venv_path}/bin/python"}
-        # Propagate to engine_config so the actor's SGLang subprocess launches
-        # its server from the SAME venv (it reads engine_config["venv_path"]).
+        rt_env["py_executable"] = f"{venv_path}/bin/python"
+        # Propagate to engine_config so the SGLang subprocess launches from the same venv.
         engine_config["venv_path"] = venv_path
         logger.info("Using isolated venv: %s", venv_path)
+    if scheduling_env_vars:
+        rt_env["env_vars"] = scheduling_env_vars
+        logger.info("Scheduling env_vars applied: %s", list(scheduling_env_vars.keys()))
+    if rt_env:
+        ray_actor_options["runtime_env"] = rt_env
 
     autoscaling = engine_config.get("autoscaling_config")
     opts: Dict[str, Any] = {

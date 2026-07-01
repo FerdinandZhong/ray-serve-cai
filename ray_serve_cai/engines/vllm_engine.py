@@ -495,6 +495,8 @@ def create_vllm_deployment(
     placement_group_strategy: Optional[str] = None,
     multi_node: bool = False,
     venv_path: Optional[str] = None,
+    scheduling_resources: Optional[Dict[str, float]] = None,
+    scheduling_env_vars: Optional[Dict[str, str]] = None,
 ) -> serve.Application:
     """
     Create a vLLM Ray Serve deployment with appropriate resource allocation.
@@ -633,17 +635,32 @@ def create_vllm_deployment(
                 gpu_fraction,
             )
 
-    # ── Node type targeting ──────────────────────────────────────────────────
+    # ── Node type targeting (legacy path) ───────────────────────────────────
     # For multi-node TP the hint is already embedded in each placement group
     # bundle (see above).  For all other cases inject into ray_actor_options.
-    if node_type and not (multi_node and tensor_parallel_size > 1):
+    # scheduling_resources (from SchedulingConfig) takes precedence and is
+    # merged in the next block, so skip node_type injection when it is set.
+    if node_type and not (multi_node and tensor_parallel_size > 1) and not scheduling_resources:
         ray_actor_options.setdefault("resources", {})
         ray_actor_options["resources"][f"node_type:{node_type}"] = 0.001
         logger.info("Pinning deployment to node_type=%r via ray_actor_options", node_type)
 
+    # ── Explicit scheduling resources ────────────────────────────────────────
+    if scheduling_resources:
+        ray_actor_options.setdefault("resources", {})
+        ray_actor_options["resources"].update(scheduling_resources)
+        logger.info("Scheduling resources applied: %s", scheduling_resources)
+
+    # ── Runtime env: venv + scheduling env_vars ──────────────────────────────
+    rt_env: Dict[str, Any] = {}
     if venv_path:
-        ray_actor_options["runtime_env"] = {"py_executable": f"{venv_path}/bin/python"}
+        rt_env["py_executable"] = f"{venv_path}/bin/python"
         logger.info("Using isolated venv: %s", venv_path)
+    if scheduling_env_vars:
+        rt_env["env_vars"] = scheduling_env_vars
+        logger.info("Scheduling env_vars applied: %s", list(scheduling_env_vars.keys()))
+    if rt_env:
+        ray_actor_options["runtime_env"] = rt_env
 
     # ── Build .options() kwargs ─────────────────────────────────────────────
     autoscaling = engine_config.get("autoscaling_config")

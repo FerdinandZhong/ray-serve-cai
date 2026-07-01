@@ -278,6 +278,13 @@ class VLLMDeploymentFactory:
 
         venv_path = resolve_venv_path(engine_config, default_name="vllm")
 
+        # Extract scheduling fields injected by ray_service.deploy_model().
+        # Pop them so they don't leak into the vLLM AsyncEngineArgs.
+        scheduling_resources = engine_config.pop("scheduling_resources", None)
+        scheduling_env_vars  = engine_config.pop("scheduling_env_vars", None)
+        pg_bundles  = kwargs.get("placement_group_bundles") or engine_config.pop("scheduling_pg_bundles", None)
+        pg_strategy = kwargs.get("placement_group_strategy") or engine_config.pop("scheduling_pg_strategy", None)
+
         return create_vllm_deployment(
             engine_config=engine_config,
             num_replicas=num_replicas,
@@ -285,8 +292,10 @@ class VLLMDeploymentFactory:
             use_cpu=use_cpu,
             max_ongoing_requests=max_ongoing_requests,
             gpu_fraction=kwargs.get("gpu_fraction"),
-            placement_group_bundles=kwargs.get("placement_group_bundles"),
-            placement_group_strategy=kwargs.get("placement_group_strategy"),
+            placement_group_bundles=pg_bundles,
+            placement_group_strategy=pg_strategy,
             multi_node=kwargs.get("multi_node", False),
             venv_path=venv_path,
+            scheduling_resources=scheduling_resources,
+            scheduling_env_vars=scheduling_env_vars,
         )
