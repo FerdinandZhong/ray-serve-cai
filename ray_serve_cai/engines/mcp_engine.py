@@ -22,6 +22,7 @@ Endpoints (after deployment with route_prefix e.g. /weather-mcp):
 Reference:
     https://github.com/ray-project/ray/blob/master/python/ray/llm/examples/sglang/modules/sglang_engine.py
 """
+from __future__ import annotations
 
 import importlib
 import logging

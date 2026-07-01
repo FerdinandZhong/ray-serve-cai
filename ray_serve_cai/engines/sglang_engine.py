@@ -30,6 +30,7 @@ References:
   SGLang metrics: https://docs.sglang.io/references/production_metrics.html
   Ray example: https://github.com/ray-project/ray/blob/master/python/ray/llm/examples/sglang/
 """
+from __future__ import annotations
 
 import asyncio
 import logging
