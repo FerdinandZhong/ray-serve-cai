@@ -2,7 +2,7 @@
 
 import json
 from pathlib import Path
-from typing import Dict, Any, List, Optional
+from typing import Dict, Any, List
 import logging
 
 from .ray_service import RayService
@@ -117,27 +117,43 @@ class CoordinatorService:
 
     def get_enriched_nodes(self) -> List[Dict[str, Any]]:
         """
-        Get Ray nodes enriched with CML application information.
+        Get Ray nodes enriched with CML application identity.
 
-        Cross-references Ray nodes with the resource map (which stores
-        CML app_id ↔ app_name from create_worker_node) and with live
-        CML applications to provide the correct app IDs for deletion.
+        Joins Ray node data with the persisted node_mapping (ray_node_id →
+        cml_app_id/cml_app_name) and live CML application status so that
+        callers get a single unified view with the correct app_id for deletion.
 
         Returns:
             List of enriched node information
         """
         ray_nodes = self.ray_service.get_nodes()
+        state = self.load_state()
+        node_mapping = state.get("node_mapping", {})
+
+        # Build app_id → live status from CML in one call.
+        cml_status_by_id: Dict[str, str] = {}
+        try:
+            for app in self.cai_service.list_applications():
+                if "id" in app:
+                    cml_status_by_id[app["id"]] = app.get("status", "unknown")
+        except Exception as exc:
+            logger.warning("Could not fetch CML app statuses for node enrichment: %s", exc)
 
         enriched_nodes = []
         for node in ray_nodes:
-            node_id = node.get("NodeID")
-            node_info = {
+            node_id = node.get("NodeID", "")
+            mapping = node_mapping.get(node_id, {})
+            app_id = mapping.get("cml_app_id")
+            node_info: Dict[str, Any] = {
                 "node_id": node_id,
                 "node_name": node.get("NodeName", ""),
                 "node_type": _detect_node_type(node.get("Resources", {})),
                 "alive": node.get("Alive", False),
                 "resources": node.get("Resources", {}),
                 "resources_used": node.get("ResourcesUsed", {}),
+                "app_id": app_id,
+                "app_name": mapping.get("cml_app_name"),
+                "cml_status": cml_status_by_id.get(app_id) if app_id else None,
             }
             enriched_nodes.append(node_info)
 
@@ -270,7 +286,7 @@ class CoordinatorService:
         # state cleanup — the app may have already been deleted or crashed.
         cml_delete_warning = None
         try:
-            self.cai_service.delete_worker_node(app_id)
+            self.cai_service.delete_application(app_id)
         except Exception as exc:
             cml_delete_warning = str(exc)
             logger.warning(
@@ -333,7 +349,7 @@ class CoordinatorService:
 
     def remove_cai_application(self, app_id: str) -> Dict[str, Any]:
         """Stop a CML application and release its resources from the map."""
-        result = self.cai_service.delete_worker_node(app_id)
+        result = self.cai_service.delete_application(app_id)
         self.resource_map.release(app_id)
         return result
 

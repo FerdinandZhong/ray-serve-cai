@@ -75,8 +75,8 @@ class LaunchCaiApplicationRequest(BaseModel):
         description="Environment variables injected into the application",
     )
     bypass_authentication: bool = Field(
-        default=True,
-        description="Allow unauthenticated access to the application",
+        default=False,
+        description="Allow unauthenticated access to the application. Defaults to False; set True only for internal tooling.",
     )
 
     class Config:

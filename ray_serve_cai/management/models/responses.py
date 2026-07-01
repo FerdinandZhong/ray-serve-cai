@@ -1,19 +1,23 @@
 """Response models for management API."""
 
-from typing import List, Optional, Dict, Any
+from typing import Dict, List, Optional
 from pydantic import BaseModel, Field
 from datetime import datetime
 
 
 class NodeInfo(BaseModel):
-    """Information about a Ray node."""
+    """Information about a Ray node, enriched with CML application identity."""
 
     node_id: str = Field(..., description="Ray node ID")
     node_name: str = Field(..., description="Node name")
     node_type: str = Field(..., description="Node type (head/worker)")
     alive: bool = Field(..., description="Whether the node is alive")
-    resources: Dict[str, float] = Field(..., description="Available resources")
-    resources_used: Dict[str, float] = Field(..., description="Used resources")
+    resources: Dict[str, float] = Field(..., description="Total resources on this node")
+    resources_used: Dict[str, float] = Field(..., description="Used resources on this node")
+    # CML side — present for worker nodes added via POST /resources/nodes
+    app_id: Optional[str] = Field(None, description="CML application ID (use this to DELETE the node)")
+    app_name: Optional[str] = Field(None, description="CML application name")
+    cml_status: Optional[str] = Field(None, description="Live CML application status")
 
 
 class NodesListResponse(BaseModel):
@@ -29,8 +33,8 @@ class ApplicationInfo(BaseModel):
 
     name: str = Field(..., description="Application name")
     status: str = Field(..., description="Application status (RUNNING, DEPLOYING, UNHEALTHY)")
-    route_prefix: str = Field(..., description="HTTP route prefix")
-    num_replicas: int = Field(..., description="Number of replicas")
+    route_prefix: Optional[str] = Field(None, description="HTTP route prefix")
+    num_replicas: Optional[int] = Field(None, description="Total replica count across all deployments")
     message: Optional[str] = Field(None, description="Status message if any")
     last_deployed_time: Optional[datetime] = Field(None, description="Last deployment time")
 

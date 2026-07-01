@@ -90,30 +90,6 @@ async def deploy_model(
         raise HTTPException(status_code=500, detail=str(e))
 
 
-@router.get("/engines", response_model=Dict[str, Any])
-async def list_engines(coordinator: CoordinatorService = Depends(get_coordinator)):
-    """
-    List available inference engines and their registration status.
-
-    Returns the engines that are installed and available for model deployment
-    (e.g., 'vllm', 'sglang').  Only registered engines can be used with the
-    POST /applications/model endpoint.
-    """
-    try:
-        import ray_serve_cai.engines  # noqa: F401 — triggers registration
-        from ray_serve_cai.engines.registry import get_registry
-
-        registry = get_registry()
-        engines = registry.list_engines()
-        default = registry.get_default_engine()
-        return {
-            "engines": engines,
-            "default_engine": default,
-            "total": len(engines),
-        }
-    except Exception as e:
-        raise HTTPException(status_code=500, detail=str(e))
-
 
 @router.delete("/{app_name}", response_model=Dict[str, Any])
 async def delete_application(
@@ -141,7 +117,7 @@ async def list_applications(coordinator: CoordinatorService = Depends(get_coordi
         apps = coordinator.ray_service.list_applications()
 
         return ApplicationsListResponse(
-            applications=[ApplicationInfo(**app, num_replicas=1, route_prefix="/") for app in apps],
+            applications=[ApplicationInfo(**app) for app in apps],
             total_applications=len(apps)
         )
     except Exception as e:
@@ -161,7 +137,7 @@ async def get_application(
         if not app:
             raise HTTPException(status_code=404, detail=f"Application {app_name} not found")
 
-        return ApplicationInfo(**app, num_replicas=1, route_prefix="/")
+        return ApplicationInfo(**app)
     except HTTPException:
         raise
     except Exception as e:

@@ -32,14 +32,13 @@ async def get_cluster_status(coordinator: CoordinatorService = Depends(get_coord
 
 
 @router.get("/info", response_model=ClusterInfo)
-async def get_cluster_info():
+async def get_cluster_info(coordinator: CoordinatorService = Depends(get_coordinator)):
     """
     Get cluster configuration and connection information.
 
     This includes Ray head address, dashboard URL, and management API URL.
     """
     try:
-        # Load cluster info from file
         cluster_info_path = Path("/home/cdsw/ray_cluster_info.json")
         if not cluster_info_path.exists():
             raise HTTPException(
@@ -50,9 +49,12 @@ async def get_cluster_info():
         with open(cluster_info_path) as f:
             cluster_data = json.load(f)
 
-        import ray
+        # Read the version from the already-connected Ray instance via RayService
+        # rather than calling ray.init() directly (which bypasses the shared
+        # connection lifecycle and may connect to a different cluster).
         try:
-            ray.init(address="auto", ignore_reinit_error=True)
+            import ray
+            coordinator.ray_service.connect()
             ray_version = ray.__version__
         except Exception:
             ray_version = "unknown"

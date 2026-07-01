@@ -256,24 +256,55 @@ class RayService:
 
     def list_applications(self) -> List[Dict[str, Any]]:
         """
-        List all Ray Serve applications.
+        List all Ray Serve applications with real status, route prefix, and replica count.
 
         Returns:
-            List of application information
+            List of application information dicts including route_prefix and num_replicas
+            sourced directly from Ray Serve.
         """
         self.connect()
 
         try:
-            apps = serve.status().applications
-            return [
-                {
+            status = serve.status()
+            result = []
+            for name, app_status in status.applications.items():
+                # Sum replicas across all named deployments in this application.
+                total_replicas: Optional[int] = None
+                route_prefix: Optional[str] = None
+                try:
+                    deployments = app_status.deployments or {}
+                    counts = [
+                        d.replica_states
+                        for d in deployments.values()
+                        if hasattr(d, "replica_states") and d.replica_states
+                    ]
+                    if counts:
+                        total_replicas = sum(
+                            sum(s for s in rc.values() if isinstance(s, int))
+                            for rc in counts
+                        )
+                except Exception:
+                    pass
+
+                # route_prefix is an attribute on the application status in Ray 2.x
+                try:
+                    route_prefix = getattr(app_status, "route_prefix", None)
+                except Exception:
+                    pass
+
+                result.append({
                     "name": name,
                     "status": str(app_status.status),
                     "message": app_status.message or "",
-                    "last_deployed_time": str(app_status.deployment_timestamp) if app_status.deployment_timestamp else None,
-                }
-                for name, app_status in apps.items()
-            ]
+                    "last_deployed_time": (
+                        str(app_status.deployment_timestamp)
+                        if app_status.deployment_timestamp
+                        else None
+                    ),
+                    "route_prefix": route_prefix,
+                    "num_replicas": total_replicas,
+                })
+            return result
         except Exception as e:
             logger.error(f"Failed to list applications: {e}")
             return []

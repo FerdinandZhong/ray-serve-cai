@@ -191,9 +191,9 @@ class CAIService:
             "gpus":      group.gpus,
         }
 
-    def delete_worker_node(self, app_id: str) -> Dict[str, Any]:
+    def delete_application(self, app_id: str) -> Dict[str, Any]:
         """
-        Delete a worker node (stop its CML application).
+        Stop a CML application by ID (worker node or generic workload).
 
         Args:
             app_id: CML application ID
@@ -210,7 +210,7 @@ class CAIService:
                 f"CML API returned failure when deleting application {app_id}. "
                 "The application may not exist or the API key may lack permission."
             )
-        logger.info(f"Deleted worker node: {app_id}")
+        logger.info(f"Deleted application: {app_id}")
         return {"status": "success", "app_id": app_id}
 
     def launch_cai_application(

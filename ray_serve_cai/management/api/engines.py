@@ -93,7 +93,8 @@ async def register_engine_endpoint(
     return {"registered": body.engine_type}
 
 
-@router.get("/")
+@router.get("")
 async def list_engines_endpoint() -> dict:
-    """List all currently registered engine types."""
-    return {"engines": get_registry().list_engines()}
+    """List all currently registered engine types and the default engine."""
+    registry = get_registry()
+    return {"engines": registry.list_engines(), "default_engine": registry.get_default_engine()}
