@@ -15,6 +15,10 @@ References:
   vLLM OpenAI Server: https://docs.vllm.ai/en/stable/serving/openai_compatible_server.html
   Ray Placement Groups: https://docs.ray.io/en/latest/serve/llm/user-guides/cross-node-parallelism.html
 """
+# PEP-563: all annotations are lazy strings so FastAPI route type-hints
+# (CompletionRequest, ChatCompletionRequest) are never evaluated at
+# class-definition time on the head node, where vllm is not installed.
+from __future__ import annotations
 
 import asyncio
 import inspect
@@ -28,34 +32,51 @@ from starlette.requests import Request
 from starlette.responses import StreamingResponse
 from starlette.types import Receive, Scope, Send
 
-from vllm import AsyncLLMEngine
-from vllm.engine.arg_utils import AsyncEngineArgs
-
 # ---------------------------------------------------------------------------
-# Version-aware imports
-# vLLM 0.14+/0.18+ uses a subdirectory layout; 0.13.x uses flat files.
+# vllm imports — deferred to avoid ImportError on the head node (root venv).
+# All symbols used at class-definition time (type hints in @app.post handlers)
+# are protected by `from __future__ import annotations` above — they are
+# stored as strings and never evaluated until the actor runs in .venv-vllm.
 # ---------------------------------------------------------------------------
 try:
-    # vLLM 0.14+ / 0.18+ (subdirectory layout)
-    from vllm.entrypoints.openai.completion.serving import OpenAIServingCompletion
-    from vllm.entrypoints.openai.chat_completion.serving import OpenAIServingChat
-    from vllm.entrypoints.openai.models.serving import OpenAIServingModels
-    from vllm.entrypoints.openai.models.protocol import BaseModelPath
-    from vllm.entrypoints.openai.completion.protocol import CompletionRequest
-    from vllm.entrypoints.openai.chat_completion.protocol import ChatCompletionRequest
-    _VLLM_NEW_LAYOUT = True
+    from vllm import AsyncLLMEngine
+    from vllm.engine.arg_utils import AsyncEngineArgs
+    # Version-aware serving imports
+    try:
+        # vLLM 0.14+ / 0.18+ (subdirectory layout)
+        from vllm.entrypoints.openai.completion.serving import OpenAIServingCompletion
+        from vllm.entrypoints.openai.chat_completion.serving import OpenAIServingChat
+        from vllm.entrypoints.openai.models.serving import OpenAIServingModels
+        from vllm.entrypoints.openai.models.protocol import BaseModelPath
+        from vllm.entrypoints.openai.completion.protocol import CompletionRequest
+        from vllm.entrypoints.openai.chat_completion.protocol import ChatCompletionRequest
+        _VLLM_NEW_LAYOUT = True
+    except ImportError:
+        # vLLM 0.13.x (flat layout)
+        from vllm.entrypoints.openai.serving_completion import OpenAIServingCompletion   # type: ignore[no-redef]
+        from vllm.entrypoints.openai.serving_chat import OpenAIServingChat               # type: ignore[no-redef]
+        from vllm.entrypoints.openai.serving_models import (                             # type: ignore[no-redef]
+            OpenAIServingModels,
+            BaseModelPath,
+        )
+        from vllm.entrypoints.openai.protocol import (                                   # type: ignore[no-redef]
+            CompletionRequest,
+            ChatCompletionRequest,
+        )
+        _VLLM_NEW_LAYOUT = False
 except ImportError:
-    # vLLM 0.13.x (flat layout)
-    from vllm.entrypoints.openai.serving_completion import OpenAIServingCompletion   # type: ignore[no-redef]
-    from vllm.entrypoints.openai.serving_chat import OpenAIServingChat               # type: ignore[no-redef]
-    from vllm.entrypoints.openai.serving_models import (                             # type: ignore[no-redef]
-        OpenAIServingModels,
-        BaseModelPath,
-    )
-    from vllm.entrypoints.openai.protocol import (                                   # type: ignore[no-redef]
-        CompletionRequest,
-        ChatCompletionRequest,
-    )
+    # Head node / root venv: vllm not installed.  Stubs keep the module
+    # importable so the factory can register the engine without error.
+    # The actor runs under .venv-vllm (py_executable runtime_env) where
+    # vllm IS installed, so these stubs are never used at inference time.
+    AsyncLLMEngine = None           # type: ignore[assignment,misc]
+    AsyncEngineArgs = None          # type: ignore[assignment,misc]
+    OpenAIServingCompletion = None  # type: ignore[assignment,misc]
+    OpenAIServingChat = None        # type: ignore[assignment,misc]
+    OpenAIServingModels = None      # type: ignore[assignment,misc]
+    BaseModelPath = None            # type: ignore[assignment,misc]
+    CompletionRequest = None        # type: ignore[assignment,misc]
+    ChatCompletionRequest = None    # type: ignore[assignment,misc]
     _VLLM_NEW_LAYOUT = False
 
 logger = logging.getLogger(__name__)
