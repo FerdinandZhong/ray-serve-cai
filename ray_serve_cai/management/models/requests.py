@@ -125,9 +125,12 @@ class SchedulingConfig(BaseModel):
     resources: Optional[Dict[str, float]] = Field(
         default=None,
         description=(
-            "Ray resource requirements injected into ray_actor_options['resources'] "
-            "for the main deployment actor. Use 0.001 for soft affinity (scheduling "
-            "hint without consuming capacity). "
+            "Ray resource affinity for this deployment's GPU work. Use 0.001 for "
+            "soft affinity (a scheduling hint that does not consume capacity). "
+            "Applied to whichever layer actually places the work: when a placement "
+            "group is used (tensor parallelism or fractional GPU), these labels are "
+            "merged into the GPU-bearing bundles so every shard lands on the target "
+            "nodes; otherwise they are set on the deployment actor directly. "
             "Examples: "
             "{\"node_type:l40-gpu-worker\": 0.001} — pin to a specific worker group; "
             "{\"instance-group-id:ig-n4bsnv8r\": 0.001} — pin to a specific K8s node "
@@ -139,9 +142,12 @@ class SchedulingConfig(BaseModel):
         description=(
             "Per-bundle resource specs. When provided, overrides the auto-generated "
             "placement group entirely. Each dict is one bundle; keys are Ray resource "
-            "names (including custom labels), values are quantities. "
+            "names (including custom node-affinity labels), values are quantities. "
+            "You may embed custom labels directly per bundle for fine-grained control; "
+            "any `resources` above are additionally merged into the GPU-bearing bundles. "
             "Example (vLLM with fractional GPU + LMCache, matches right diagram): "
-            "[{\"CPU\": 2.0, \"GPU\": 0.01}, {\"GPU\": 0.99}, {\"GPU\": 0.99}]"
+            "[{\"CPU\": 2.0, \"GPU\": 0.01, \"node_type:l40-gpu-worker\": 0.001}, "
+            "{\"GPU\": 0.99}, {\"GPU\": 0.99}]"
         ),
     )
     placement_group_strategy: Optional[Literal["PACK", "STRICT_PACK", "SPREAD", "STRICT_SPREAD"]] = Field(

@@ -331,30 +331,43 @@ def create_sglang_deployment(
     else:
         ray_actor_options = {"num_cpus": 2, "num_gpus": 1}
 
+    # ── Node affinity resolution ─────────────────────────────────────────────
+    # scheduling_resources takes full precedence over the legacy node_type
+    # shorthand.  Applied to GPU-bearing placement group bundles when a PG is in
+    # play, or to the actor directly when it is not — a PG would otherwise reject
+    # an actor whose resource request isn't a subset of its assigned bundle.
+    node_type = engine_config.get("node_type")
+    if scheduling_resources:
+        _affinity: Dict[str, float] = dict(scheduling_resources)
+    elif node_type:
+        _affinity = {f"node_type:{node_type}": 0.001}
+    else:
+        _affinity = {}
+
     # Auto placement groups
     if placement_group_bundles is None and not use_cpu:
         if tensor_parallel_size > 1:
             placement_group_bundles = [
                 {"GPU": float(tensor_parallel_size),
-                 "CPU": float(tensor_parallel_size)}
+                 "CPU": float(tensor_parallel_size), **_affinity}
             ]
             placement_group_strategy = placement_group_strategy or "STRICT_PACK"
         elif gpu_fraction is not None and gpu_fraction < 1.0:
-            placement_group_bundles = [{"GPU": gpu_fraction, "CPU": 2.0}]
+            placement_group_bundles = [{"GPU": gpu_fraction, "CPU": 2.0, **_affinity}]
             placement_group_strategy = placement_group_strategy or "PACK"
+    elif placement_group_bundles is not None and _affinity:
+        # Explicit bundles: merge affinity into GPU-bearing bundles (fallback to
+        # all bundles if none carry a GPU) so scheduling.resources isn't dropped.
+        _gpu_bundles = [b for b in placement_group_bundles if b.get("GPU", 0)]
+        for _b in (_gpu_bundles or placement_group_bundles):
+            _b.update(_affinity)
+        logger.info("Merged scheduling resources into explicit bundles: %s", _affinity)
 
-    # Node type targeting (legacy — skipped when scheduling_resources is set)
-    node_type = engine_config.get("node_type")
-    if node_type and not scheduling_resources:
+    # Actor-level affinity only when there is NO placement group (see vLLM note).
+    if _affinity and placement_group_bundles is None:
         ray_actor_options.setdefault("resources", {})
-        ray_actor_options["resources"][f"node_type:{node_type}"] = 0.001
-        logger.info("Pinning deployment to node_type=%r", node_type)
-
-    # Explicit scheduling resources
-    if scheduling_resources:
-        ray_actor_options.setdefault("resources", {})
-        ray_actor_options["resources"].update(scheduling_resources)
-        logger.info("Scheduling resources applied: %s", scheduling_resources)
+        ray_actor_options["resources"].update(_affinity)
+        logger.info("Pinning deployment via ray_actor_options resources: %s", _affinity)
 
     # Runtime env: venv + scheduling env_vars
     rt_env: Dict[str, Any] = {}

@@ -576,80 +576,95 @@ def create_vllm_deployment(
     else:
         ray_actor_options = {"num_cpus": 2, "num_gpus": 1}
 
+    # ── Node affinity resolution ─────────────────────────────────────────────
+    # scheduling_resources (explicit SchedulingConfig) takes full precedence
+    # over the legacy node_type shorthand.  The resolved affinity is applied to
+    # GPU-bearing placement group bundles when a placement group is in play, or
+    # to the actor directly when it is not — a placement group would otherwise
+    # reject an actor whose resource request isn't a subset of its assigned
+    # bundle (Ray allocates actor resources FROM the bundle).
+    node_type = engine_config.get("node_type")
+    if scheduling_resources:
+        _affinity: Dict[str, float] = dict(scheduling_resources)
+    elif node_type:
+        _affinity = {f"node_type:{node_type}": 0.001}
+    else:
+        _affinity = {}
+
     # ── Placement group defaults ────────────────────────────────────────────
     # placement_group_bundles / placement_group_strategy are top-level
     # deployment options (NOT inside ray_actor_options — Ray Serve blocks them
     # there).  Auto-generate sensible defaults when the caller omits them.
-    # ── Node type resource hint ──────────────────────────────────────────────
-    # Resolved here so it can be embedded in placement group bundles (multi-node)
-    # or injected into ray_actor_options (single-node / non-TP).
-    node_type = engine_config.get("node_type")
-
     if placement_group_bundles is None and not use_cpu:
         if tensor_parallel_size > 1 and multi_node:
             # Full scheduler↔executor separation:
-            #   bundle 0 : {CPU:4}       ← VLLMEngine actor (scheduler only, no GPU)
-            #   bundle 1..tp : {GPU:1}   ← one RayWorkerWrapper per TP shard
+            #   bundle 0 : {CPU:4}          ← VLLMEngine actor (scheduler, no GPU)
+            #   bundle 1..tp : {GPU:1, ...} ← one RayWorkerWrapper per TP shard
             #
             # vLLM auto-discovers GPU bundles by scanning bundle_specs for
             # non-zero GPU entries (skips bundle 0), so ranks 0..tp-1 land in
             # bundles 1..tp automatically — no VLLM_RAY_BUNDLE_INDICES needed.
             #
-            # node_type hint goes into worker bundles so all shards land on
-            # nodes of the correct hardware type.  Actor bundle omits it since
-            # the scheduler has no GPU requirement and can run on the head node.
-            node_hint = {f"node_type:{node_type}": 0.001} if node_type else {}
+            # Affinity goes into the executor bundles so all shards land on the
+            # right nodes.  Bundle 0 stays label-free so the scheduler can run
+            # anywhere (e.g. the head node), which is required for cross-node TP.
             engine_bundle: Dict[str, float] = {"CPU": 4.0}
-            executor_bundle: Dict[str, float] = {"GPU": 1.0, **node_hint}
+            executor_bundle: Dict[str, float] = {"GPU": 1.0, **_affinity}
             placement_group_bundles = [engine_bundle] + [
                 dict(executor_bundle) for _ in range(tensor_parallel_size)
             ]
             placement_group_strategy = placement_group_strategy or "PACK"
             logger.info(
-                "Auto placement group (multi-node): PACK [engine_bundle{CPU:4}] + "
-                "%d×[executor_bundle{GPU:1}%s] for TP=%d",
+                "Auto placement group (multi-node): PACK [engine{CPU:4}] + "
+                "%d×[executor{GPU:1%s}] for TP=%d",
                 tensor_parallel_size,
-                f",node_type:{node_type}" if node_type else "",
+                "".join(f",{k}" for k in _affinity),
                 tensor_parallel_size,
             )
         elif tensor_parallel_size > 1:
             # Single-node TP: all shards forced onto one node via STRICT_PACK.
-            # The actor holds all GPU/CPU resources in a single bundle.
+            # Affinity lives in the bundle (not the actor) so the actor request
+            # stays a subset of the bundle it is captured into.
             placement_group_bundles = [
-                {"GPU": float(tensor_parallel_size), "CPU": float(tensor_parallel_size)}
+                {"GPU": float(tensor_parallel_size),
+                 "CPU": float(tensor_parallel_size), **_affinity}
             ]
             placement_group_strategy = placement_group_strategy or "STRICT_PACK"
             logger.info(
-                "Auto placement group (single-node): STRICT_PACK bundle GPU=%d CPU=%d for TP=%d",
-                tensor_parallel_size, tensor_parallel_size, tensor_parallel_size,
+                "Auto placement group (single-node): STRICT_PACK bundle "
+                "GPU=%d CPU=%d%s for TP=%d",
+                tensor_parallel_size, tensor_parallel_size,
+                "".join(f" +{k}" for k in _affinity), tensor_parallel_size,
             )
         elif gpu_fraction is not None and gpu_fraction < 1.0:
             # Bin-pack fractional replicas onto the same node's GPU pool.
             # The actor needs num_cpus=2 (see ray_actor_options above), so
             # the bundle CPU must be at least 2 to satisfy Ray's constraint
             # that actor resources must be a subset of the first bundle.
-            placement_group_bundles = [{"GPU": gpu_fraction, "CPU": 2.0}]
+            placement_group_bundles = [{"GPU": gpu_fraction, "CPU": 2.0, **_affinity}]
             placement_group_strategy = placement_group_strategy or "PACK"
             logger.info(
-                "Auto placement group: PACK bundle for gpu_fraction=%.2f",
-                gpu_fraction,
+                "Auto placement group: PACK bundle for gpu_fraction=%.2f%s",
+                gpu_fraction, "".join(f" +{k}" for k in _affinity),
             )
+    elif placement_group_bundles is not None and _affinity:
+        # Caller supplied bundles explicitly.  Merge affinity into GPU-bearing
+        # bundles so scheduling.resources isn't silently dropped, while leaving
+        # CPU-only (scheduler) bundles untouched.  If no bundle has a GPU, apply
+        # to all of them as a fallback.
+        _gpu_bundles = [b for b in placement_group_bundles if b.get("GPU", 0)]
+        for _b in (_gpu_bundles or placement_group_bundles):
+            _b.update(_affinity)
+        logger.info("Merged scheduling resources into explicit bundles: %s", _affinity)
 
-    # ── Node type targeting (legacy path) ───────────────────────────────────
-    # For multi-node TP the hint is already embedded in each placement group
-    # bundle (see above).  For all other cases inject into ray_actor_options.
-    # scheduling_resources (from SchedulingConfig) takes precedence and is
-    # merged in the next block, so skip node_type injection when it is set.
-    if node_type and not (multi_node and tensor_parallel_size > 1) and not scheduling_resources:
+    # ── Actor-level affinity (only when there is NO placement group) ──────────
+    # With a placement group active the affinity is carried by the GPU bundles
+    # above; injecting it onto the actor too would require the actor's assigned
+    # bundle to satisfy it and can make the actor unschedulable.
+    if _affinity and placement_group_bundles is None:
         ray_actor_options.setdefault("resources", {})
-        ray_actor_options["resources"][f"node_type:{node_type}"] = 0.001
-        logger.info("Pinning deployment to node_type=%r via ray_actor_options", node_type)
-
-    # ── Explicit scheduling resources ────────────────────────────────────────
-    if scheduling_resources:
-        ray_actor_options.setdefault("resources", {})
-        ray_actor_options["resources"].update(scheduling_resources)
-        logger.info("Scheduling resources applied: %s", scheduling_resources)
+        ray_actor_options["resources"].update(_affinity)
+        logger.info("Pinning deployment via ray_actor_options resources: %s", _affinity)
 
     # ── Runtime env: venv + scheduling env_vars ──────────────────────────────
     rt_env: Dict[str, Any] = {}
