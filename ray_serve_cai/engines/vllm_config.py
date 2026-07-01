@@ -270,14 +270,20 @@ class VLLMDeploymentFactory:
             - Placement groups: https://docs.ray.io/en/latest/serve/llm/user-guides/cross-node-parallelism.html
             - vLLM distributed: https://docs.vllm.ai/en/stable/serving/distributed_serving.html
         """
-        from pathlib import Path
         # Import here to avoid circular dependency
         from .vllm_engine import create_vllm_deployment
+        from .venv_utils import resolve_venv_path
 
         logger.info(f"Creating vLLM deployment with tensor_parallel_size={tensor_parallel_size}")
 
-        _vp = "/home/cdsw/.venv-vllm"
-        venv_path = _vp if Path(_vp).exists() else None
+        venv_path = resolve_venv_path(engine_config, default_name="vllm")
+
+        # Extract scheduling fields injected by ray_service.deploy_model().
+        # Pop them so they don't leak into the vLLM AsyncEngineArgs.
+        scheduling_resources = engine_config.pop("scheduling_resources", None)
+        scheduling_env_vars  = engine_config.pop("scheduling_env_vars", None)
+        pg_bundles  = kwargs.get("placement_group_bundles")
+        pg_strategy = kwargs.get("placement_group_strategy")
 
         return create_vllm_deployment(
             engine_config=engine_config,
@@ -286,8 +292,10 @@ class VLLMDeploymentFactory:
             use_cpu=use_cpu,
             max_ongoing_requests=max_ongoing_requests,
             gpu_fraction=kwargs.get("gpu_fraction"),
-            placement_group_bundles=kwargs.get("placement_group_bundles"),
-            placement_group_strategy=kwargs.get("placement_group_strategy"),
+            placement_group_bundles=pg_bundles,
+            placement_group_strategy=pg_strategy,
             multi_node=kwargs.get("multi_node", False),
             venv_path=venv_path,
+            scheduling_resources=scheduling_resources,
+            scheduling_env_vars=scheduling_env_vars,
         )

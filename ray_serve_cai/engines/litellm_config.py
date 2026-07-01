@@ -3,7 +3,7 @@ LiteLLM Engine Configuration Builder and Deployment Factory.
 """
 
 import logging
-from typing import Any, Dict, List, Optional, Tuple
+from typing import Any, Dict, Optional, Tuple
 
 from ray import serve
 
@@ -124,15 +124,33 @@ class LiteLLMDeploymentFactory:
         use_cpu: bool = True,
         **kwargs,
     ) -> serve.Application:
-        from pathlib import Path
         from .litellm_engine import LiteLLMEngine
+        from .venv_utils import resolve_venv_path, venv_dir_for
 
-        venv_path = engine_config.get("venv_path", "/home/cdsw/.venv-litellm")
+        # LiteLLM launches a subprocess from the venv, so it MUST have a valid
+        # venv (unlike in-process engines, it cannot fall back to the root env).
+        venv_path = resolve_venv_path(engine_config, default_name="litellm") \
+            or venv_dir_for("litellm")
+        # Propagate to engine_config so the actor's LiteLLM proxy subprocess
+        # launches from the SAME venv (it reads engine_config["venv_path"]).
+        engine_config["venv_path"] = venv_path
+        scheduling_resources = engine_config.pop("scheduling_resources", None)
+        scheduling_env_vars  = engine_config.pop("scheduling_env_vars", None)
+
+        rt_env: Dict[str, Any] = {"py_executable": f"{venv_path}/bin/python"}
+        if scheduling_env_vars:
+            rt_env["env_vars"] = scheduling_env_vars
+            logger.info("Scheduling env_vars applied: %s", list(scheduling_env_vars.keys()))
+
         ray_actor_options: Dict[str, Any] = {
             "num_cpus": 1,
             "num_gpus": 0,
-            "runtime_env": {"py_executable": f"{venv_path}/bin/python"},
+            "runtime_env": rt_env,
         }
+        if scheduling_resources:
+            ray_actor_options.setdefault("resources", {})
+            ray_actor_options["resources"].update(scheduling_resources)
+            logger.info("Scheduling resources applied: %s", scheduling_resources)
         logger.info("Using isolated venv: %s", venv_path)
 
         logger.info(

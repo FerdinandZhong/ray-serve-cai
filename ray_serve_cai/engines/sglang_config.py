@@ -90,11 +90,15 @@ class SGLangDeploymentFactory:
         max_ongoing_requests: int = 100,
         **kwargs,
     ) -> serve.Application:
-        from pathlib import Path
         from .sglang_engine import create_sglang_deployment
+        from .venv_utils import resolve_venv_path
 
-        _vp = "/home/cdsw/.venv-sglang"
-        venv_path = _vp if Path(_vp).exists() else None
+        venv_path = resolve_venv_path(engine_config, default_name="sglang")
+
+        scheduling_resources = engine_config.pop("scheduling_resources", None)
+        scheduling_env_vars  = engine_config.pop("scheduling_env_vars", None)
+        pg_bundles  = kwargs.get("placement_group_bundles")
+        pg_strategy = kwargs.get("placement_group_strategy")
 
         return create_sglang_deployment(
             engine_config=engine_config,
@@ -103,7 +107,9 @@ class SGLangDeploymentFactory:
             use_cpu=use_cpu,
             max_ongoing_requests=max_ongoing_requests,
             gpu_fraction=kwargs.get("gpu_fraction"),
-            placement_group_bundles=kwargs.get("placement_group_bundles"),
-            placement_group_strategy=kwargs.get("placement_group_strategy"),
+            placement_group_bundles=pg_bundles,
+            placement_group_strategy=pg_strategy,
             venv_path=venv_path,
+            scheduling_resources=scheduling_resources,
+            scheduling_env_vars=scheduling_env_vars,
         )

@@ -70,15 +70,19 @@ class MCPDeploymentFactory:
         use_cpu: bool = True,
         **kwargs,
     ) -> serve.Application:
-        from pathlib import Path
         from .mcp_engine import create_mcp_deployment
+        from .venv_utils import resolve_venv_path
 
-        _vp = "/home/cdsw/.venv-mcp"
-        venv_path = _vp if Path(_vp).exists() else None
+        venv_path = resolve_venv_path(engine_config, default_name="mcp")
+
+        scheduling_resources = engine_config.pop("scheduling_resources", None)
+        scheduling_env_vars  = engine_config.pop("scheduling_env_vars", None)
 
         return create_mcp_deployment(
             engine_config=engine_config,
             num_replicas=num_replicas,
             use_cpu=use_cpu,
             venv_path=venv_path,
+            scheduling_resources=scheduling_resources,
+            scheduling_env_vars=scheduling_env_vars,
         )

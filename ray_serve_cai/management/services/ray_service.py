@@ -1,10 +1,14 @@
 """Service for Ray cluster operations."""
 
 import concurrent.futures
+import logging
+from typing import TYPE_CHECKING, Any, Dict, List, Optional
+
 import ray
 from ray import serve
-from typing import List, Dict, Any, Optional
-import logging
+
+if TYPE_CHECKING:
+    from ..models.requests import SchedulingConfig
 
 logger = logging.getLogger(__name__)
 
@@ -87,6 +91,24 @@ class RayService:
         """
         self.connect()
 
+        # Allowlist check mirrors the guard in management/api/engines.py.
+        # Only modules whose dotted prefix starts with a permitted value can be
+        # imported — prevents arbitrary code execution via crafted import_path.
+        import os as _os
+        _allowed = [
+            p.strip()
+            for p in _os.environ.get(
+                "ALLOWED_ENGINE_MODULES", "custom_engines,ray_serve_cai"
+            ).split(",")
+            if p.strip()
+        ]
+        module_part = import_path.rsplit(":", 1)[0]
+        if not any(module_part == p or module_part.startswith(p + ".") for p in _allowed):
+            raise ValueError(
+                f"import_path module '{module_part}' is not in the allowlist "
+                f"{_allowed}. Set ALLOWED_ENGINE_MODULES env var to add more prefixes."
+            )
+
         try:
             # Parse import path (module.submodule:ClassName or module:app_handle)
             module_path, attr_name = import_path.rsplit(":", 1)
@@ -123,7 +145,7 @@ class RayService:
         self,
         name: str,
         engine_type: str,
-        model: str,
+        model: Optional[str],
         route_prefix: str = "/",
         num_replicas: int = 1,
         tensor_parallel_size: int = 1,
@@ -135,6 +157,8 @@ class RayService:
         node_type: Optional[str] = None,
         multi_node: bool = False,
         autoscaling_config: Optional[Dict[str, Any]] = None,
+        venv_name: Optional[str] = None,
+        scheduling: Optional["SchedulingConfig"] = None,
     ) -> Dict[str, Any]:
         """
         Deploy a vLLM or SGLang model as a Ray Serve application.
@@ -184,6 +208,31 @@ class RayService:
 
         config_builder = registry.get_config_builder(engine_type)
         built_config = config_builder.build_config(user_config)
+
+        # Inject the deployment-level venv selection so the factory's
+        # resolve_venv_path() picks it up.  Kept out of build_config (which is
+        # engine-model config) because the venv is a deployment concern.
+        if venv_name:
+            built_config["venv_name"] = venv_name
+
+        # Resolve scheduling constraints.
+        # Priority: explicit scheduling block > node_type shorthand.
+        # scheduling.placement_group_bundles / strategy override the caller's
+        # positional placement_group_bundles / placement_group_strategy args.
+        if scheduling is not None:
+            if scheduling.resources:
+                built_config["scheduling_resources"] = scheduling.resources
+            if scheduling.placement_group_bundles:
+                placement_group_bundles = scheduling.placement_group_bundles
+            if scheduling.placement_group_strategy:
+                placement_group_strategy = scheduling.placement_group_strategy
+            if scheduling.env_vars:
+                built_config["scheduling_env_vars"] = scheduling.env_vars
+        elif node_type:
+            # Backward-compat shorthand: auto-expand into scheduling_resources.
+            # node_type is ALSO kept in user_config (already in built_config via
+            # build_vllm_engine_config) so multi-node bundle hints still work.
+            built_config["scheduling_resources"] = {f"node_type:{node_type}": 0.001}
 
         deployment_factory = registry.get_deployment_factory(engine_type)
         app = deployment_factory.create_deployment(
@@ -249,24 +298,55 @@ class RayService:
 
     def list_applications(self) -> List[Dict[str, Any]]:
         """
-        List all Ray Serve applications.
+        List all Ray Serve applications with real status, route prefix, and replica count.
 
         Returns:
-            List of application information
+            List of application information dicts including route_prefix and num_replicas
+            sourced directly from Ray Serve.
         """
         self.connect()
 
         try:
-            apps = serve.status().applications
-            return [
-                {
+            status = serve.status()
+            result = []
+            for name, app_status in status.applications.items():
+                # Sum replicas across all named deployments in this application.
+                total_replicas: Optional[int] = None
+                route_prefix: Optional[str] = None
+                try:
+                    deployments = app_status.deployments or {}
+                    counts = [
+                        d.replica_states
+                        for d in deployments.values()
+                        if hasattr(d, "replica_states") and d.replica_states
+                    ]
+                    if counts:
+                        total_replicas = sum(
+                            sum(s for s in rc.values() if isinstance(s, int))
+                            for rc in counts
+                        )
+                except Exception:
+                    pass
+
+                # route_prefix is an attribute on the application status in Ray 2.x
+                try:
+                    route_prefix = getattr(app_status, "route_prefix", None)
+                except Exception:
+                    pass
+
+                result.append({
                     "name": name,
                     "status": str(app_status.status),
                     "message": app_status.message or "",
-                    "last_deployed_time": str(app_status.deployment_timestamp) if app_status.deployment_timestamp else None,
-                }
-                for name, app_status in apps.items()
-            ]
+                    "last_deployed_time": (
+                        str(app_status.deployment_timestamp)
+                        if app_status.deployment_timestamp
+                        else None
+                    ),
+                    "route_prefix": route_prefix,
+                    "num_replicas": total_replicas,
+                })
+            return result
         except Exception as e:
             logger.error(f"Failed to list applications: {e}")
             return []

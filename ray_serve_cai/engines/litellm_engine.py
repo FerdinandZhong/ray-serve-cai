@@ -35,6 +35,7 @@ References:
   LiteLLM: https://docs.litellm.ai/
   LiteLLM config: https://docs.litellm.ai/docs/proxy/configs
 """
+from __future__ import annotations
 
 import logging
 import subprocess

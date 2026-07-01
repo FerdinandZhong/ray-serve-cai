@@ -30,11 +30,10 @@ References:
   SGLang metrics: https://docs.sglang.io/references/production_metrics.html
   Ray example: https://github.com/ray-project/ray/blob/master/python/ray/llm/examples/sglang/
 """
+from __future__ import annotations
 
-import asyncio
 import logging
 import subprocess
-import sys
 import time
 from typing import Any, Dict, List, Optional
 
@@ -313,6 +312,8 @@ def create_sglang_deployment(
     placement_group_bundles: Optional[List[Dict[str, float]]] = None,
     placement_group_strategy: Optional[str] = None,
     venv_path: Optional[str] = None,
+    scheduling_resources: Optional[Dict[str, float]] = None,
+    scheduling_env_vars: Optional[Dict[str, str]] = None,
 ) -> serve.Application:
     """Create an SGLang Ray Serve deployment."""
     logger.info("Creating SGLang deployment  replicas=%d  tp=%d  cpu=%s",
@@ -330,28 +331,56 @@ def create_sglang_deployment(
     else:
         ray_actor_options = {"num_cpus": 2, "num_gpus": 1}
 
+    # ── Node affinity resolution ─────────────────────────────────────────────
+    # scheduling_resources takes full precedence over the legacy node_type
+    # shorthand.  Applied to GPU-bearing placement group bundles when a PG is in
+    # play, or to the actor directly when it is not — a PG would otherwise reject
+    # an actor whose resource request isn't a subset of its assigned bundle.
+    node_type = engine_config.get("node_type")
+    if scheduling_resources:
+        _affinity: Dict[str, float] = dict(scheduling_resources)
+    elif node_type:
+        _affinity = {f"node_type:{node_type}": 0.001}
+    else:
+        _affinity = {}
+
     # Auto placement groups
     if placement_group_bundles is None and not use_cpu:
         if tensor_parallel_size > 1:
             placement_group_bundles = [
                 {"GPU": float(tensor_parallel_size),
-                 "CPU": float(tensor_parallel_size)}
+                 "CPU": float(tensor_parallel_size), **_affinity}
             ]
             placement_group_strategy = placement_group_strategy or "STRICT_PACK"
         elif gpu_fraction is not None and gpu_fraction < 1.0:
-            placement_group_bundles = [{"GPU": gpu_fraction, "CPU": 2.0}]
+            placement_group_bundles = [{"GPU": gpu_fraction, "CPU": 2.0, **_affinity}]
             placement_group_strategy = placement_group_strategy or "PACK"
+    elif placement_group_bundles is not None and _affinity:
+        # Explicit bundles: merge affinity into GPU-bearing bundles (fallback to
+        # all bundles if none carry a GPU) so scheduling.resources isn't dropped.
+        _gpu_bundles = [b for b in placement_group_bundles if b.get("GPU", 0)]
+        for _b in (_gpu_bundles or placement_group_bundles):
+            _b.update(_affinity)
+        logger.info("Merged scheduling resources into explicit bundles: %s", _affinity)
 
-    # Node type targeting
-    node_type = engine_config.get("node_type")
-    if node_type:
+    # Actor-level affinity only when there is NO placement group (see vLLM note).
+    if _affinity and placement_group_bundles is None:
         ray_actor_options.setdefault("resources", {})
-        ray_actor_options["resources"][f"node_type:{node_type}"] = 0.001
-        logger.info("Pinning deployment to node_type=%r", node_type)
+        ray_actor_options["resources"].update(_affinity)
+        logger.info("Pinning deployment via ray_actor_options resources: %s", _affinity)
 
+    # Runtime env: venv + scheduling env_vars
+    rt_env: Dict[str, Any] = {}
     if venv_path:
-        ray_actor_options["runtime_env"] = {"py_executable": f"{venv_path}/bin/python"}
+        rt_env["py_executable"] = f"{venv_path}/bin/python"
+        # Propagate to engine_config so the SGLang subprocess launches from the same venv.
+        engine_config["venv_path"] = venv_path
         logger.info("Using isolated venv: %s", venv_path)
+    if scheduling_env_vars:
+        rt_env["env_vars"] = scheduling_env_vars
+        logger.info("Scheduling env_vars applied: %s", list(scheduling_env_vars.keys()))
+    if rt_env:
+        ray_actor_options["runtime_env"] = rt_env
 
     autoscaling = engine_config.get("autoscaling_config")
     opts: Dict[str, Any] = {

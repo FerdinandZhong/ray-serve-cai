@@ -21,12 +21,12 @@ from fastapi.responses import JSONResponse, PlainTextResponse
 
 logger = logging.getLogger(__name__)
 
-router = APIRouter(prefix="/api/v1", tags=["Metrics"])
+router = APIRouter(prefix="/api/v1/metrics", tags=["Metrics"])
 
 METRICS_PORT = int(os.environ.get("RAY_METRICS_PORT", "9090"))
 PROM_SD_FILE = Path("/tmp/ray/prom_metrics_service_discovery.json")
 
-# Simple in-memory cache for the expensive /metrics/all fan-out.
+# Simple in-memory cache for the expensive /all fan-out.
 _all_cache: Optional[str] = None
 _all_cache_ts: float = 0.0
 _ALL_CACHE_TTL = 10.0  # seconds
@@ -53,7 +53,7 @@ async def _fetch_metrics(host: str, port: int, timeout: float = 5.0,
 # --------------------------------------------------------------------------- #
 
 
-@router.get("/metrics",
+@router.get("",
             summary="Head node Prometheus metrics",
             response_class=PlainTextResponse)
 async def head_metrics():
@@ -72,7 +72,7 @@ async def head_metrics():
     return PlainTextResponse(text)
 
 
-@router.get("/metrics/all",
+@router.get("/all",
             summary="All nodes Prometheus metrics (aggregated)",
             response_class=PlainTextResponse)
 async def all_metrics():
@@ -127,7 +127,7 @@ async def all_metrics():
     return PlainTextResponse(aggregated)
 
 
-@router.get("/metrics/apps",
+@router.get("/apps",
             summary="Ray Serve application metrics (vLLM, etc.)",
             response_class=PlainTextResponse)
 async def app_metrics():
@@ -191,7 +191,7 @@ async def app_metrics():
     return PlainTextResponse("".join(parts))
 
 
-@router.get("/metrics/discovery",
+@router.get("/discovery",
             summary="Prometheus service-discovery targets",
             response_class=JSONResponse)
 async def metrics_discovery():

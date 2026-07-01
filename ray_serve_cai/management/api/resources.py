@@ -16,7 +16,7 @@ def get_coordinator() -> CoordinatorService:
     return get_coordinator_service()
 
 
-@router.post("/nodes/add", response_model=Dict[str, Any])
+@router.post("/nodes", response_model=Dict[str, Any], status_code=201)
 async def add_node(request: AddNodeRequest, coordinator: CoordinatorService = Depends(get_coordinator)):
     """
     Add a new worker node to the cluster.
@@ -38,12 +38,15 @@ async def add_node(request: AddNodeRequest, coordinator: CoordinatorService = De
         raise HTTPException(status_code=500, detail=str(e))
 
 
-@router.get("/map", response_model=Dict[str, Any])
-async def get_resource_map(coordinator: CoordinatorService = Depends(get_coordinator)):
+@router.get("/allocation", response_model=Dict[str, Any])
+async def get_resource_allocation(coordinator: CoordinatorService = Depends(get_coordinator)):
     """
-    Return the current resource capacity map.
+    Return this API's tracked resource allocation map.
 
-    Shows total worker capacity, allocated resources, and what's still available.
+    Shows workers registered through this API, their reserved CPU/memory/GPU,
+    and remaining capacity based on those tracked allocations.  This reflects
+    what the management API thinks is running — not the live Ray view.
+    Use GET /resources/capacity for the live Ray cluster view.
     """
     try:
         return coordinator.get_resource_map()
@@ -83,20 +86,24 @@ async def list_nodes(coordinator: CoordinatorService = Depends(get_coordinator))
         raise HTTPException(status_code=500, detail=str(e))
 
 
-@router.get("/workers", response_model=Dict[str, Any])
+@router.get("/workers", response_model=Dict[str, Any], deprecated=True)
 async def list_workers(coordinator: CoordinatorService = Depends(get_coordinator)):
     """
-    List CML worker applications with their app IDs.
+    **Deprecated** — use ``GET /api/v1/resources/nodes`` instead.
 
-    Use the ``app_id`` from this endpoint to delete workers via
-    ``DELETE /api/v1/resources/nodes/{app_id}``.
+    ``GET /nodes`` now returns each node with ``app_id``, ``app_name``, and
+    ``cml_status`` merged in, so there is no need to call this endpoint
+    separately to resolve the CML app ID before a DELETE.
 
-    This queries live CML applications directly — not the resource map —
-    so it always reflects the current state.
+    This endpoint will be removed in a future release.
     """
     try:
         workers = coordinator.get_worker_apps()
-        return {"workers": workers, "count": len(workers)}
+        return {
+            "workers": workers,
+            "count": len(workers),
+            "deprecated": "Use GET /api/v1/resources/nodes — it now includes app_id and cml_status.",
+        }
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
 
