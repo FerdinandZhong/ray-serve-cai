@@ -242,71 +242,59 @@ class DeployApplicationRequest(BaseModel):
     model_config = ConfigDict(
         extra="forbid",
         json_schema_extra={
-            "examples": {
-                "vllm_model": {
-                    "summary": "vLLM model deployment with node targeting",
-                    "value": {
-                        "name": "llama3-8b",
-                        "engine_type": "vllm",
-                        "model": "meta-llama/Llama-3.1-8B-Instruct",
-                        "route_prefix": "/llama3",
-                        "tensor_parallel_size": 1,
-                        "engine_config": {"dtype": "bfloat16", "gpu_memory_utilization": 0.9},
-                        "scheduling": {"resources": {"node_type:l40-gpu-worker": 0.001}},
-                    },
+            "examples": [
+                {
+                    "name": "llama3-8b",
+                    "engine_type": "vllm",
+                    "model": "meta-llama/Llama-3.1-8B-Instruct",
+                    "route_prefix": "/llama3",
+                    "tensor_parallel_size": 1,
+                    "engine_config": {"dtype": "bfloat16", "gpu_memory_utilization": 0.9},
+                    "scheduling": {"resources": {"node_type:l40-gpu-worker": 0.001}},
                 },
-                "vllm_fractional_gpu": {
-                    "summary": "vLLM with fractional GPU bundles (right diagram)",
-                    "value": {
-                        "name": "vllm-lmcache",
-                        "engine_type": "vllm",
-                        "model": "meta-llama/Llama-3.1-8B-Instruct",
-                        "tensor_parallel_size": 2,
-                        "scheduling": {
-                            "resources": {"node_type:l40-gpu-worker": 0.001},
-                            "placement_group_bundles": [
-                                {"CPU": 2.0, "GPU": 0.01},
-                                {"GPU": 0.99},
-                                {"GPU": 0.99},
-                            ],
-                            "placement_group_strategy": "STRICT_PACK",
-                            "env_vars": {
-                                "VLLM_RAY_PER_WORKER_GPUS": "0.99",
-                                "VLLM_RAY_BUNDLE_INDICES": "1,2",
-                            },
+                {
+                    "name": "vllm-lmcache",
+                    "engine_type": "vllm",
+                    "model": "meta-llama/Llama-3.1-8B-Instruct",
+                    "tensor_parallel_size": 2,
+                    "scheduling": {
+                        "resources": {"node_type:l40-gpu-worker": 0.001},
+                        "placement_group_bundles": [
+                            {"CPU": 2.0, "GPU": 0.01},
+                            {"GPU": 0.99},
+                            {"GPU": 0.99},
+                        ],
+                        "placement_group_strategy": "STRICT_PACK",
+                        "env_vars": {
+                            "VLLM_RAY_PER_WORKER_GPUS": "0.99",
+                            "VLLM_RAY_BUNDLE_INDICES": "1,2",
                         },
                     },
                 },
-                "litellm_proxy": {
-                    "summary": "LiteLLM proxy with multiple backends",
-                    "value": {
-                        "name": "litellm-proxy",
-                        "engine_type": "litellm",
-                        "route_prefix": "/litellm",
-                        "engine_config": {
-                            "model_list": [
-                                {
-                                    "model_name": "gpt-4o",
-                                    "litellm_params": {
-                                        "model": "openai/gpt-4o",
-                                        "api_key": "os.environ/OPENAI_API_KEY",
-                                    },
-                                }
-                            ]
-                        },
+                {
+                    "name": "litellm-proxy",
+                    "engine_type": "litellm",
+                    "route_prefix": "/litellm",
+                    "engine_config": {
+                        "model_list": [
+                            {
+                                "model_name": "gpt-4o",
+                                "litellm_params": {
+                                    "model": "openai/gpt-4o",
+                                    "api_key": "os.environ/OPENAI_API_KEY",
+                                },
+                            }
+                        ]
                     },
                 },
-                "raw_serve_app": {
-                    "summary": "Raw Ray Serve import path",
-                    "value": {
-                        "name": "my-service",
-                        "import_path": "my_module:app",
-                        "route_prefix": "/svc",
-                        "ray_actor_options": {"num_cpus": 2},
-                        "scheduling": {"resources": {"node_type:cpu-worker": 0.001}},
-                    },
+                {
+                    "name": "my-service",
+                    "import_path": "my_module:app",
+                    "route_prefix": "/svc",
+                    "ray_actor_options": {"num_cpus": 2},
+                    "scheduling": {"resources": {"node_type:cpu-worker": 0.001}},
                 },
-            }
+            ]
         },
     )
 
