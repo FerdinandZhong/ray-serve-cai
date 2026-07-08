@@ -2,7 +2,7 @@
 """
 CML Job: Create isolated vLLM virtual environment.
 
-Creates /home/cdsw/.venv-vllm with vllm + ninja.
+Creates /home/cdsw/.venv-vllm with ray[serve] + vllm + ninja.
 Uses fcntl.flock so multiple CML pods can run this concurrently on NFS
 without corrupting the venv.
 
@@ -19,6 +19,9 @@ sys.path.insert(0, os.environ.get("CDSW_PROJECT_DIR", "/home/cdsw"))
 from cai_integration.setup_environment import setup_engine_venv  # noqa: E402
 
 VLLM_PACKAGES = [
+    "ray[serve]==2.55.1",
+    "protobuf>=5.29.6,<7.0",
+    "fastapi==0.138.0",
     "vllm>=0.13.0",
     "ninja",   # required by FlashInfer JIT on older GPUs (e.g. T4/SM7.5)
 ]

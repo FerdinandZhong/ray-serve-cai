@@ -38,46 +38,54 @@ from starlette.types import Receive, Scope, Send
 # are protected by `from __future__ import annotations` above — they are
 # stored as strings and never evaluated until the actor runs in .venv-vllm.
 # ---------------------------------------------------------------------------
+# Core engine imports — these must succeed in the actor venv (.venv-vllm).
+# On the head node (no vLLM) they fall back to None stubs so the module stays
+# importable for engine registration.
 try:
     from vllm import AsyncLLMEngine
     from vllm.engine.arg_utils import AsyncEngineArgs
-    # Version-aware serving imports
-    try:
-        # vLLM 0.14+ / 0.18+ (subdirectory layout)
-        from vllm.entrypoints.openai.completion.serving import OpenAIServingCompletion
-        from vllm.entrypoints.openai.chat_completion.serving import OpenAIServingChat
-        from vllm.entrypoints.openai.models.serving import OpenAIServingModels
-        from vllm.entrypoints.openai.models.protocol import BaseModelPath
-        from vllm.entrypoints.openai.completion.protocol import CompletionRequest
-        from vllm.entrypoints.openai.chat_completion.protocol import ChatCompletionRequest
-        _VLLM_NEW_LAYOUT = True
-    except ImportError:
-        # vLLM 0.13.x (flat layout)
-        from vllm.entrypoints.openai.serving_completion import OpenAIServingCompletion   # type: ignore[no-redef]
-        from vllm.entrypoints.openai.serving_chat import OpenAIServingChat               # type: ignore[no-redef]
-        from vllm.entrypoints.openai.serving_models import (                             # type: ignore[no-redef]
-            OpenAIServingModels,
-            BaseModelPath,
-        )
-        from vllm.entrypoints.openai.protocol import (                                   # type: ignore[no-redef]
-            CompletionRequest,
-            ChatCompletionRequest,
-        )
-        _VLLM_NEW_LAYOUT = False
+    _VLLM_AVAILABLE = True
 except ImportError:
-    # Head node / root venv: vllm not installed.  Stubs keep the module
-    # importable so the factory can register the engine without error.
-    # The actor runs under .venv-vllm (py_executable runtime_env) where
-    # vllm IS installed, so these stubs are never used at inference time.
     AsyncLLMEngine = None           # type: ignore[assignment,misc]
     AsyncEngineArgs = None          # type: ignore[assignment,misc]
-    OpenAIServingCompletion = None  # type: ignore[assignment,misc]
-    OpenAIServingChat = None        # type: ignore[assignment,misc]
-    OpenAIServingModels = None      # type: ignore[assignment,misc]
-    BaseModelPath = None            # type: ignore[assignment,misc]
-    CompletionRequest = None        # type: ignore[assignment,misc]
-    ChatCompletionRequest = None    # type: ignore[assignment,misc]
-    _VLLM_NEW_LAYOUT = False
+    _VLLM_AVAILABLE = False
+
+# Serving-layer imports — paths differ across vLLM versions.  These are only
+# needed inside __init__ / request handlers, so a failed import here must NOT
+# null out the core symbols above.
+OpenAIServingCompletion = None  # type: ignore[assignment]
+OpenAIServingChat = None        # type: ignore[assignment]
+OpenAIServingModels = None      # type: ignore[assignment]
+BaseModelPath = None            # type: ignore[assignment]
+CompletionRequest = None        # type: ignore[assignment]
+ChatCompletionRequest = None    # type: ignore[assignment]
+_VLLM_NEW_LAYOUT = False
+
+if _VLLM_AVAILABLE:
+    try:
+        # vLLM 0.14+ / 0.18+ (subdirectory layout)
+        from vllm.entrypoints.openai.completion.serving import OpenAIServingCompletion   # type: ignore[no-redef]
+        from vllm.entrypoints.openai.chat_completion.serving import OpenAIServingChat    # type: ignore[no-redef]
+        from vllm.entrypoints.openai.models.serving import OpenAIServingModels           # type: ignore[no-redef]
+        from vllm.entrypoints.openai.models.protocol import BaseModelPath                # type: ignore[no-redef]
+        from vllm.entrypoints.openai.completion.protocol import CompletionRequest        # type: ignore[no-redef]
+        from vllm.entrypoints.openai.chat_completion.protocol import ChatCompletionRequest  # type: ignore[no-redef]
+        _VLLM_NEW_LAYOUT = True
+    except ImportError:
+        try:
+            # vLLM 0.13.x (flat layout)
+            from vllm.entrypoints.openai.serving_completion import OpenAIServingCompletion   # type: ignore[no-redef]
+            from vllm.entrypoints.openai.serving_chat import OpenAIServingChat               # type: ignore[no-redef]
+            from vllm.entrypoints.openai.serving_models import (                             # type: ignore[no-redef]
+                OpenAIServingModels,
+                BaseModelPath,
+            )
+            from vllm.entrypoints.openai.protocol import (                                   # type: ignore[no-redef]
+                CompletionRequest,
+                ChatCompletionRequest,
+            )
+        except ImportError:
+            pass  # serving imports deferred to __init__ for this vLLM version
 
 logger = logging.getLogger(__name__)
 

@@ -151,6 +151,7 @@ class CoordinatorService:
                 "alive": node.get("Alive", False),
                 "resources": node.get("Resources", {}),
                 "resources_used": node.get("ResourcesUsed", {}),
+                "pod_name": node.get("NodeManagerHostname"),
                 "app_id": app_id,
                 "app_name": mapping.get("cml_app_name"),
                 "cml_status": cml_status_by_id.get(app_id) if app_id else None,
