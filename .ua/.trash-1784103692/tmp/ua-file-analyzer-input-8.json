@@ -1,0 +1,9 @@
+{
+  "projectRoot": "/Users/zhongqishuai/Projects/cldr_projects/ray-serve-cai",
+  "batchFiles": [
+    {"path": "README.md", "language": "markdown", "sizeLines": 283, "fileCategory": "docs"},
+    {"path": "ray_serve_cai/engines/vllm_config.py", "language": "python", "sizeLines": 0, "fileCategory": "code"},
+    {"path": "ray_serve_cai/engines/sglang_engine.py", "language": "python", "sizeLines": 0, "fileCategory": "code"}
+  ],
+  "batchImportData": {}
+}

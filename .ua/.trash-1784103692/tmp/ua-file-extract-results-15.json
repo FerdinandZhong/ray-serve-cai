@@ -1,0 +1,489 @@
+{
+  "scriptCompleted": true,
+  "filesAnalyzed": 5,
+  "filesSkipped": [],
+  "results": [
+    {
+      "path": "ray_serve_cai/engines/base.py",
+      "language": "python",
+      "fileCategory": "code",
+      "totalLines": 277,
+      "nonEmptyLines": 213,
+      "classes": [
+        {
+          "name": "LLMEngineProtocol",
+          "startLine": 35,
+          "endLine": 144,
+          "methods": [
+            "engine_type",
+            "model_name",
+            "completion",
+            "chat_completion",
+            "list_models",
+            "health_check",
+            "__call__"
+          ],
+          "properties": []
+        },
+        {
+          "name": "ConfigBuilderProtocol",
+          "startLine": 148,
+          "endLine": 198,
+          "methods": [
+            "build_config",
+            "validate_config",
+            "get_default_config"
+          ],
+          "properties": []
+        },
+        {
+          "name": "DeploymentFactoryProtocol",
+          "startLine": 202,
+          "endLine": 238,
+          "methods": [
+            "create_deployment"
+          ],
+          "properties": []
+        },
+        {
+          "name": "EngineComponents",
+          "startLine": 241,
+          "endLine": 277,
+          "methods": [
+            "__init__",
+            "__repr__"
+          ],
+          "properties": []
+        }
+      ],
+      "exports": [
+        {
+          "name": "LLMEngineProtocol",
+          "line": 34,
+          "isDefault": false
+        },
+        {
+          "name": "ConfigBuilderProtocol",
+          "line": 147,
+          "isDefault": false
+        },
+        {
+          "name": "DeploymentFactoryProtocol",
+          "line": 201,
+          "isDefault": false
+        },
+        {
+          "name": "EngineComponents",
+          "line": 241,
+          "isDefault": false
+        }
+      ],
+      "metrics": {
+        "importCount": 0,
+        "exportCount": 4,
+        "functionCount": 0,
+        "classCount": 4
+      }
+    },
+    {
+      "path": "ray_serve_cai/engines/venv_utils.py",
+      "language": "python",
+      "fileCategory": "code",
+      "totalLines": 85,
+      "nonEmptyLines": 66,
+      "functions": [
+        {
+          "name": "validate_venv_name",
+          "startLine": 39,
+          "endLine": 45,
+          "params": [
+            "name"
+          ]
+        },
+        {
+          "name": "venv_dir_for",
+          "startLine": 48,
+          "endLine": 51,
+          "params": [
+            "name"
+          ]
+        },
+        {
+          "name": "resolve_venv_path",
+          "startLine": 54,
+          "endLine": 85,
+          "params": [
+            "engine_config",
+            "default_name"
+          ]
+        }
+      ],
+      "exports": [
+        {
+          "name": "validate_venv_name",
+          "line": 39,
+          "isDefault": false
+        },
+        {
+          "name": "venv_dir_for",
+          "line": 48,
+          "isDefault": false
+        },
+        {
+          "name": "resolve_venv_path",
+          "line": 54,
+          "isDefault": false
+        }
+      ],
+      "callGraph": [
+        {
+          "caller": "validate_venv_name",
+          "callee": "_VALID_NAME.match",
+          "lineNumber": 41
+        },
+        {
+          "caller": "validate_venv_name",
+          "callee": "ValueError",
+          "lineNumber": 42
+        },
+        {
+          "caller": "venv_dir_for",
+          "callee": "validate_venv_name",
+          "lineNumber": 50
+        },
+        {
+          "caller": "venv_dir_for",
+          "callee": "str",
+          "lineNumber": 51
+        },
+        {
+          "caller": "venv_dir_for",
+          "callee": "Path",
+          "lineNumber": 51
+        },
+        {
+          "caller": "resolve_venv_path",
+          "callee": "engine_config.get",
+          "lineNumber": 66
+        },
+        {
+          "caller": "resolve_venv_path",
+          "callee": "Path",
+          "lineNumber": 68
+        },
+        {
+          "caller": "resolve_venv_path",
+          "callee": "venv_dir_for",
+          "lineNumber": 68
+        },
+        {
+          "caller": "resolve_venv_path",
+          "callee": "path.exists",
+          "lineNumber": 70
+        },
+        {
+          "caller": "resolve_venv_path",
+          "callee": "str",
+          "lineNumber": 71
+        },
+        {
+          "caller": "resolve_venv_path",
+          "callee": "ValueError",
+          "lineNumber": 74
+        },
+        {
+          "caller": "resolve_venv_path",
+          "callee": "logger.info",
+          "lineNumber": 81
+        }
+      ],
+      "metrics": {
+        "importCount": 0,
+        "exportCount": 3,
+        "functionCount": 3,
+        "classCount": 0
+      }
+    },
+    {
+      "path": "ray_serve_cai/engines/engine_utils.py",
+      "language": "python",
+      "fileCategory": "code",
+      "totalLines": 57,
+      "nonEmptyLines": 43,
+      "functions": [
+        {
+          "name": "create_engine_app",
+          "startLine": 16,
+          "endLine": 37,
+          "params": [
+            "title"
+          ]
+        },
+        {
+          "name": "mount_health",
+          "startLine": 40,
+          "endLine": 49,
+          "params": [
+            "app",
+            "engine_type",
+            "extra"
+          ]
+        },
+        {
+          "name": "mount_metrics",
+          "startLine": 52,
+          "endLine": 57,
+          "params": [
+            "app",
+            "registry"
+          ]
+        }
+      ],
+      "exports": [
+        {
+          "name": "create_engine_app",
+          "line": 16,
+          "isDefault": false
+        },
+        {
+          "name": "mount_health",
+          "line": 40,
+          "isDefault": false
+        },
+        {
+          "name": "mount_metrics",
+          "line": 52,
+          "isDefault": false
+        }
+      ],
+      "callGraph": [
+        {
+          "caller": "create_engine_app",
+          "callee": "FastAPI",
+          "lineNumber": 25
+        },
+        {
+          "caller": "_call",
+          "callee": "scope.get",
+          "lineNumber": 30
+        },
+        {
+          "caller": "_call",
+          "callee": "scope[\"path\"].startswith",
+          "lineNumber": 31
+        },
+        {
+          "caller": "_call",
+          "callee": "dict",
+          "lineNumber": 32
+        },
+        {
+          "caller": "_call",
+          "callee": "len",
+          "lineNumber": 33
+        },
+        {
+          "caller": "_call",
+          "callee": "_orig_call",
+          "lineNumber": 34
+        },
+        {
+          "caller": "mount_health",
+          "callee": "app.get",
+          "lineNumber": 47
+        },
+        {
+          "caller": "mount_metrics",
+          "callee": "make_asgi_app",
+          "lineNumber": 56
+        },
+        {
+          "caller": "mount_metrics",
+          "callee": "app.mount",
+          "lineNumber": 57
+        }
+      ],
+      "metrics": {
+        "importCount": 0,
+        "exportCount": 3,
+        "functionCount": 3,
+        "classCount": 0
+      }
+    },
+    {
+      "path": "ray_serve_cai/engines/mcps/__init__.py",
+      "language": "python",
+      "fileCategory": "code",
+      "totalLines": 1,
+      "nonEmptyLines": 1,
+      "metrics": {
+        "importCount": 0,
+        "exportCount": 0,
+        "functionCount": 0,
+        "classCount": 0
+      }
+    },
+    {
+      "path": "ray_serve_cai/engines/mcps/weather_tools.py",
+      "language": "python",
+      "fileCategory": "code",
+      "totalLines": 96,
+      "nonEmptyLines": 74,
+      "functions": [
+        {
+          "name": "_nws_request",
+          "startLine": 31,
+          "endLine": 39,
+          "params": [
+            "url"
+          ]
+        },
+        {
+          "name": "_format_alert",
+          "startLine": 42,
+          "endLine": 50,
+          "params": [
+            "feature"
+          ]
+        },
+        {
+          "name": "get_alerts",
+          "startLine": 56,
+          "endLine": 65,
+          "params": [
+            "state"
+          ]
+        },
+        {
+          "name": "get_forecast",
+          "startLine": 69,
+          "endLine": 96,
+          "params": [
+            "latitude",
+            "longitude"
+          ]
+        }
+      ],
+      "exports": [
+        {
+          "name": "_nws_request",
+          "line": 31,
+          "isDefault": false
+        },
+        {
+          "name": "_format_alert",
+          "line": 42,
+          "isDefault": false
+        },
+        {
+          "name": "get_alerts",
+          "line": 55,
+          "isDefault": false
+        },
+        {
+          "name": "get_forecast",
+          "line": 68,
+          "isDefault": false
+        }
+      ],
+      "callGraph": [
+        {
+          "caller": "_nws_request",
+          "callee": "httpx.AsyncClient",
+          "lineNumber": 33
+        },
+        {
+          "caller": "_nws_request",
+          "callee": "client.get",
+          "lineNumber": 35
+        },
+        {
+          "caller": "_nws_request",
+          "callee": "resp.raise_for_status",
+          "lineNumber": 36
+        },
+        {
+          "caller": "_nws_request",
+          "callee": "resp.json",
+          "lineNumber": 37
+        },
+        {
+          "caller": "_format_alert",
+          "callee": "props.get",
+          "lineNumber": 45
+        },
+        {
+          "caller": "_format_alert",
+          "callee": "props.get",
+          "lineNumber": 46
+        },
+        {
+          "caller": "_format_alert",
+          "callee": "props.get",
+          "lineNumber": 47
+        },
+        {
+          "caller": "_format_alert",
+          "callee": "props.get",
+          "lineNumber": 48
+        },
+        {
+          "caller": "_format_alert",
+          "callee": "props.get",
+          "lineNumber": 49
+        },
+        {
+          "caller": "get_alerts",
+          "callee": "_nws_request",
+          "lineNumber": 59
+        },
+        {
+          "caller": "get_alerts",
+          "callee": "\"\\n---\\n\".join",
+          "lineNumber": 65
+        },
+        {
+          "caller": "get_alerts",
+          "callee": "_format_alert",
+          "lineNumber": 65
+        },
+        {
+          "caller": "get_forecast",
+          "callee": "_nws_request",
+          "lineNumber": 72
+        },
+        {
+          "caller": "get_forecast",
+          "callee": "points_data[\"properties\"].get",
+          "lineNumber": 76
+        },
+        {
+          "caller": "get_forecast",
+          "callee": "_nws_request",
+          "lineNumber": 80
+        },
+        {
+          "caller": "get_forecast",
+          "callee": "forecast_data[\"properties\"].get",
+          "lineNumber": 84
+        },
+        {
+          "caller": "get_forecast",
+          "callee": "parts.append",
+          "lineNumber": 90
+        },
+        {
+          "caller": "get_forecast",
+          "callee": "\"\\n---\\n\".join",
+          "lineNumber": 96
+        }
+      ],
+      "metrics": {
+        "importCount": 0,
+        "exportCount": 4,
+        "functionCount": 4,
+        "classCount": 0
+      }
+    }
+  ]
+}

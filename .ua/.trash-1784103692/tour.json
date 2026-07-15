@@ -1,0 +1,133 @@
+[
+  {
+    "order": 1,
+    "title": "Application Entry Point",
+    "description": "app.py is the FastAPI application factory and the true starting point of the system. Its lifespan context manager initializes three core services — Ray, CAI, and Coordinator — in the correct order, then registers all HTTP routers. Reading this file first answers the question 'what gets wired together when the server starts?' and provides a map for every subsequent stop in this tour.",
+    "nodeIds": ["file:ray_serve_cai/management/app.py"],
+    "languageLesson": "FastAPI's lifespan parameter (replacing the older @app.on_event pattern) accepts an async context manager: code before 'yield' runs at startup, code after runs at shutdown. This guarantees teardown even if startup raises, making it the right place to initialize and cleanly close stateful resources like Ray connections."
+  },
+  {
+    "order": 2,
+    "title": "API Contract: Request & Response Models",
+    "description": "Before tracing how the server handles requests, it helps to understand the data shapes it speaks. requests.py defines the inbound Pydantic v2 models — AddNodeRequest, DeployApplicationRequest, and SchedulingConfig — while responses.py defines what callers receive back: NodeInfo, ApplicationInfo, ClusterStatus, and ResourceCapacity. These models form the public API contract and are referenced by every router and service in the stack.",
+    "nodeIds": [
+      "file:ray_serve_cai/management/models/requests.py",
+      "file:ray_serve_cai/management/models/responses.py"
+    ],
+    "languageLesson": "Pydantic v2 uses model_config = ConfigDict(...) instead of the v1 inner Config class. Field validators are now @field_validator decorators with mode='before' or mode='after'. The split into separate requests.py and responses.py files is a common pattern that prevents circular imports between routers and services."
+  },
+  {
+    "order": 3,
+    "title": "HTTP Routers: Applications & Resources",
+    "description": "applications.py and resources.py are the two most active FastAPI routers. applications.py exposes the deploy/delete/list/get endpoints that callers use to run inference workloads on the cluster. resources.py handles worker node lifecycle — adding and removing GPU workers and reading resource allocation maps. Both routers delegate all real work to CoordinatorService, which you will meet in the next step.",
+    "nodeIds": [
+      "file:ray_serve_cai/management/api/applications.py",
+      "file:ray_serve_cai/management/api/resources.py"
+    ]
+  },
+  {
+    "order": 4,
+    "title": "The Coordinator: Central Orchestrator",
+    "description": "CoordinatorService is the highest fan-in component in the codebase — both API routers depend on it — and simultaneously the highest fan-out service, importing CAIService, RayService, and ResourceMap. It is the single point that bridges the REST API to the underlying Ray cluster and CML platform, owning the lifecycle of nodes, deployed applications, and resource accounting. Understanding this file unlocks the full request-handling path.",
+    "nodeIds": ["file:ray_serve_cai/management/services/coordinator.py"],
+    "languageLesson": "The Coordinator pattern (also called Facade or Mediator) keeps routers thin by centralizing cross-cutting concerns: it sequences calls to CAIService and RayService, rolls back on partial failure, and updates ResourceMap atomically. This makes each individual service easier to test in isolation."
+  },
+  {
+    "order": 5,
+    "title": "Ray & CAI Services",
+    "description": "CoordinatorService delegates to two specialized services. RayService wraps the Ray and Ray Serve APIs, implementing deploy_model and deploy_application to submit workloads to the cluster. CAIService wraps CAIClusterManager to create and tear down CML worker node applications — the CML-specific side of the same operation. Together they represent the two external systems the coordinator must coordinate.",
+    "nodeIds": [
+      "file:ray_serve_cai/management/services/ray_service.py",
+      "file:ray_serve_cai/management/services/cai_service.py"
+    ]
+  },
+  {
+    "order": 6,
+    "title": "Resource Accounting on NFS",
+    "description": "ResourceMap provides persistent capacity accounting for workers and applications, stored on shared NFS so that any head-node replica can read the same state. It tracks which GPU worker nodes are registered and how much capacity each deployed application has reserved, giving the Coordinator the information it needs to make scheduling decisions and return accurate cluster status responses.",
+    "nodeIds": ["file:ray_serve_cai/management/services/resource_map.py"],
+    "languageLesson": "Writing shared state to NFS instead of an in-process dictionary allows multiple processes (or multiple pod replicas) to share the same view of the cluster without a separate database. The tradeoff is that writes must be protected by file locks (fcntl) to avoid corruption under concurrent access — a pattern you will see again in the venv factory."
+  },
+  {
+    "order": 7,
+    "title": "Environments API & Cluster Config",
+    "description": "environments.py is the third HTTP router, providing venv lifecycle endpoints so operators can list, inspect, and create engine-specific virtual environments without SSH access. Alongside it, ray_cluster_config.yaml is the declarative cluster definition: it describes each worker_group with its node_type, accelerator_type, node_label, and CPU/memory/GPU budgets. This config is what launch_ray_cluster.py reads to spin up the initial cluster topology.",
+    "nodeIds": [
+      "file:ray_serve_cai/management/api/environments.py",
+      "config:configs/ray_cluster_config.yaml"
+    ],
+    "languageLesson": "YAML worker_group stanzas act as a declarative specification: the launcher translates each group entry into a separate CML Application call with the matching resource profile. Separating the spec (YAML) from the launcher (Python) makes it easy to add new node types without touching Python code."
+  },
+  {
+    "order": 8,
+    "title": "CML Cluster Manager",
+    "description": "cai_cluster.py is the second-highest fan-in file in the codebase — both CAIService and launch_ray_cluster.py depend on it. It contains CMLAPIClient (a thin HTTP client for the CML REST API), WorkerGroupConfig (a dataclass mirroring the YAML stanza), and CAIClusterManager (the object that creates and terminates CML Applications representing Ray head and worker nodes). This is where Python code crosses the boundary into the Cloudera AI platform.",
+    "nodeIds": ["file:ray_serve_cai/cai_cluster.py"]
+  },
+  {
+    "order": 9,
+    "title": "Engine Plugin System: Protocols & Registry",
+    "description": "The engine layer is built as an explicit plugin system. base.py defines two Python Protocols — ConfigBuilderProtocol and DeploymentFactoryProtocol — that every engine must implement, plus the EngineComponents named tuple that bundles them together. registry.py holds the EngineRegistry singleton that maps engine names (e.g. 'vllm') to their registered implementations. Any code that needs to deploy an inference engine goes through this registry, making the system open for extension without modifying core services.",
+    "nodeIds": [
+      "file:ray_serve_cai/engines/base.py",
+      "file:ray_serve_cai/engines/registry.py"
+    ],
+    "languageLesson": "Python Protocols (from typing) enable structural subtyping: an engine class does not need to inherit from a base class, it just needs to implement the required methods. This is duck typing with static-analysis support — mypy/pyright will flag engines that are missing methods without any runtime overhead."
+  },
+  {
+    "order": 10,
+    "title": "Engine Auto-Registration & vLLM Engine",
+    "description": "engines/__init__.py auto-registers all built-in engines (vllm, sglang, litellm, yolo, mcp) into the EngineRegistry at import time, so the rest of the codebase never needs to know which engines are available. vllm_engine.py and vllm_config.py show a complete engine implementation: VLLMConfigBuilder builds the Ray Serve deployment config (including placement group and venv injection), and VLLMDeploymentFactory instantiates the @serve.deployment actor that actually runs vLLM inference.",
+    "nodeIds": [
+      "file:ray_serve_cai/engines/__init__.py",
+      "file:ray_serve_cai/engines/vllm_engine.py",
+      "file:ray_serve_cai/engines/vllm_config.py"
+    ],
+    "languageLesson": "Ray Serve's @serve.deployment decorator turns a Python class into a managed, load-balanced actor. The ray_actor_options dict inside it is where you inject py_executable (the venv Python binary) and placement_group_bundles (which GPU resources to reserve). This is the mechanism that lets mutually-incompatible packages like vLLM and SGLang coexist on the same Ray cluster."
+  },
+  {
+    "order": 11,
+    "title": "NFS Venv Path Resolution",
+    "description": "venv_utils.py provides the path-resolution layer that the engine configs rely on. resolve_venv_path() maps an engine name to its canonical NFS path (/home/cdsw/.venv-<engine>), venv_dir_for() handles per-worker subdirectory conventions, and validate_venv_name() guards against path-traversal attacks. Because all worker nodes mount the same NFS share, a venv created on the head node is immediately available to every worker — this is the key insight that makes isolated-but-shared envs practical.",
+    "nodeIds": ["file:ray_serve_cai/engines/venv_utils.py"],
+    "languageLesson": "Path traversal validation (rejecting names containing '..' or '/') is important whenever user-supplied strings become filesystem paths. Even in internal tools, validating names prevents accidental or malicious writes outside the intended directory tree."
+  },
+  {
+    "order": 12,
+    "title": "Venv Factory & Isolated Environment Design",
+    "description": "setup_environment.py is the NFS-safe venv factory: setup_engine_venv() creates /home/cdsw/.venv-<engine> using fcntl advisory locks so concurrent launcher processes on different CML workers do not corrupt each other's installations. setup_vllm_env.py is the thin per-engine caller that invokes setup_engine_venv('vllm', ...). The design rationale — why mutually-incompatible dependencies (vLLM vs SGLang) need separate venvs and how NFS locking makes this safe — is explained in ISOLATED_ENV_DESIGN.md.",
+    "nodeIds": [
+      "file:cai_integration/setup_environment.py",
+      "file:cai_integration/setup_vllm_env.py",
+      "document:docs/ISOLATED_ENV_DESIGN.md"
+    ],
+    "languageLesson": "fcntl.flock() provides advisory file locking on POSIX systems. 'Advisory' means the OS does not enforce it — all cooperating processes must acquire the lock before writing. This is appropriate here because all callers are controlled code. flock() works across NFS on Linux (unlike fcntl.lockf() which has known NFS quirks on some kernels)."
+  },
+  {
+    "order": 13,
+    "title": "Cluster Launch & Launcher Templates",
+    "description": "launch_ray_cluster.py ties the integration layer together: it reads ray_cluster_config.yaml, calls CAIClusterManager to create CML Applications for the head and each worker group, and renders Jinja2 templates to produce the actual Python startup scripts for each node. ray_head_launcher.py.j2 generates the head script (ray start, deploy management API, start nginx), while ray_worker_launcher.py.j2 generates the worker script that registers node_type and accelerator_type as custom Ray resources — the mechanism that lets SchedulingConfig target specific GPU node pools.",
+    "nodeIds": [
+      "file:cai_integration/launch_ray_cluster.py",
+      "file:cai_integration/templates/ray_head_launcher.py.j2",
+      "file:cai_integration/templates/ray_worker_launcher.py.j2"
+    ],
+    "languageLesson": "Jinja2 templates separate the 'shape' of a startup script from the runtime values (IP addresses, node labels, resource counts) that are only known at launch time. Rendering templates to Python files rather than shell scripts gives you access to the full Python standard library in the generated launcher — useful for complex resource registration logic."
+  },
+  {
+    "order": 14,
+    "title": "Architecture Deep-Dive & Examples",
+    "description": "ARCHITECTURE.md provides the conceptual map of the two-layer design: the platform-neutral core (engines/ + management/) versus the CML-specific integration layer (cai_integration/). It explains the node/app/venv mapping and how the engine plugin system is intended to grow. cai_cluster_example.py shows programmatic cluster launch using CAIClusterManager directly, and my_engine.py is a minimal custom engine template that implements both ConfigBuilderProtocol and DeploymentFactoryProtocol — the starting point for adding a new inference backend.",
+    "nodeIds": [
+      "document:docs/ARCHITECTURE.md",
+      "file:examples/cai_cluster_example.py",
+      "file:examples/custom_engine_template/my_engine.py"
+    ]
+  },
+  {
+    "order": 15,
+    "title": "End-to-End Test",
+    "description": "test_e2e_deployment.py exercises the full cluster lifecycle — provisioning nodes via the CML API, deploying a model through the management API, verifying inference responses, and tearing everything down — making it both a correctness gate and a living specification of the expected system behavior. Reading this test after completing the tour reveals exactly which sequence of API calls a real deployment follows, connecting every component you have seen into a single coherent flow.",
+    "nodeIds": ["file:tests/test_e2e_deployment.py"]
+  }
+]

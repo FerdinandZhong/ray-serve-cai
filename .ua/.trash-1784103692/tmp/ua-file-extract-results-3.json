@@ -1,0 +1,897 @@
+{
+  "scriptCompleted": true,
+  "filesAnalyzed": 3,
+  "filesSkipped": [
+    "ray_serve_cai/ray_service.py",
+    "ray_serve_cai/engines/base_engine.py",
+    "ray_serve_cai/engines/mlflow_engine.py"
+  ],
+  "results": [
+    {
+      "path": "ray_serve_cai/engines/__init__.py",
+      "language": "python",
+      "fileCategory": "code",
+      "totalLines": 173,
+      "nonEmptyLines": 155,
+      "metrics": {
+        "importCount": 4,
+        "exportCount": 0,
+        "functionCount": 0,
+        "classCount": 0
+      }
+    },
+    {
+      "path": "ray_serve_cai/engines/registry.py",
+      "language": "python",
+      "fileCategory": "code",
+      "totalLines": 297,
+      "nonEmptyLines": 235,
+      "functions": [
+        {
+          "name": "get_registry",
+          "startLine": 258,
+          "endLine": 270,
+          "params": []
+        },
+        {
+          "name": "register_engine",
+          "startLine": 273,
+          "endLine": 297,
+          "params": [
+            "engine_type",
+            "engine_class",
+            "config_builder",
+            "deployment_factory",
+            "set_as_default"
+          ]
+        }
+      ],
+      "classes": [
+        {
+          "name": "EngineRegistry",
+          "startLine": 38,
+          "endLine": 251,
+          "methods": [
+            "__init__",
+            "register",
+            "unregister",
+            "is_registered",
+            "get_engine_components",
+            "get_config_builder",
+            "get_deployment_factory",
+            "get_engine_class",
+            "list_engines",
+            "get_default_engine",
+            "set_default_engine",
+            "__repr__"
+          ],
+          "properties": []
+        }
+      ],
+      "exports": [
+        {
+          "name": "EngineRegistry",
+          "line": 38,
+          "isDefault": false
+        },
+        {
+          "name": "get_registry",
+          "line": 258,
+          "isDefault": false
+        },
+        {
+          "name": "register_engine",
+          "line": 273,
+          "isDefault": false
+        }
+      ],
+      "callGraph": [
+        {
+          "caller": "__init__",
+          "callee": "logger.info",
+          "lineNumber": 53
+        },
+        {
+          "caller": "register",
+          "callee": "logger.warning",
+          "lineNumber": 77
+        },
+        {
+          "caller": "register",
+          "callee": "EngineComponents",
+          "lineNumber": 79
+        },
+        {
+          "caller": "register",
+          "callee": "logger.info",
+          "lineNumber": 87
+        },
+        {
+          "caller": "register",
+          "callee": "logger.info",
+          "lineNumber": 91
+        },
+        {
+          "caller": "unregister",
+          "callee": "KeyError",
+          "lineNumber": 104
+        },
+        {
+          "caller": "unregister",
+          "callee": "logger.info",
+          "lineNumber": 107
+        },
+        {
+          "caller": "unregister",
+          "callee": "list",
+          "lineNumber": 111
+        },
+        {
+          "caller": "unregister",
+          "callee": "self._engines.keys",
+          "lineNumber": 111
+        },
+        {
+          "caller": "unregister",
+          "callee": "logger.info",
+          "lineNumber": 113
+        },
+        {
+          "caller": "get_engine_components",
+          "callee": "\", \".join",
+          "lineNumber": 141
+        },
+        {
+          "caller": "get_engine_components",
+          "callee": "self._engines.keys",
+          "lineNumber": 141
+        },
+        {
+          "caller": "get_engine_components",
+          "callee": "KeyError",
+          "lineNumber": 142
+        },
+        {
+          "caller": "get_config_builder",
+          "callee": "ValueError",
+          "lineNumber": 164
+        },
+        {
+          "caller": "get_config_builder",
+          "callee": "self.get_engine_components",
+          "lineNumber": 166
+        },
+        {
+          "caller": "get_deployment_factory",
+          "callee": "ValueError",
+          "lineNumber": 185
+        },
+        {
+          "caller": "get_deployment_factory",
+          "callee": "self.get_engine_components",
+          "lineNumber": 187
+        },
+        {
+          "caller": "get_engine_class",
+          "callee": "ValueError",
+          "lineNumber": 206
+        },
+        {
+          "caller": "get_engine_class",
+          "callee": "self.get_engine_components",
+          "lineNumber": 208
+        },
+        {
+          "caller": "list_engines",
+          "callee": "list",
+          "lineNumber": 218
+        },
+        {
+          "caller": "list_engines",
+          "callee": "self._engines.keys",
+          "lineNumber": 218
+        },
+        {
+          "caller": "set_default_engine",
+          "callee": "\", \".join",
+          "lineNumber": 240
+        },
+        {
+          "caller": "set_default_engine",
+          "callee": "self._engines.keys",
+          "lineNumber": 240
+        },
+        {
+          "caller": "set_default_engine",
+          "callee": "KeyError",
+          "lineNumber": 241
+        },
+        {
+          "caller": "set_default_engine",
+          "callee": "logger.info",
+          "lineNumber": 247
+        },
+        {
+          "caller": "__repr__",
+          "callee": "\", \".join",
+          "lineNumber": 250
+        },
+        {
+          "caller": "__repr__",
+          "callee": "self._engines.keys",
+          "lineNumber": 250
+        },
+        {
+          "caller": "get_registry",
+          "callee": "EngineRegistry",
+          "lineNumber": 269
+        },
+        {
+          "caller": "register_engine",
+          "callee": "get_registry",
+          "lineNumber": 290
+        },
+        {
+          "caller": "register_engine",
+          "callee": "registry.register",
+          "lineNumber": 291
+        }
+      ],
+      "metrics": {
+        "importCount": 1,
+        "exportCount": 3,
+        "functionCount": 2,
+        "classCount": 1
+      }
+    },
+    {
+      "path": "ray_serve_cai/engines/vllm_engine.py",
+      "language": "python",
+      "fileCategory": "code",
+      "totalLines": 709,
+      "nonEmptyLines": 627,
+      "functions": [
+        {
+          "name": "_accepted_kwargs",
+          "startLine": 97,
+          "endLine": 101,
+          "params": [
+            "kwargs"
+          ]
+        },
+        {
+          "name": "_requires_param",
+          "startLine": 104,
+          "endLine": 107,
+          "params": [
+            "param"
+          ]
+        },
+        {
+          "name": "_normalize_vllm_stream_result",
+          "startLine": 110,
+          "endLine": 164,
+          "params": [
+            "result",
+            "op_name"
+          ]
+        },
+        {
+          "name": "_build_serving_render",
+          "startLine": 167,
+          "endLine": 213,
+          "params": [
+            "engine_args",
+            "model_name",
+            "chat_template"
+          ]
+        },
+        {
+          "name": "create_vllm_deployment",
+          "startLine": 495,
+          "endLine": 709,
+          "params": [
+            "engine_config",
+            "num_replicas",
+            "tensor_parallel_size",
+            "use_cpu",
+            "max_ongoing_requests",
+            "gpu_fraction",
+            "placement_group_bundles",
+            "placement_group_strategy",
+            "multi_node",
+            "venv_path",
+            "scheduling_resources",
+            "scheduling_env_vars"
+          ]
+        }
+      ],
+      "classes": [
+        {
+          "name": "_RoutePathMiddleware",
+          "startLine": 228,
+          "endLine": 243,
+          "methods": [
+            "__init__",
+            "__call__"
+          ],
+          "properties": []
+        },
+        {
+          "name": "VLLMEngine",
+          "startLine": 289,
+          "endLine": 488,
+          "methods": [
+            "__init__",
+            "engine_type",
+            "chat_completion",
+            "completion",
+            "list_models",
+            "health_check"
+          ],
+          "properties": []
+        }
+      ],
+      "exports": [
+        {
+          "name": "_accepted_kwargs",
+          "line": 97,
+          "isDefault": false
+        },
+        {
+          "name": "_requires_param",
+          "line": 104,
+          "isDefault": false
+        },
+        {
+          "name": "_normalize_vllm_stream_result",
+          "line": 110,
+          "isDefault": false
+        },
+        {
+          "name": "_build_serving_render",
+          "line": 167,
+          "isDefault": false
+        },
+        {
+          "name": "_RoutePathMiddleware",
+          "line": 228,
+          "isDefault": false
+        },
+        {
+          "name": "VLLMEngine",
+          "line": 277,
+          "isDefault": false
+        },
+        {
+          "name": "create_vllm_deployment",
+          "line": 495,
+          "isDefault": false
+        }
+      ],
+      "callGraph": [
+        {
+          "caller": "_accepted_kwargs",
+          "callee": "set",
+          "lineNumber": 100
+        },
+        {
+          "caller": "_accepted_kwargs",
+          "callee": "inspect.signature",
+          "lineNumber": 100
+        },
+        {
+          "caller": "_accepted_kwargs",
+          "callee": "kwargs.items",
+          "lineNumber": 101
+        },
+        {
+          "caller": "_requires_param",
+          "callee": "inspect.signature",
+          "lineNumber": 107
+        },
+        {
+          "caller": "_normalize_vllm_stream_result",
+          "callee": "inspect.isasyncgen",
+          "lineNumber": 132
+        },
+        {
+          "caller": "_normalize_vllm_stream_result",
+          "callee": "getattr",
+          "lineNumber": 139
+        },
+        {
+          "caller": "_normalize_vllm_stream_result",
+          "callee": "getattr",
+          "lineNumber": 143
+        },
+        {
+          "caller": "_normalize_vllm_stream_result",
+          "callee": "getattr",
+          "lineNumber": 144
+        },
+        {
+          "caller": "_normalize_vllm_stream_result",
+          "callee": "getattr",
+          "lineNumber": 147
+        },
+        {
+          "caller": "_logged_stream",
+          "callee": "logger.debug",
+          "lineNumber": 158
+        },
+        {
+          "caller": "_logged_stream",
+          "callee": "logger.error",
+          "lineNumber": 161
+        },
+        {
+          "caller": "_normalize_vllm_stream_result",
+          "callee": "StreamingResponse",
+          "lineNumber": 164
+        },
+        {
+          "caller": "_normalize_vllm_stream_result",
+          "callee": "_logged_stream",
+          "lineNumber": 164
+        },
+        {
+          "caller": "_build_serving_render",
+          "callee": "engine_args.create_engine_config",
+          "lineNumber": 182
+        },
+        {
+          "caller": "_build_serving_render",
+          "callee": "BaseModelPath",
+          "lineNumber": 185
+        },
+        {
+          "caller": "_build_serving_render",
+          "callee": "OpenAIModelRegistry",
+          "lineNumber": 186
+        },
+        {
+          "caller": "_build_serving_render",
+          "callee": "renderer_from_config",
+          "lineNumber": 191
+        },
+        {
+          "caller": "_build_serving_render",
+          "callee": "get_io_processor",
+          "lineNumber": 192
+        },
+        {
+          "caller": "_build_serving_render",
+          "callee": "getattr",
+          "lineNumber": 195
+        },
+        {
+          "caller": "_build_serving_render",
+          "callee": "ChatTemplateContentFormatOption",
+          "lineNumber": 201
+        },
+        {
+          "caller": "_build_serving_render",
+          "callee": "OpenAIServingRender",
+          "lineNumber": 205
+        },
+        {
+          "caller": "__call__",
+          "callee": "scope.get",
+          "lineNumber": 236
+        },
+        {
+          "caller": "__call__",
+          "callee": "scope.get",
+          "lineNumber": 237
+        },
+        {
+          "caller": "__call__",
+          "callee": "path.startswith",
+          "lineNumber": 238
+        },
+        {
+          "caller": "__call__",
+          "callee": "len",
+          "lineNumber": 239
+        },
+        {
+          "caller": "__call__",
+          "callee": "remainder.startswith",
+          "lineNumber": 240
+        },
+        {
+          "caller": "__call__",
+          "callee": "dict",
+          "lineNumber": 241
+        },
+        {
+          "caller": "__call__",
+          "callee": "self.app",
+          "lineNumber": 243
+        },
+        {
+          "caller": "__init__",
+          "callee": "logger.info",
+          "lineNumber": 304
+        },
+        {
+          "caller": "__init__",
+          "callee": "engine_config.pop",
+          "lineNumber": 311
+        },
+        {
+          "caller": "__init__",
+          "callee": "logger.info",
+          "lineNumber": 314
+        },
+        {
+          "caller": "__init__",
+          "callee": "AsyncEngineArgs",
+          "lineNumber": 316
+        },
+        {
+          "caller": "__init__",
+          "callee": "logger.info",
+          "lineNumber": 327
+        },
+        {
+          "caller": "__init__",
+          "callee": "logger.debug",
+          "lineNumber": 329
+        },
+        {
+          "caller": "__init__",
+          "callee": "AsyncLLMEngine.from_engine_args",
+          "lineNumber": 331
+        },
+        {
+          "caller": "__init__",
+          "callee": "engine_config.get",
+          "lineNumber": 336
+        },
+        {
+          "caller": "__init__",
+          "callee": "engine_config.get",
+          "lineNumber": 337
+        },
+        {
+          "caller": "__init__",
+          "callee": "BaseModelPath",
+          "lineNumber": 342
+        },
+        {
+          "caller": "__init__",
+          "callee": "OpenAIServingModels",
+          "lineNumber": 346
+        },
+        {
+          "caller": "__init__",
+          "callee": "_requires_param",
+          "lineNumber": 354
+        },
+        {
+          "caller": "__init__",
+          "callee": "logger.info",
+          "lineNumber": 356
+        },
+        {
+          "caller": "__init__",
+          "callee": "_build_serving_render",
+          "lineNumber": 357
+        },
+        {
+          "caller": "__init__",
+          "callee": "engine_config.get",
+          "lineNumber": 360
+        },
+        {
+          "caller": "__init__",
+          "callee": "OpenAIServingCompletion",
+          "lineNumber": 363
+        },
+        {
+          "caller": "__init__",
+          "callee": "ChatTemplateContentFormatOption",
+          "lineNumber": 372
+        },
+        {
+          "caller": "__init__",
+          "callee": "OpenAIServingChat",
+          "lineNumber": 376
+        },
+        {
+          "caller": "__init__",
+          "callee": "engine_config.get",
+          "lineNumber": 382
+        },
+        {
+          "caller": "__init__",
+          "callee": "OpenAIServingCompletion",
+          "lineNumber": 388
+        },
+        {
+          "caller": "__init__",
+          "callee": "_accepted_kwargs",
+          "lineNumber": 389
+        },
+        {
+          "caller": "__init__",
+          "callee": "OpenAIServingChat",
+          "lineNumber": 399
+        },
+        {
+          "caller": "__init__",
+          "callee": "_accepted_kwargs",
+          "lineNumber": 400
+        },
+        {
+          "caller": "__init__",
+          "callee": "logger.info",
+          "lineNumber": 410
+        },
+        {
+          "caller": "__init__",
+          "callee": "logger.error",
+          "lineNumber": 414
+        },
+        {
+          "caller": "__init__",
+          "callee": "logger.error",
+          "lineNumber": 416
+        },
+        {
+          "caller": "__init__",
+          "callee": "traceback.format_exc",
+          "lineNumber": 416
+        },
+        {
+          "caller": "chat_completion",
+          "callee": "self.openai_serving_chat.create_chat_completion",
+          "lineNumber": 442
+        },
+        {
+          "caller": "chat_completion",
+          "callee": "logger.error",
+          "lineNumber": 446
+        },
+        {
+          "caller": "chat_completion",
+          "callee": "logger.error",
+          "lineNumber": 447
+        },
+        {
+          "caller": "chat_completion",
+          "callee": "traceback.format_exc",
+          "lineNumber": 447
+        },
+        {
+          "caller": "chat_completion",
+          "callee": "JSONResponse",
+          "lineNumber": 448
+        },
+        {
+          "caller": "chat_completion",
+          "callee": "str",
+          "lineNumber": 448
+        },
+        {
+          "caller": "chat_completion",
+          "callee": "_normalize_vllm_stream_result",
+          "lineNumber": 450
+        },
+        {
+          "caller": "completion",
+          "callee": "self.openai_serving_completion.create_completion",
+          "lineNumber": 461
+        },
+        {
+          "caller": "completion",
+          "callee": "logger.error",
+          "lineNumber": 465
+        },
+        {
+          "caller": "completion",
+          "callee": "logger.error",
+          "lineNumber": 466
+        },
+        {
+          "caller": "completion",
+          "callee": "traceback.format_exc",
+          "lineNumber": 466
+        },
+        {
+          "caller": "completion",
+          "callee": "JSONResponse",
+          "lineNumber": 467
+        },
+        {
+          "caller": "completion",
+          "callee": "str",
+          "lineNumber": 467
+        },
+        {
+          "caller": "completion",
+          "callee": "_normalize_vllm_stream_result",
+          "lineNumber": 469
+        },
+        {
+          "caller": "list_models",
+          "callee": "self.openai_serving_models.show_available_models",
+          "lineNumber": 477
+        },
+        {
+          "caller": "list_models",
+          "callee": "JSONResponse",
+          "lineNumber": 478
+        },
+        {
+          "caller": "list_models",
+          "callee": "models.model_dump",
+          "lineNumber": 478
+        },
+        {
+          "caller": "create_vllm_deployment",
+          "callee": "logger.info",
+          "lineNumber": 534
+        },
+        {
+          "caller": "create_vllm_deployment",
+          "callee": "logger.warning",
+          "lineNumber": 543
+        },
+        {
+          "caller": "create_vllm_deployment",
+          "callee": "logger.info",
+          "lineNumber": 556
+        },
+        {
+          "caller": "create_vllm_deployment",
+          "callee": "logger.info",
+          "lineNumber": 568
+        },
+        {
+          "caller": "create_vllm_deployment",
+          "callee": "logger.info",
+          "lineNumber": 579
+        },
+        {
+          "caller": "create_vllm_deployment",
+          "callee": "engine_config.get",
+          "lineNumber": 594
+        },
+        {
+          "caller": "create_vllm_deployment",
+          "callee": "dict",
+          "lineNumber": 596
+        },
+        {
+          "caller": "create_vllm_deployment",
+          "callee": "dict",
+          "lineNumber": 622
+        },
+        {
+          "caller": "create_vllm_deployment",
+          "callee": "range",
+          "lineNumber": 622
+        },
+        {
+          "caller": "create_vllm_deployment",
+          "callee": "logger.info",
+          "lineNumber": 625
+        },
+        {
+          "caller": "create_vllm_deployment",
+          "callee": "\"\".join",
+          "lineNumber": 629
+        },
+        {
+          "caller": "create_vllm_deployment",
+          "callee": "float",
+          "lineNumber": 637
+        },
+        {
+          "caller": "create_vllm_deployment",
+          "callee": "float",
+          "lineNumber": 638
+        },
+        {
+          "caller": "create_vllm_deployment",
+          "callee": "logger.info",
+          "lineNumber": 641
+        },
+        {
+          "caller": "create_vllm_deployment",
+          "callee": "\"\".join",
+          "lineNumber": 645
+        },
+        {
+          "caller": "create_vllm_deployment",
+          "callee": "logger.info",
+          "lineNumber": 654
+        },
+        {
+          "caller": "create_vllm_deployment",
+          "callee": "\"\".join",
+          "lineNumber": 656
+        },
+        {
+          "caller": "create_vllm_deployment",
+          "callee": "b.get",
+          "lineNumber": 663
+        },
+        {
+          "caller": "create_vllm_deployment",
+          "callee": "_b.update",
+          "lineNumber": 665
+        },
+        {
+          "caller": "create_vllm_deployment",
+          "callee": "logger.info",
+          "lineNumber": 666
+        },
+        {
+          "caller": "create_vllm_deployment",
+          "callee": "ray_actor_options.setdefault",
+          "lineNumber": 673
+        },
+        {
+          "caller": "create_vllm_deployment",
+          "callee": "ray_actor_options[\"resources\"].update",
+          "lineNumber": 674
+        },
+        {
+          "caller": "create_vllm_deployment",
+          "callee": "logger.info",
+          "lineNumber": 675
+        },
+        {
+          "caller": "create_vllm_deployment",
+          "callee": "logger.info",
+          "lineNumber": 681
+        },
+        {
+          "caller": "create_vllm_deployment",
+          "callee": "logger.info",
+          "lineNumber": 684
+        },
+        {
+          "caller": "create_vllm_deployment",
+          "callee": "list",
+          "lineNumber": 684
+        },
+        {
+          "caller": "create_vllm_deployment",
+          "callee": "scheduling_env_vars.keys",
+          "lineNumber": 684
+        },
+        {
+          "caller": "create_vllm_deployment",
+          "callee": "engine_config.get",
+          "lineNumber": 689
+        },
+        {
+          "caller": "create_vllm_deployment",
+          "callee": "logger.info",
+          "lineNumber": 702
+        },
+        {
+          "caller": "create_vllm_deployment",
+          "callee": "VLLMEngine.options",
+          "lineNumber": 708
+        },
+        {
+          "caller": "create_vllm_deployment",
+          "callee": "deployment.bind",
+          "lineNumber": 709
+        }
+      ],
+      "metrics": {
+        "importCount": 1,
+        "exportCount": 7,
+        "functionCount": 5,
+        "classCount": 2
+      }
+    }
+  ]
+}

@@ -1,0 +1,216 @@
+{
+  "nodes": [
+    {
+      "id": "file:ray_serve_cai/engines/yolo_engine.py",
+      "type": "file",
+      "name": "yolo_engine.py",
+      "filePath": "ray_serve_cai/engines/yolo_engine.py",
+      "summary": "Implements _YOLOBase — a Ray Serve batched deployment class that loads a YOLO model, runs batched image inference with Prometheus metrics, and returns detection results with bounding boxes, occlusion flags, and location codes — plus make_yolo_deployment() factory.",
+      "tags": ["service", "factory", "api-handler"],
+      "complexity": "complex",
+      "languageNotes": "Uses Ray Serve's @serve.batch decorator for throughput optimization; exposes Prometheus Counter and Histogram metrics for requests, inference latency, batch size, and detection count."
+    },
+    {
+      "id": "file:ray_serve_cai/engines/yolo_config.py",
+      "type": "file",
+      "name": "yolo_config.py",
+      "filePath": "ray_serve_cai/engines/yolo_config.py",
+      "summary": "Defines YOLOConfigBuilder and YOLODeploymentFactory — the engine-registry components for YOLO object detection — providing config validation (model path, confidence threshold, batch params) and deployment creation.",
+      "tags": ["factory", "configuration", "validation"],
+      "complexity": "moderate"
+    },
+    {
+      "id": "file:ray_serve_cai/engines/mcp_engine.py",
+      "type": "file",
+      "name": "mcp_engine.py",
+      "filePath": "ray_serve_cai/engines/mcp_engine.py",
+      "summary": "Implements MCPEngine — a Ray Serve deployment that dynamically imports a FastMCP server module and mounts it as a streamable HTTP ASGI app, exposing MCP tools and resources over HTTP via a Ray Serve application.",
+      "tags": ["service", "factory", "api-handler"],
+      "complexity": "complex",
+      "languageNotes": "Uses an async lifespan context to import the user's FastMCP module at startup and mount it; _find_fastmcp introspects the module to locate the FastMCP instance by type."
+    },
+    {
+      "id": "file:ray_serve_cai/engines/mcp_config.py",
+      "type": "file",
+      "name": "mcp_config.py",
+      "filePath": "ray_serve_cai/engines/mcp_config.py",
+      "summary": "Defines MCPConfigBuilder and MCPDeploymentFactory — the engine-registry components for MCP (Model Context Protocol) servers — with minimal config validation and deployment creation delegating to create_mcp_deployment().",
+      "tags": ["factory", "configuration"],
+      "complexity": "simple"
+    },
+    {
+      "id": "class:ray_serve_cai/engines/yolo_engine.py:_YOLOBase",
+      "type": "class",
+      "name": "_YOLOBase",
+      "filePath": "ray_serve_cai/engines/yolo_engine.py",
+      "lineRange": [182, 326],
+      "summary": "Base Ray Serve deployment class for YOLO models that loads the model, defines batched inference, builds detection results, and exposes health check and model info endpoints.",
+      "tags": ["service", "api-handler"],
+      "complexity": "complex"
+    },
+    {
+      "id": "class:ray_serve_cai/engines/mcp_engine.py:MCPEngine",
+      "type": "class",
+      "name": "MCPEngine",
+      "filePath": "ray_serve_cai/engines/mcp_engine.py",
+      "lineRange": [146, 196],
+      "summary": "Ray Serve deployment class that hosts a FastMCP server, dynamically loading the user's MCP module and mounting it as a streamable HTTP ASGI application with request and error Prometheus metrics.",
+      "tags": ["service", "api-handler"],
+      "complexity": "moderate"
+    },
+    {
+      "id": "class:ray_serve_cai/engines/yolo_config.py:YOLOConfigBuilder",
+      "type": "class",
+      "name": "YOLOConfigBuilder",
+      "filePath": "ray_serve_cai/engines/yolo_config.py",
+      "lineRange": [14, 120],
+      "summary": "Engine registry config builder for YOLO that validates model path, device, confidence threshold, IOU threshold, and batch parameters.",
+      "tags": ["factory", "configuration", "validation"],
+      "complexity": "moderate"
+    },
+    {
+      "id": "class:ray_serve_cai/engines/yolo_config.py:YOLODeploymentFactory",
+      "type": "class",
+      "name": "YOLODeploymentFactory",
+      "filePath": "ray_serve_cai/engines/yolo_config.py",
+      "lineRange": [123, 217],
+      "summary": "Engine registry deployment factory for YOLO that calls make_yolo_deployment() with batch params, applies scheduling resources, and returns a bound Ray Serve Application.",
+      "tags": ["factory", "service"],
+      "complexity": "moderate"
+    },
+    {
+      "id": "class:ray_serve_cai/engines/mcp_config.py:MCPConfigBuilder",
+      "type": "class",
+      "name": "MCPConfigBuilder",
+      "filePath": "ray_serve_cai/engines/mcp_config.py",
+      "lineRange": [13, 55],
+      "summary": "Engine registry config builder for MCP servers that validates the module_path field and produces a minimal engine config dict.",
+      "tags": ["factory", "configuration"],
+      "complexity": "simple"
+    },
+    {
+      "id": "class:ray_serve_cai/engines/mcp_config.py:MCPDeploymentFactory",
+      "type": "class",
+      "name": "MCPDeploymentFactory",
+      "filePath": "ray_serve_cai/engines/mcp_config.py",
+      "lineRange": [58, 88],
+      "summary": "Engine registry deployment factory for MCP that resolves venv path and delegates to create_mcp_deployment().",
+      "tags": ["factory", "service"],
+      "complexity": "simple"
+    }
+  ],
+  "edges": [
+    {
+      "source": "file:ray_serve_cai/engines/yolo_engine.py",
+      "target": "class:ray_serve_cai/engines/yolo_engine.py:_YOLOBase",
+      "type": "contains",
+      "direction": "forward",
+      "weight": 1.0
+    },
+    {
+      "source": "file:ray_serve_cai/engines/yolo_engine.py",
+      "target": "class:ray_serve_cai/engines/yolo_engine.py:_YOLOBase",
+      "type": "exports",
+      "direction": "forward",
+      "weight": 0.8
+    },
+    {
+      "source": "file:ray_serve_cai/engines/yolo_config.py",
+      "target": "class:ray_serve_cai/engines/yolo_config.py:YOLOConfigBuilder",
+      "type": "contains",
+      "direction": "forward",
+      "weight": 1.0
+    },
+    {
+      "source": "file:ray_serve_cai/engines/yolo_config.py",
+      "target": "class:ray_serve_cai/engines/yolo_config.py:YOLODeploymentFactory",
+      "type": "contains",
+      "direction": "forward",
+      "weight": 1.0
+    },
+    {
+      "source": "file:ray_serve_cai/engines/yolo_config.py",
+      "target": "class:ray_serve_cai/engines/yolo_config.py:YOLOConfigBuilder",
+      "type": "exports",
+      "direction": "forward",
+      "weight": 0.8
+    },
+    {
+      "source": "file:ray_serve_cai/engines/yolo_config.py",
+      "target": "class:ray_serve_cai/engines/yolo_config.py:YOLODeploymentFactory",
+      "type": "exports",
+      "direction": "forward",
+      "weight": 0.8
+    },
+    {
+      "source": "file:ray_serve_cai/engines/mcp_engine.py",
+      "target": "class:ray_serve_cai/engines/mcp_engine.py:MCPEngine",
+      "type": "contains",
+      "direction": "forward",
+      "weight": 1.0
+    },
+    {
+      "source": "file:ray_serve_cai/engines/mcp_engine.py",
+      "target": "class:ray_serve_cai/engines/mcp_engine.py:MCPEngine",
+      "type": "exports",
+      "direction": "forward",
+      "weight": 0.8
+    },
+    {
+      "source": "file:ray_serve_cai/engines/mcp_config.py",
+      "target": "class:ray_serve_cai/engines/mcp_config.py:MCPConfigBuilder",
+      "type": "contains",
+      "direction": "forward",
+      "weight": 1.0
+    },
+    {
+      "source": "file:ray_serve_cai/engines/mcp_config.py",
+      "target": "class:ray_serve_cai/engines/mcp_config.py:MCPDeploymentFactory",
+      "type": "contains",
+      "direction": "forward",
+      "weight": 1.0
+    },
+    {
+      "source": "file:ray_serve_cai/engines/mcp_config.py",
+      "target": "class:ray_serve_cai/engines/mcp_config.py:MCPConfigBuilder",
+      "type": "exports",
+      "direction": "forward",
+      "weight": 0.8
+    },
+    {
+      "source": "file:ray_serve_cai/engines/mcp_config.py",
+      "target": "class:ray_serve_cai/engines/mcp_config.py:MCPDeploymentFactory",
+      "type": "exports",
+      "direction": "forward",
+      "weight": 0.8
+    },
+    {
+      "source": "class:ray_serve_cai/engines/yolo_config.py:YOLODeploymentFactory",
+      "target": "class:ray_serve_cai/engines/yolo_engine.py:_YOLOBase",
+      "type": "calls",
+      "direction": "forward",
+      "weight": 0.8
+    },
+    {
+      "source": "class:ray_serve_cai/engines/mcp_config.py:MCPDeploymentFactory",
+      "target": "class:ray_serve_cai/engines/mcp_engine.py:MCPEngine",
+      "type": "calls",
+      "direction": "forward",
+      "weight": 0.8
+    },
+    {
+      "source": "file:ray_serve_cai/engines/yolo_config.py",
+      "target": "file:ray_serve_cai/engines/yolo_engine.py",
+      "type": "depends_on",
+      "direction": "forward",
+      "weight": 0.6
+    },
+    {
+      "source": "file:ray_serve_cai/engines/mcp_config.py",
+      "target": "file:ray_serve_cai/engines/mcp_engine.py",
+      "type": "depends_on",
+      "direction": "forward",
+      "weight": 0.6
+    }
+  ]
+}

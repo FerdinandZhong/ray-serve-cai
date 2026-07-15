@@ -1,0 +1,716 @@
+{
+  "scriptCompleted": true,
+  "filesAnalyzed": 2,
+  "filesSkipped": [
+    "docs/api.html"
+  ],
+  "results": [
+    {
+      "path": "ray_serve_cai/engines/litellm_engine.py",
+      "language": "python",
+      "fileCategory": "code",
+      "totalLines": 334,
+      "nonEmptyLines": 286,
+      "classes": [
+        {
+          "name": "_RoutePathMiddleware",
+          "startLine": 66,
+          "endLine": 79,
+          "methods": [
+            "__init__",
+            "__call__"
+          ],
+          "properties": []
+        },
+        {
+          "name": "LiteLLMEngine",
+          "startLine": 109,
+          "endLine": 334,
+          "methods": [
+            "__init__",
+            "_wait_for_server",
+            "__del__",
+            "_proxy_json",
+            "_proxy_stream",
+            "chat_completion",
+            "completion",
+            "list_models",
+            "metrics",
+            "health_check",
+            "proxy_catchall"
+          ],
+          "properties": []
+        }
+      ],
+      "exports": [
+        {
+          "name": "_RoutePathMiddleware",
+          "line": 66,
+          "isDefault": false
+        },
+        {
+          "name": "LiteLLMEngine",
+          "line": 102,
+          "isDefault": false
+        }
+      ],
+      "callGraph": [
+        {
+          "caller": "__call__",
+          "callee": "scope.get",
+          "lineNumber": 72
+        },
+        {
+          "caller": "__call__",
+          "callee": "scope.get",
+          "lineNumber": 73
+        },
+        {
+          "caller": "__call__",
+          "callee": "path.startswith",
+          "lineNumber": 74
+        },
+        {
+          "caller": "__call__",
+          "callee": "len",
+          "lineNumber": 75
+        },
+        {
+          "caller": "__call__",
+          "callee": "remainder.startswith",
+          "lineNumber": 76
+        },
+        {
+          "caller": "__call__",
+          "callee": "dict",
+          "lineNumber": 77
+        },
+        {
+          "caller": "__call__",
+          "callee": "self.app",
+          "lineNumber": 79
+        },
+        {
+          "caller": "__init__",
+          "callee": "logger.info",
+          "lineNumber": 117
+        },
+        {
+          "caller": "__init__",
+          "callee": "engine_config.get",
+          "lineNumber": 119
+        },
+        {
+          "caller": "__init__",
+          "callee": "engine_config.get",
+          "lineNumber": 124
+        },
+        {
+          "caller": "__init__",
+          "callee": "engine_config.get",
+          "lineNumber": 126
+        },
+        {
+          "caller": "__init__",
+          "callee": "engine_config.get",
+          "lineNumber": 128
+        },
+        {
+          "caller": "__init__",
+          "callee": "tempfile.NamedTemporaryFile",
+          "lineNumber": 134
+        },
+        {
+          "caller": "__init__",
+          "callee": "yaml.dump",
+          "lineNumber": 140
+        },
+        {
+          "caller": "__init__",
+          "callee": "self._config_file.flush",
+          "lineNumber": 141
+        },
+        {
+          "caller": "__init__",
+          "callee": "logger.info",
+          "lineNumber": 143
+        },
+        {
+          "caller": "__init__",
+          "callee": "engine_config.get",
+          "lineNumber": 145
+        },
+        {
+          "caller": "__init__",
+          "callee": "str",
+          "lineNumber": 155
+        },
+        {
+          "caller": "__init__",
+          "callee": "logger.info",
+          "lineNumber": 160
+        },
+        {
+          "caller": "__init__",
+          "callee": "\" \".join",
+          "lineNumber": 160
+        },
+        {
+          "caller": "__init__",
+          "callee": "subprocess.Popen",
+          "lineNumber": 161
+        },
+        {
+          "caller": "__init__",
+          "callee": "self._wait_for_server",
+          "lineNumber": 167
+        },
+        {
+          "caller": "__init__",
+          "callee": "logger.info",
+          "lineNumber": 168
+        },
+        {
+          "caller": "_wait_for_server",
+          "callee": "time.time",
+          "lineNumber": 172
+        },
+        {
+          "caller": "_wait_for_server",
+          "callee": "time.time",
+          "lineNumber": 174
+        },
+        {
+          "caller": "_wait_for_server",
+          "callee": "self._process.poll",
+          "lineNumber": 175
+        },
+        {
+          "caller": "_wait_for_server",
+          "callee": "self._process.stdout.read().decode",
+          "lineNumber": 176
+        },
+        {
+          "caller": "_wait_for_server",
+          "callee": "self._process.stdout.read",
+          "lineNumber": 176
+        },
+        {
+          "caller": "_wait_for_server",
+          "callee": "RuntimeError",
+          "lineNumber": 177
+        },
+        {
+          "caller": "_wait_for_server",
+          "callee": "urllib.request.urlopen",
+          "lineNumber": 183
+        },
+        {
+          "caller": "_wait_for_server",
+          "callee": "time.sleep",
+          "lineNumber": 188
+        },
+        {
+          "caller": "_wait_for_server",
+          "callee": "TimeoutError",
+          "lineNumber": 189
+        },
+        {
+          "caller": "__del__",
+          "callee": "hasattr",
+          "lineNumber": 192
+        },
+        {
+          "caller": "__del__",
+          "callee": "self._process.poll",
+          "lineNumber": 192
+        },
+        {
+          "caller": "__del__",
+          "callee": "logger.info",
+          "lineNumber": 193
+        },
+        {
+          "caller": "__del__",
+          "callee": "self._process.terminate",
+          "lineNumber": 194
+        },
+        {
+          "caller": "__del__",
+          "callee": "self._process.wait",
+          "lineNumber": 196
+        },
+        {
+          "caller": "__del__",
+          "callee": "self._process.kill",
+          "lineNumber": 198
+        },
+        {
+          "caller": "__del__",
+          "callee": "hasattr",
+          "lineNumber": 200
+        },
+        {
+          "caller": "__del__",
+          "callee": "Path(self._config_file.name).unlink",
+          "lineNumber": 202
+        },
+        {
+          "caller": "__del__",
+          "callee": "Path",
+          "lineNumber": 202
+        },
+        {
+          "caller": "_proxy_json",
+          "callee": "request.body",
+          "lineNumber": 211
+        },
+        {
+          "caller": "_proxy_json",
+          "callee": "httpx.AsyncClient",
+          "lineNumber": 212
+        },
+        {
+          "caller": "_proxy_json",
+          "callee": "client.request",
+          "lineNumber": 213
+        },
+        {
+          "caller": "_proxy_json",
+          "callee": "JSONResponse",
+          "lineNumber": 219
+        },
+        {
+          "caller": "_proxy_json",
+          "callee": "resp.json",
+          "lineNumber": 219
+        },
+        {
+          "caller": "_proxy_stream",
+          "callee": "request.body",
+          "lineNumber": 222
+        },
+        {
+          "caller": "_stream",
+          "callee": "httpx.AsyncClient",
+          "lineNumber": 225
+        },
+        {
+          "caller": "_stream",
+          "callee": "client.stream",
+          "lineNumber": 226
+        },
+        {
+          "caller": "_stream",
+          "callee": "resp.aiter_bytes",
+          "lineNumber": 232
+        },
+        {
+          "caller": "_proxy_stream",
+          "callee": "StreamingResponse",
+          "lineNumber": 235
+        },
+        {
+          "caller": "_proxy_stream",
+          "callee": "_stream",
+          "lineNumber": 235
+        },
+        {
+          "caller": "chat_completion",
+          "callee": "request.json",
+          "lineNumber": 243
+        },
+        {
+          "caller": "chat_completion",
+          "callee": "body.get",
+          "lineNumber": 244
+        },
+        {
+          "caller": "chat_completion",
+          "callee": "self._proxy_stream",
+          "lineNumber": 245
+        },
+        {
+          "caller": "chat_completion",
+          "callee": "self._proxy_json",
+          "lineNumber": 246
+        },
+        {
+          "caller": "completion",
+          "callee": "request.json",
+          "lineNumber": 250
+        },
+        {
+          "caller": "completion",
+          "callee": "body.get",
+          "lineNumber": 251
+        },
+        {
+          "caller": "completion",
+          "callee": "self._proxy_stream",
+          "lineNumber": 252
+        },
+        {
+          "caller": "completion",
+          "callee": "self._proxy_json",
+          "lineNumber": 253
+        },
+        {
+          "caller": "list_models",
+          "callee": "self._proxy_json",
+          "lineNumber": 257
+        },
+        {
+          "caller": "metrics",
+          "callee": "httpx.AsyncClient",
+          "lineNumber": 262
+        },
+        {
+          "caller": "metrics",
+          "callee": "client.get",
+          "lineNumber": 264
+        },
+        {
+          "caller": "metrics",
+          "callee": "Response",
+          "lineNumber": 265
+        },
+        {
+          "caller": "metrics",
+          "callee": "Response",
+          "lineNumber": 271
+        },
+        {
+          "caller": "health_check",
+          "callee": "self._process.poll",
+          "lineNumber": 280
+        },
+        {
+          "caller": "health_check",
+          "callee": "hasattr",
+          "lineNumber": 285
+        },
+        {
+          "caller": "proxy_catchall",
+          "callee": "request.body",
+          "lineNumber": 292
+        },
+        {
+          "caller": "proxy_catchall",
+          "callee": "httpx.AsyncClient",
+          "lineNumber": 293
+        },
+        {
+          "caller": "proxy_catchall",
+          "callee": "client.request",
+          "lineNumber": 298
+        },
+        {
+          "caller": "proxy_catchall",
+          "callee": "request.headers.items",
+          "lineNumber": 302
+        },
+        {
+          "caller": "proxy_catchall",
+          "callee": "k.lower",
+          "lineNumber": 302
+        },
+        {
+          "caller": "proxy_catchall",
+          "callee": "dict",
+          "lineNumber": 303
+        },
+        {
+          "caller": "proxy_catchall",
+          "callee": "dict",
+          "lineNumber": 306
+        },
+        {
+          "caller": "proxy_catchall",
+          "callee": "request.scope.get",
+          "lineNumber": 307
+        },
+        {
+          "caller": "proxy_catchall",
+          "callee": "loc.startswith",
+          "lineNumber": 314
+        },
+        {
+          "caller": "proxy_catchall",
+          "callee": "len",
+          "lineNumber": 315
+        },
+        {
+          "caller": "proxy_catchall",
+          "callee": "resp.headers.get",
+          "lineNumber": 323
+        },
+        {
+          "caller": "proxy_catchall",
+          "callee": "content.decode",
+          "lineNumber": 324
+        },
+        {
+          "caller": "proxy_catchall",
+          "callee": "text.replace",
+          "lineNumber": 325
+        },
+        {
+          "caller": "proxy_catchall",
+          "callee": "text.replace",
+          "lineNumber": 326
+        },
+        {
+          "caller": "proxy_catchall",
+          "callee": "text.encode",
+          "lineNumber": 327
+        },
+        {
+          "caller": "proxy_catchall",
+          "callee": "headers.pop",
+          "lineNumber": 328
+        },
+        {
+          "caller": "proxy_catchall",
+          "callee": "Response",
+          "lineNumber": 330
+        }
+      ],
+      "metrics": {
+        "importCount": 0,
+        "exportCount": 2,
+        "functionCount": 0,
+        "classCount": 2
+      }
+    },
+    {
+      "path": "ray_serve_cai/engines/litellm_config.py",
+      "language": "python",
+      "fileCategory": "code",
+      "totalLines": 169,
+      "nonEmptyLines": 137,
+      "classes": [
+        {
+          "name": "LiteLLMConfigBuilder",
+          "startLine": 13,
+          "endLine": 109,
+          "methods": [
+            "build_config",
+            "validate_config",
+            "get_default_config"
+          ],
+          "properties": []
+        },
+        {
+          "name": "LiteLLMDeploymentFactory",
+          "startLine": 112,
+          "endLine": 169,
+          "methods": [
+            "create_deployment"
+          ],
+          "properties": []
+        }
+      ],
+      "exports": [
+        {
+          "name": "LiteLLMConfigBuilder",
+          "line": 13,
+          "isDefault": false
+        },
+        {
+          "name": "LiteLLMDeploymentFactory",
+          "line": 112,
+          "isDefault": false
+        }
+      ],
+      "callGraph": [
+        {
+          "caller": "build_config",
+          "callee": "self.validate_config",
+          "lineNumber": 47
+        },
+        {
+          "caller": "build_config",
+          "callee": "ValueError",
+          "lineNumber": 49
+        },
+        {
+          "caller": "build_config",
+          "callee": "user_config.get",
+          "lineNumber": 52
+        },
+        {
+          "caller": "build_config",
+          "callee": "user_config.get",
+          "lineNumber": 55
+        },
+        {
+          "caller": "build_config",
+          "callee": "user_config.get",
+          "lineNumber": 58
+        },
+        {
+          "caller": "build_config",
+          "callee": "int",
+          "lineNumber": 59
+        },
+        {
+          "caller": "build_config",
+          "callee": "user_config.get",
+          "lineNumber": 61
+        },
+        {
+          "caller": "build_config",
+          "callee": "user_config.get",
+          "lineNumber": 68
+        },
+        {
+          "caller": "build_config",
+          "callee": "user_config.get",
+          "lineNumber": 69
+        },
+        {
+          "caller": "build_config",
+          "callee": "user_config.get",
+          "lineNumber": 74
+        },
+        {
+          "caller": "build_config",
+          "callee": "logger.info",
+          "lineNumber": 77
+        },
+        {
+          "caller": "build_config",
+          "callee": "len",
+          "lineNumber": 78
+        },
+        {
+          "caller": "validate_config",
+          "callee": "user_config.get",
+          "lineNumber": 85
+        },
+        {
+          "caller": "validate_config",
+          "callee": "isinstance",
+          "lineNumber": 86
+        },
+        {
+          "caller": "validate_config",
+          "callee": "enumerate",
+          "lineNumber": 89
+        },
+        {
+          "caller": "validate_config",
+          "callee": "isinstance",
+          "lineNumber": 90
+        },
+        {
+          "caller": "validate_config",
+          "callee": "entry.get",
+          "lineNumber": 92
+        },
+        {
+          "caller": "validate_config",
+          "callee": "entry.get",
+          "lineNumber": 94
+        },
+        {
+          "caller": "validate_config",
+          "callee": "params.get",
+          "lineNumber": 95
+        },
+        {
+          "caller": "create_deployment",
+          "callee": "resolve_venv_path",
+          "lineNumber": 132
+        },
+        {
+          "caller": "create_deployment",
+          "callee": "venv_dir_for",
+          "lineNumber": 133
+        },
+        {
+          "caller": "create_deployment",
+          "callee": "engine_config.pop",
+          "lineNumber": 137
+        },
+        {
+          "caller": "create_deployment",
+          "callee": "engine_config.pop",
+          "lineNumber": 138
+        },
+        {
+          "caller": "create_deployment",
+          "callee": "logger.info",
+          "lineNumber": 143
+        },
+        {
+          "caller": "create_deployment",
+          "callee": "list",
+          "lineNumber": 143
+        },
+        {
+          "caller": "create_deployment",
+          "callee": "scheduling_env_vars.keys",
+          "lineNumber": 143
+        },
+        {
+          "caller": "create_deployment",
+          "callee": "ray_actor_options.setdefault",
+          "lineNumber": 151
+        },
+        {
+          "caller": "create_deployment",
+          "callee": "ray_actor_options[\"resources\"].update",
+          "lineNumber": 152
+        },
+        {
+          "caller": "create_deployment",
+          "callee": "logger.info",
+          "lineNumber": 153
+        },
+        {
+          "caller": "create_deployment",
+          "callee": "logger.info",
+          "lineNumber": 154
+        },
+        {
+          "caller": "create_deployment",
+          "callee": "logger.info",
+          "lineNumber": 156
+        },
+        {
+          "caller": "create_deployment",
+          "callee": "len",
+          "lineNumber": 159
+        },
+        {
+          "caller": "create_deployment",
+          "callee": "engine_config.get",
+          "lineNumber": 159
+        },
+        {
+          "caller": "create_deployment",
+          "callee": "engine_config.get",
+          "lineNumber": 162
+        },
+        {
+          "caller": "create_deployment",
+          "callee": "LiteLLMEngine.options(**deploy_opts).bind",
+          "lineNumber": 169
+        },
+        {
+          "caller": "create_deployment",
+          "callee": "LiteLLMEngine.options",
+          "lineNumber": 169
+        }
+      ],
+      "metrics": {
+        "importCount": 0,
+        "exportCount": 2,
+        "functionCount": 0,
+        "classCount": 2
+      }
+    }
+  ]
+}

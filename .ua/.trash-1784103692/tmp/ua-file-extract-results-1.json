@@ -1,0 +1,1581 @@
+{
+  "scriptCompleted": true,
+  "filesAnalyzed": 9,
+  "filesSkipped": [],
+  "results": [
+    {
+      "path": "ray_serve_cai/management/api/__init__.py",
+      "language": "python",
+      "fileCategory": "code",
+      "totalLines": 19,
+      "nonEmptyLines": 17,
+      "metrics": {
+        "importCount": 7,
+        "exportCount": 0,
+        "functionCount": 0,
+        "classCount": 0
+      }
+    },
+    {
+      "path": "ray_serve_cai/management/api/applications.py",
+      "language": "python",
+      "fileCategory": "code",
+      "totalLines": 152,
+      "nonEmptyLines": 130,
+      "functions": [
+        {
+          "name": "get_coordinator",
+          "startLine": 14,
+          "endLine": 17,
+          "params": []
+        },
+        {
+          "name": "deploy_model_compat",
+          "startLine": 21,
+          "endLine": 30,
+          "params": []
+        },
+        {
+          "name": "deploy_application",
+          "startLine": 34,
+          "endLine": 109,
+          "params": [
+            "request",
+            "coordinator"
+          ]
+        },
+        {
+          "name": "delete_application",
+          "startLine": 113,
+          "endLine": 122,
+          "params": [
+            "app_name",
+            "coordinator"
+          ]
+        },
+        {
+          "name": "list_applications",
+          "startLine": 126,
+          "endLine": 135,
+          "params": [
+            "coordinator"
+          ]
+        },
+        {
+          "name": "get_application",
+          "startLine": 139,
+          "endLine": 152,
+          "params": [
+            "app_name",
+            "coordinator"
+          ]
+        }
+      ],
+      "exports": [
+        {
+          "name": "get_coordinator",
+          "line": 14,
+          "isDefault": false
+        },
+        {
+          "name": "deploy_model_compat",
+          "line": 20,
+          "isDefault": false
+        },
+        {
+          "name": "deploy_application",
+          "line": 33,
+          "isDefault": false
+        },
+        {
+          "name": "delete_application",
+          "line": 112,
+          "isDefault": false
+        },
+        {
+          "name": "list_applications",
+          "line": 125,
+          "isDefault": false
+        },
+        {
+          "name": "get_application",
+          "line": 138,
+          "isDefault": false
+        }
+      ],
+      "callGraph": [
+        {
+          "caller": "get_coordinator",
+          "callee": "get_coordinator_service",
+          "lineNumber": 17
+        },
+        {
+          "caller": "deploy_model_compat",
+          "callee": "RedirectResponse",
+          "lineNumber": 30
+        },
+        {
+          "caller": "deploy_application",
+          "callee": "Depends",
+          "lineNumber": 36
+        },
+        {
+          "caller": "deploy_application",
+          "callee": "coordinator.ray_service.deploy_model",
+          "lineNumber": 66
+        },
+        {
+          "caller": "deploy_application",
+          "callee": "dict",
+          "lineNumber": 87
+        },
+        {
+          "caller": "deploy_application",
+          "callee": "actor_opts.setdefault",
+          "lineNumber": 91
+        },
+        {
+          "caller": "deploy_application",
+          "callee": "actor_opts[\"resources\"].update",
+          "lineNumber": 92
+        },
+        {
+          "caller": "deploy_application",
+          "callee": "dict",
+          "lineNumber": 94
+        },
+        {
+          "caller": "deploy_application",
+          "callee": "actor_opts.get",
+          "lineNumber": 94
+        },
+        {
+          "caller": "deploy_application",
+          "callee": "rt.get",
+          "lineNumber": 95
+        },
+        {
+          "caller": "deploy_application",
+          "callee": "coordinator.ray_service.deploy_application",
+          "lineNumber": 98
+        },
+        {
+          "caller": "deploy_application",
+          "callee": "HTTPException",
+          "lineNumber": 107
+        },
+        {
+          "caller": "deploy_application",
+          "callee": "str",
+          "lineNumber": 107
+        },
+        {
+          "caller": "deploy_application",
+          "callee": "HTTPException",
+          "lineNumber": 109
+        },
+        {
+          "caller": "deploy_application",
+          "callee": "str",
+          "lineNumber": 109
+        },
+        {
+          "caller": "delete_application",
+          "callee": "Depends",
+          "lineNumber": 115
+        },
+        {
+          "caller": "delete_application",
+          "callee": "coordinator.ray_service.delete_application",
+          "lineNumber": 119
+        },
+        {
+          "caller": "delete_application",
+          "callee": "HTTPException",
+          "lineNumber": 122
+        },
+        {
+          "caller": "delete_application",
+          "callee": "str",
+          "lineNumber": 122
+        },
+        {
+          "caller": "list_applications",
+          "callee": "Depends",
+          "lineNumber": 126
+        },
+        {
+          "caller": "list_applications",
+          "callee": "coordinator.ray_service.list_applications",
+          "lineNumber": 129
+        },
+        {
+          "caller": "list_applications",
+          "callee": "ApplicationsListResponse",
+          "lineNumber": 130
+        },
+        {
+          "caller": "list_applications",
+          "callee": "ApplicationInfo",
+          "lineNumber": 131
+        },
+        {
+          "caller": "list_applications",
+          "callee": "len",
+          "lineNumber": 132
+        },
+        {
+          "caller": "list_applications",
+          "callee": "HTTPException",
+          "lineNumber": 135
+        },
+        {
+          "caller": "list_applications",
+          "callee": "str",
+          "lineNumber": 135
+        },
+        {
+          "caller": "get_application",
+          "callee": "Depends",
+          "lineNumber": 141
+        },
+        {
+          "caller": "get_application",
+          "callee": "coordinator.ray_service.get_application_status",
+          "lineNumber": 145
+        },
+        {
+          "caller": "get_application",
+          "callee": "HTTPException",
+          "lineNumber": 147
+        },
+        {
+          "caller": "get_application",
+          "callee": "ApplicationInfo",
+          "lineNumber": 148
+        },
+        {
+          "caller": "get_application",
+          "callee": "HTTPException",
+          "lineNumber": 152
+        },
+        {
+          "caller": "get_application",
+          "callee": "str",
+          "lineNumber": 152
+        }
+      ],
+      "metrics": {
+        "importCount": 3,
+        "exportCount": 6,
+        "functionCount": 6,
+        "classCount": 0
+      }
+    },
+    {
+      "path": "ray_serve_cai/management/api/cluster.py",
+      "language": "python",
+      "fileCategory": "code",
+      "totalLines": 97,
+      "nonEmptyLines": 79,
+      "functions": [
+        {
+          "name": "get_coordinator",
+          "startLine": 14,
+          "endLine": 17,
+          "params": []
+        },
+        {
+          "name": "get_cluster_status",
+          "startLine": 21,
+          "endLine": 31,
+          "params": [
+            "coordinator"
+          ]
+        },
+        {
+          "name": "get_cluster_info",
+          "startLine": 35,
+          "endLine": 72,
+          "params": [
+            "coordinator"
+          ]
+        },
+        {
+          "name": "get_gcs_address",
+          "startLine": 76,
+          "endLine": 97,
+          "params": []
+        }
+      ],
+      "exports": [
+        {
+          "name": "get_coordinator",
+          "line": 14,
+          "isDefault": false
+        },
+        {
+          "name": "get_cluster_status",
+          "line": 20,
+          "isDefault": false
+        },
+        {
+          "name": "get_cluster_info",
+          "line": 34,
+          "isDefault": false
+        },
+        {
+          "name": "get_gcs_address",
+          "line": 75,
+          "isDefault": false
+        }
+      ],
+      "callGraph": [
+        {
+          "caller": "get_coordinator",
+          "callee": "get_coordinator_service",
+          "lineNumber": 17
+        },
+        {
+          "caller": "get_cluster_status",
+          "callee": "Depends",
+          "lineNumber": 21
+        },
+        {
+          "caller": "get_cluster_status",
+          "callee": "coordinator.get_cluster_status",
+          "lineNumber": 28
+        },
+        {
+          "caller": "get_cluster_status",
+          "callee": "ClusterStatus",
+          "lineNumber": 29
+        },
+        {
+          "caller": "get_cluster_status",
+          "callee": "HTTPException",
+          "lineNumber": 31
+        },
+        {
+          "caller": "get_cluster_status",
+          "callee": "str",
+          "lineNumber": 31
+        },
+        {
+          "caller": "get_cluster_info",
+          "callee": "Depends",
+          "lineNumber": 35
+        },
+        {
+          "caller": "get_cluster_info",
+          "callee": "Path",
+          "lineNumber": 42
+        },
+        {
+          "caller": "get_cluster_info",
+          "callee": "cluster_info_path.exists",
+          "lineNumber": 43
+        },
+        {
+          "caller": "get_cluster_info",
+          "callee": "HTTPException",
+          "lineNumber": 44
+        },
+        {
+          "caller": "get_cluster_info",
+          "callee": "open",
+          "lineNumber": 49
+        },
+        {
+          "caller": "get_cluster_info",
+          "callee": "json.load",
+          "lineNumber": 50
+        },
+        {
+          "caller": "get_cluster_info",
+          "callee": "coordinator.ray_service.connect",
+          "lineNumber": 57
+        },
+        {
+          "caller": "get_cluster_info",
+          "callee": "ClusterInfo",
+          "lineNumber": 62
+        },
+        {
+          "caller": "get_cluster_info",
+          "callee": "cluster_data.get",
+          "lineNumber": 63
+        },
+        {
+          "caller": "get_cluster_info",
+          "callee": "cluster_data.get",
+          "lineNumber": 64
+        },
+        {
+          "caller": "get_cluster_info",
+          "callee": "cluster_data.get",
+          "lineNumber": 65
+        },
+        {
+          "caller": "get_cluster_info",
+          "callee": "cluster_data.get",
+          "lineNumber": 67
+        },
+        {
+          "caller": "get_cluster_info",
+          "callee": "HTTPException",
+          "lineNumber": 72
+        },
+        {
+          "caller": "get_cluster_info",
+          "callee": "str",
+          "lineNumber": 72
+        },
+        {
+          "caller": "get_gcs_address",
+          "callee": "Path",
+          "lineNumber": 83
+        },
+        {
+          "caller": "get_gcs_address",
+          "callee": "gcs_file.exists",
+          "lineNumber": 84
+        },
+        {
+          "caller": "get_gcs_address",
+          "callee": "gcs_file.read_text().strip",
+          "lineNumber": 85
+        },
+        {
+          "caller": "get_gcs_address",
+          "callee": "gcs_file.read_text",
+          "lineNumber": 85
+        },
+        {
+          "caller": "get_gcs_address",
+          "callee": "os.environ.get",
+          "lineNumber": 88
+        },
+        {
+          "caller": "get_gcs_address",
+          "callee": "os.environ.get",
+          "lineNumber": 89
+        },
+        {
+          "caller": "get_gcs_address",
+          "callee": "HTTPException",
+          "lineNumber": 91
+        }
+      ],
+      "metrics": {
+        "importCount": 2,
+        "exportCount": 4,
+        "functionCount": 4,
+        "classCount": 0
+      }
+    },
+    {
+      "path": "ray_serve_cai/management/api/cml_apps.py",
+      "language": "python",
+      "fileCategory": "code",
+      "totalLines": 60,
+      "nonEmptyLines": 49,
+      "functions": [
+        {
+          "name": "get_coordinator",
+          "startLine": 17,
+          "endLine": 20,
+          "params": []
+        },
+        {
+          "name": "launch_cai_application",
+          "startLine": 24,
+          "endLine": 48,
+          "params": [
+            "request",
+            "coordinator"
+          ]
+        },
+        {
+          "name": "remove_cai_application",
+          "startLine": 52,
+          "endLine": 60,
+          "params": [
+            "app_id",
+            "coordinator"
+          ]
+        }
+      ],
+      "exports": [
+        {
+          "name": "get_coordinator",
+          "line": 17,
+          "isDefault": false
+        },
+        {
+          "name": "launch_cai_application",
+          "line": 23,
+          "isDefault": false
+        },
+        {
+          "name": "remove_cai_application",
+          "line": 51,
+          "isDefault": false
+        }
+      ],
+      "callGraph": [
+        {
+          "caller": "get_coordinator",
+          "callee": "get_coordinator_service",
+          "lineNumber": 20
+        },
+        {
+          "caller": "launch_cai_application",
+          "callee": "Depends",
+          "lineNumber": 26
+        },
+        {
+          "caller": "launch_cai_application",
+          "callee": "coordinator.launch_cai_application",
+          "lineNumber": 34
+        },
+        {
+          "caller": "launch_cai_application",
+          "callee": "HTTPException",
+          "lineNumber": 46
+        },
+        {
+          "caller": "launch_cai_application",
+          "callee": "str",
+          "lineNumber": 46
+        },
+        {
+          "caller": "launch_cai_application",
+          "callee": "HTTPException",
+          "lineNumber": 48
+        },
+        {
+          "caller": "launch_cai_application",
+          "callee": "str",
+          "lineNumber": 48
+        },
+        {
+          "caller": "remove_cai_application",
+          "callee": "Depends",
+          "lineNumber": 54
+        },
+        {
+          "caller": "remove_cai_application",
+          "callee": "coordinator.remove_cai_application",
+          "lineNumber": 58
+        },
+        {
+          "caller": "remove_cai_application",
+          "callee": "HTTPException",
+          "lineNumber": 60
+        },
+        {
+          "caller": "remove_cai_application",
+          "callee": "str",
+          "lineNumber": 60
+        }
+      ],
+      "metrics": {
+        "importCount": 2,
+        "exportCount": 3,
+        "functionCount": 3,
+        "classCount": 0
+      }
+    },
+    {
+      "path": "ray_serve_cai/management/api/metrics.py",
+      "language": "python",
+      "fileCategory": "code",
+      "totalLines": 220,
+      "nonEmptyLines": 178,
+      "functions": [
+        {
+          "name": "_fetch_metrics",
+          "startLine": 35,
+          "endLine": 48,
+          "params": [
+            "host",
+            "port",
+            "timeout",
+            "path"
+          ]
+        },
+        {
+          "name": "head_metrics",
+          "startLine": 59,
+          "endLine": 72,
+          "params": []
+        },
+        {
+          "name": "all_metrics",
+          "startLine": 78,
+          "endLine": 127,
+          "params": []
+        },
+        {
+          "name": "app_metrics",
+          "startLine": 133,
+          "endLine": 191,
+          "params": []
+        },
+        {
+          "name": "metrics_discovery",
+          "startLine": 197,
+          "endLine": 220,
+          "params": []
+        }
+      ],
+      "exports": [
+        {
+          "name": "_fetch_metrics",
+          "line": 35,
+          "isDefault": false
+        },
+        {
+          "name": "head_metrics",
+          "line": 56,
+          "isDefault": false
+        },
+        {
+          "name": "all_metrics",
+          "line": 75,
+          "isDefault": false
+        },
+        {
+          "name": "app_metrics",
+          "line": 130,
+          "isDefault": false
+        },
+        {
+          "name": "metrics_discovery",
+          "line": 194,
+          "isDefault": false
+        }
+      ],
+      "callGraph": [
+        {
+          "caller": "_fetch_metrics",
+          "callee": "httpx.AsyncClient",
+          "lineNumber": 42
+        },
+        {
+          "caller": "_fetch_metrics",
+          "callee": "client.get",
+          "lineNumber": 43
+        },
+        {
+          "caller": "_fetch_metrics",
+          "callee": "resp.raise_for_status",
+          "lineNumber": 44
+        },
+        {
+          "caller": "_fetch_metrics",
+          "callee": "logger.debug",
+          "lineNumber": 47
+        },
+        {
+          "caller": "head_metrics",
+          "callee": "_fetch_metrics",
+          "lineNumber": 66
+        },
+        {
+          "caller": "head_metrics",
+          "callee": "PlainTextResponse",
+          "lineNumber": 68
+        },
+        {
+          "caller": "head_metrics",
+          "callee": "PlainTextResponse",
+          "lineNumber": 72
+        },
+        {
+          "caller": "all_metrics",
+          "callee": "time.monotonic",
+          "lineNumber": 85
+        },
+        {
+          "caller": "all_metrics",
+          "callee": "PlainTextResponse",
+          "lineNumber": 87
+        },
+        {
+          "caller": "all_metrics",
+          "callee": "ray.nodes",
+          "lineNumber": 92
+        },
+        {
+          "caller": "all_metrics",
+          "callee": "logger.error",
+          "lineNumber": 94
+        },
+        {
+          "caller": "all_metrics",
+          "callee": "PlainTextResponse",
+          "lineNumber": 95
+        },
+        {
+          "caller": "all_metrics",
+          "callee": "n.get",
+          "lineNumber": 103
+        },
+        {
+          "caller": "all_metrics",
+          "callee": "n.get",
+          "lineNumber": 103
+        },
+        {
+          "caller": "all_metrics",
+          "callee": "PlainTextResponse",
+          "lineNumber": 107
+        },
+        {
+          "caller": "all_metrics",
+          "callee": "_fetch_metrics",
+          "lineNumber": 110
+        },
+        {
+          "caller": "all_metrics",
+          "callee": "asyncio.gather",
+          "lineNumber": 111
+        },
+        {
+          "caller": "all_metrics",
+          "callee": "zip",
+          "lineNumber": 114
+        },
+        {
+          "caller": "all_metrics",
+          "callee": "parts.append",
+          "lineNumber": 115
+        },
+        {
+          "caller": "all_metrics",
+          "callee": "parts.append",
+          "lineNumber": 117
+        },
+        {
+          "caller": "all_metrics",
+          "callee": "text.endswith",
+          "lineNumber": 118
+        },
+        {
+          "caller": "all_metrics",
+          "callee": "parts.append",
+          "lineNumber": 119
+        },
+        {
+          "caller": "all_metrics",
+          "callee": "parts.append",
+          "lineNumber": 121
+        },
+        {
+          "caller": "all_metrics",
+          "callee": "\"\".join",
+          "lineNumber": 123
+        },
+        {
+          "caller": "all_metrics",
+          "callee": "PlainTextResponse",
+          "lineNumber": 127
+        },
+        {
+          "caller": "app_metrics",
+          "callee": "int",
+          "lineNumber": 142
+        },
+        {
+          "caller": "app_metrics",
+          "callee": "os.environ.get",
+          "lineNumber": 142
+        },
+        {
+          "caller": "app_metrics",
+          "callee": "list_applications",
+          "lineNumber": 146
+        },
+        {
+          "caller": "app_metrics",
+          "callee": "ray_serve.status",
+          "lineNumber": 151
+        },
+        {
+          "caller": "app_metrics",
+          "callee": "status.applications.keys",
+          "lineNumber": 154
+        },
+        {
+          "caller": "app_metrics",
+          "callee": "PlainTextResponse",
+          "lineNumber": 157
+        },
+        {
+          "caller": "app_metrics",
+          "callee": "PlainTextResponse",
+          "lineNumber": 162
+        },
+        {
+          "caller": "app_metrics",
+          "callee": "app.get",
+          "lineNumber": 167
+        },
+        {
+          "caller": "app_metrics",
+          "callee": "isinstance",
+          "lineNumber": 167
+        },
+        {
+          "caller": "app_metrics",
+          "callee": "str",
+          "lineNumber": 167
+        },
+        {
+          "caller": "app_metrics",
+          "callee": "app.get",
+          "lineNumber": 168
+        },
+        {
+          "caller": "app_metrics",
+          "callee": "isinstance",
+          "lineNumber": 168
+        },
+        {
+          "caller": "app_metrics",
+          "callee": "tasks.append",
+          "lineNumber": 170
+        },
+        {
+          "caller": "app_metrics",
+          "callee": "_fetch_metrics",
+          "lineNumber": 171
+        },
+        {
+          "caller": "app_metrics",
+          "callee": "app_names.append",
+          "lineNumber": 174
+        },
+        {
+          "caller": "app_metrics",
+          "callee": "PlainTextResponse",
+          "lineNumber": 177
+        },
+        {
+          "caller": "app_metrics",
+          "callee": "asyncio.gather",
+          "lineNumber": 179
+        },
+        {
+          "caller": "app_metrics",
+          "callee": "zip",
+          "lineNumber": 182
+        },
+        {
+          "caller": "app_metrics",
+          "callee": "parts.append",
+          "lineNumber": 183
+        },
+        {
+          "caller": "app_metrics",
+          "callee": "parts.append",
+          "lineNumber": 185
+        },
+        {
+          "caller": "app_metrics",
+          "callee": "text.endswith",
+          "lineNumber": 186
+        },
+        {
+          "caller": "app_metrics",
+          "callee": "parts.append",
+          "lineNumber": 187
+        },
+        {
+          "caller": "app_metrics",
+          "callee": "parts.append",
+          "lineNumber": 189
+        },
+        {
+          "caller": "app_metrics",
+          "callee": "PlainTextResponse",
+          "lineNumber": 191
+        },
+        {
+          "caller": "app_metrics",
+          "callee": "\"\".join",
+          "lineNumber": 191
+        },
+        {
+          "caller": "metrics_discovery",
+          "callee": "PROM_SD_FILE.exists",
+          "lineNumber": 208
+        },
+        {
+          "caller": "metrics_discovery",
+          "callee": "JSONResponse",
+          "lineNumber": 209
+        },
+        {
+          "caller": "metrics_discovery",
+          "callee": "json.loads",
+          "lineNumber": 214
+        },
+        {
+          "caller": "metrics_discovery",
+          "callee": "PROM_SD_FILE.read_text",
+          "lineNumber": 214
+        },
+        {
+          "caller": "metrics_discovery",
+          "callee": "JSONResponse",
+          "lineNumber": 216
+        },
+        {
+          "caller": "metrics_discovery",
+          "callee": "JSONResponse",
+          "lineNumber": 220
+        }
+      ],
+      "metrics": {
+        "importCount": 0,
+        "exportCount": 5,
+        "functionCount": 5,
+        "classCount": 0
+      }
+    },
+    {
+      "path": "ray_serve_cai/management/api/resources.py",
+      "language": "python",
+      "fileCategory": "code",
+      "totalLines": 138,
+      "nonEmptyLines": 112,
+      "functions": [
+        {
+          "name": "get_coordinator",
+          "startLine": 13,
+          "endLine": 16,
+          "params": []
+        },
+        {
+          "name": "add_node",
+          "startLine": 20,
+          "endLine": 38,
+          "params": [
+            "request",
+            "coordinator"
+          ]
+        },
+        {
+          "name": "get_resource_allocation",
+          "startLine": 42,
+          "endLine": 54,
+          "params": [
+            "coordinator"
+          ]
+        },
+        {
+          "name": "remove_node",
+          "startLine": 58,
+          "endLine": 68,
+          "params": [
+            "app_id",
+            "coordinator"
+          ]
+        },
+        {
+          "name": "list_nodes",
+          "startLine": 72,
+          "endLine": 86,
+          "params": [
+            "coordinator"
+          ]
+        },
+        {
+          "name": "list_workers",
+          "startLine": 90,
+          "endLine": 108,
+          "params": [
+            "coordinator"
+          ]
+        },
+        {
+          "name": "get_capacity",
+          "startLine": 112,
+          "endLine": 138,
+          "params": [
+            "coordinator"
+          ]
+        }
+      ],
+      "exports": [
+        {
+          "name": "get_coordinator",
+          "line": 13,
+          "isDefault": false
+        },
+        {
+          "name": "add_node",
+          "line": 19,
+          "isDefault": false
+        },
+        {
+          "name": "get_resource_allocation",
+          "line": 41,
+          "isDefault": false
+        },
+        {
+          "name": "remove_node",
+          "line": 57,
+          "isDefault": false
+        },
+        {
+          "name": "list_nodes",
+          "line": 71,
+          "isDefault": false
+        },
+        {
+          "name": "list_workers",
+          "line": 89,
+          "isDefault": false
+        },
+        {
+          "name": "get_capacity",
+          "line": 111,
+          "isDefault": false
+        }
+      ],
+      "callGraph": [
+        {
+          "caller": "get_coordinator",
+          "callee": "get_coordinator_service",
+          "lineNumber": 16
+        },
+        {
+          "caller": "add_node",
+          "callee": "Depends",
+          "lineNumber": 20
+        },
+        {
+          "caller": "add_node",
+          "callee": "coordinator.add_worker_node",
+          "lineNumber": 27
+        },
+        {
+          "caller": "add_node",
+          "callee": "HTTPException",
+          "lineNumber": 38
+        },
+        {
+          "caller": "add_node",
+          "callee": "str",
+          "lineNumber": 38
+        },
+        {
+          "caller": "get_resource_allocation",
+          "callee": "Depends",
+          "lineNumber": 42
+        },
+        {
+          "caller": "get_resource_allocation",
+          "callee": "coordinator.get_resource_map",
+          "lineNumber": 52
+        },
+        {
+          "caller": "get_resource_allocation",
+          "callee": "HTTPException",
+          "lineNumber": 54
+        },
+        {
+          "caller": "get_resource_allocation",
+          "callee": "str",
+          "lineNumber": 54
+        },
+        {
+          "caller": "remove_node",
+          "callee": "Depends",
+          "lineNumber": 58
+        },
+        {
+          "caller": "remove_node",
+          "callee": "coordinator.remove_worker_node",
+          "lineNumber": 65
+        },
+        {
+          "caller": "remove_node",
+          "callee": "HTTPException",
+          "lineNumber": 68
+        },
+        {
+          "caller": "remove_node",
+          "callee": "str",
+          "lineNumber": 68
+        },
+        {
+          "caller": "list_nodes",
+          "callee": "Depends",
+          "lineNumber": 72
+        },
+        {
+          "caller": "list_nodes",
+          "callee": "coordinator.get_enriched_nodes",
+          "lineNumber": 77
+        },
+        {
+          "caller": "list_nodes",
+          "callee": "sum",
+          "lineNumber": 78
+        },
+        {
+          "caller": "list_nodes",
+          "callee": "n.get",
+          "lineNumber": 78
+        },
+        {
+          "caller": "list_nodes",
+          "callee": "NodesListResponse",
+          "lineNumber": 80
+        },
+        {
+          "caller": "list_nodes",
+          "callee": "NodeInfo",
+          "lineNumber": 81
+        },
+        {
+          "caller": "list_nodes",
+          "callee": "len",
+          "lineNumber": 82
+        },
+        {
+          "caller": "list_nodes",
+          "callee": "HTTPException",
+          "lineNumber": 86
+        },
+        {
+          "caller": "list_nodes",
+          "callee": "str",
+          "lineNumber": 86
+        },
+        {
+          "caller": "list_workers",
+          "callee": "Depends",
+          "lineNumber": 90
+        },
+        {
+          "caller": "list_workers",
+          "callee": "coordinator.get_worker_apps",
+          "lineNumber": 101
+        },
+        {
+          "caller": "list_workers",
+          "callee": "len",
+          "lineNumber": 104
+        },
+        {
+          "caller": "list_workers",
+          "callee": "HTTPException",
+          "lineNumber": 108
+        },
+        {
+          "caller": "list_workers",
+          "callee": "str",
+          "lineNumber": 108
+        },
+        {
+          "caller": "get_capacity",
+          "callee": "Depends",
+          "lineNumber": 112
+        },
+        {
+          "caller": "get_capacity",
+          "callee": "coordinator.ray_service.get_cluster_resources",
+          "lineNumber": 117
+        },
+        {
+          "caller": "get_capacity",
+          "callee": "coordinator.ray_service.get_available_resources",
+          "lineNumber": 118
+        },
+        {
+          "caller": "get_capacity",
+          "callee": "total_resources.get",
+          "lineNumber": 120
+        },
+        {
+          "caller": "get_capacity",
+          "callee": "available_resources.get",
+          "lineNumber": 121
+        },
+        {
+          "caller": "get_capacity",
+          "callee": "total_resources.get",
+          "lineNumber": 122
+        },
+        {
+          "caller": "get_capacity",
+          "callee": "available_resources.get",
+          "lineNumber": 123
+        },
+        {
+          "caller": "get_capacity",
+          "callee": "ResourceCapacity",
+          "lineNumber": 128
+        },
+        {
+          "caller": "get_capacity",
+          "callee": "total_resources.get",
+          "lineNumber": 133
+        },
+        {
+          "caller": "get_capacity",
+          "callee": "available_resources.get",
+          "lineNumber": 134
+        },
+        {
+          "caller": "get_capacity",
+          "callee": "round",
+          "lineNumber": 135
+        },
+        {
+          "caller": "get_capacity",
+          "callee": "HTTPException",
+          "lineNumber": 138
+        },
+        {
+          "caller": "get_capacity",
+          "callee": "str",
+          "lineNumber": 138
+        }
+      ],
+      "metrics": {
+        "importCount": 3,
+        "exportCount": 7,
+        "functionCount": 7,
+        "classCount": 0
+      }
+    },
+    {
+      "path": "ray_serve_cai/management/models/__init__.py",
+      "language": "python",
+      "fileCategory": "code",
+      "totalLines": 24,
+      "nonEmptyLines": 22,
+      "metrics": {
+        "importCount": 2,
+        "exportCount": 0,
+        "functionCount": 0,
+        "classCount": 0
+      }
+    },
+    {
+      "path": "ray_serve_cai/management/models/requests.py",
+      "language": "python",
+      "fileCategory": "code",
+      "totalLines": 457,
+      "nonEmptyLines": 421,
+      "classes": [
+        {
+          "name": "AddNodeRequest",
+          "startLine": 23,
+          "endLine": 74,
+          "methods": [],
+          "properties": [
+            "node_type",
+            "cpu",
+            "memory",
+            "gpus",
+            "runtime_identifier",
+            "node_label",
+            "ray_labels"
+          ]
+        },
+        {
+          "name": "LaunchCaiApplicationRequest",
+          "startLine": 77,
+          "endLine": 108,
+          "methods": [],
+          "properties": [
+            "name",
+            "script",
+            "cpu",
+            "memory",
+            "gpus",
+            "runtime_identifier",
+            "environment",
+            "bypass_authentication"
+          ]
+        },
+        {
+          "name": "SchedulingConfig",
+          "startLine": 111,
+          "endLine": 206,
+          "methods": [
+            "validate_env_vars"
+          ],
+          "properties": [
+            "resources",
+            "placement_group_bundles",
+            "placement_group_strategy",
+            "env_vars"
+          ]
+        },
+        {
+          "name": "DeployApplicationRequest",
+          "startLine": 209,
+          "endLine": 451,
+          "methods": [
+            "validate_import_path",
+            "check_discriminator",
+            "validate_autoscaling_config"
+          ],
+          "properties": [
+            "name",
+            "engine_type",
+            "import_path",
+            "route_prefix",
+            "num_replicas",
+            "autoscaling_config",
+            "scheduling",
+            "model",
+            "tensor_parallel_size",
+            "use_cpu",
+            "gpu_fraction",
+            "engine_config",
+            "multi_node",
+            "venv_name",
+            "node_type",
+            "ray_actor_options"
+          ]
+        }
+      ],
+      "exports": [
+        {
+          "name": "AddNodeRequest",
+          "line": 23,
+          "isDefault": false
+        },
+        {
+          "name": "LaunchCaiApplicationRequest",
+          "line": 77,
+          "isDefault": false
+        },
+        {
+          "name": "SchedulingConfig",
+          "line": 111,
+          "isDefault": false
+        },
+        {
+          "name": "DeployApplicationRequest",
+          "line": 209,
+          "isDefault": false
+        }
+      ],
+      "callGraph": [
+        {
+          "caller": "validate_env_vars",
+          "callee": "set",
+          "lineNumber": 182
+        },
+        {
+          "caller": "validate_env_vars",
+          "callee": "v.keys",
+          "lineNumber": 182
+        },
+        {
+          "caller": "validate_env_vars",
+          "callee": "ValueError",
+          "lineNumber": 184
+        },
+        {
+          "caller": "validate_env_vars",
+          "callee": "sorted",
+          "lineNumber": 186
+        },
+        {
+          "caller": "validate_import_path",
+          "callee": "re.fullmatch",
+          "lineNumber": 418
+        },
+        {
+          "caller": "validate_import_path",
+          "callee": "ValueError",
+          "lineNumber": 419
+        },
+        {
+          "caller": "check_discriminator",
+          "callee": "ValueError",
+          "lineNumber": 430
+        },
+        {
+          "caller": "check_discriminator",
+          "callee": "ValueError",
+          "lineNumber": 434
+        },
+        {
+          "caller": "validate_autoscaling_config",
+          "callee": "info.data.get",
+          "lineNumber": 445
+        },
+        {
+          "caller": "validate_autoscaling_config",
+          "callee": "ValueError",
+          "lineNumber": 447
+        }
+      ],
+      "metrics": {
+        "importCount": 0,
+        "exportCount": 4,
+        "functionCount": 0,
+        "classCount": 4
+      }
+    },
+    {
+      "path": "ray_serve_cai/management/models/responses.py",
+      "language": "python",
+      "fileCategory": "code",
+      "totalLines": 79,
+      "nonEmptyLines": 57,
+      "classes": [
+        {
+          "name": "NodeInfo",
+          "startLine": 8,
+          "endLine": 21,
+          "methods": [],
+          "properties": [
+            "node_id",
+            "node_name",
+            "node_type",
+            "alive",
+            "resources",
+            "resources_used",
+            "pod_name",
+            "app_id",
+            "app_name",
+            "cml_status"
+          ]
+        },
+        {
+          "name": "NodesListResponse",
+          "startLine": 24,
+          "endLine": 29,
+          "methods": [],
+          "properties": [
+            "nodes",
+            "total_nodes",
+            "alive_nodes"
+          ]
+        },
+        {
+          "name": "ApplicationInfo",
+          "startLine": 32,
+          "endLine": 40,
+          "methods": [],
+          "properties": [
+            "name",
+            "status",
+            "route_prefix",
+            "num_replicas",
+            "message",
+            "last_deployed_time"
+          ]
+        },
+        {
+          "name": "ApplicationsListResponse",
+          "startLine": 43,
+          "endLine": 47,
+          "methods": [],
+          "properties": [
+            "applications",
+            "total_applications"
+          ]
+        },
+        {
+          "name": "ResourceCapacity",
+          "startLine": 50,
+          "endLine": 59,
+          "methods": [],
+          "properties": [
+            "total_cpus",
+            "available_cpus",
+            "total_memory",
+            "available_memory",
+            "total_gpus",
+            "available_gpus",
+            "utilization_percent"
+          ]
+        },
+        {
+          "name": "ClusterStatus",
+          "startLine": 62,
+          "endLine": 69,
+          "methods": [],
+          "properties": [
+            "healthy",
+            "total_nodes",
+            "alive_nodes",
+            "total_applications",
+            "resources"
+          ]
+        },
+        {
+          "name": "ClusterInfo",
+          "startLine": 72,
+          "endLine": 79,
+          "methods": [],
+          "properties": [
+            "head_address",
+            "dashboard_url",
+            "management_api_url",
+            "ray_version",
+            "cluster_name"
+          ]
+        }
+      ],
+      "exports": [
+        {
+          "name": "NodeInfo",
+          "line": 8,
+          "isDefault": false
+        },
+        {
+          "name": "NodesListResponse",
+          "line": 24,
+          "isDefault": false
+        },
+        {
+          "name": "ApplicationInfo",
+          "line": 32,
+          "isDefault": false
+        },
+        {
+          "name": "ApplicationsListResponse",
+          "line": 43,
+          "isDefault": false
+        },
+        {
+          "name": "ResourceCapacity",
+          "line": 50,
+          "isDefault": false
+        },
+        {
+          "name": "ClusterStatus",
+          "line": 62,
+          "isDefault": false
+        },
+        {
+          "name": "ClusterInfo",
+          "line": 72,
+          "isDefault": false
+        }
+      ],
+      "metrics": {
+        "importCount": 0,
+        "exportCount": 7,
+        "functionCount": 0,
+        "classCount": 7
+      }
+    }
+  ]
+}

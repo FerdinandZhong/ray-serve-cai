@@ -1,0 +1,53 @@
+{
+  "nodes": [
+    {
+      "id": "file:ray_serve_cai/management/services/cai_service.py",
+      "type": "file",
+      "name": "cai_service.py",
+      "filePath": "ray_serve_cai/management/services/cai_service.py",
+      "summary": "Implements CAIService — the Cloudera AI platform service layer used by CoordinatorService — providing worker node creation, CML application launch/delete/list operations, and cluster info loading by delegating to an internal CAIClusterManager.",
+      "tags": ["service", "middleware", "api-handler"],
+      "complexity": "complex"
+    },
+    {
+      "id": "class:ray_serve_cai/management/services/cai_service.py:CAIService",
+      "type": "class",
+      "name": "CAIService",
+      "filePath": "ray_serve_cai/management/services/cai_service.py",
+      "lineRange": [18, 304],
+      "summary": "CML platform service that reads cluster info from disk, spawns worker nodes via CAIClusterManager, and manages CML application lifecycle (create, delete, list, get) on behalf of CoordinatorService.",
+      "tags": ["service", "middleware"],
+      "complexity": "complex"
+    }
+  ],
+  "edges": [
+    {
+      "source": "file:ray_serve_cai/management/services/cai_service.py",
+      "target": "class:ray_serve_cai/management/services/cai_service.py:CAIService",
+      "type": "contains",
+      "direction": "forward",
+      "weight": 1.0
+    },
+    {
+      "source": "file:ray_serve_cai/management/services/cai_service.py",
+      "target": "class:ray_serve_cai/management/services/cai_service.py:CAIService",
+      "type": "exports",
+      "direction": "forward",
+      "weight": 0.8
+    },
+    {
+      "source": "file:ray_serve_cai/management/app.py",
+      "target": "file:ray_serve_cai/management/services/cai_service.py",
+      "type": "depends_on",
+      "direction": "forward",
+      "weight": 0.6
+    },
+    {
+      "source": "file:ray_serve_cai/management/services/cai_service.py",
+      "target": "file:ray_serve_cai/management/services/cai_cluster_manager.py",
+      "type": "depends_on",
+      "direction": "forward",
+      "weight": 0.6
+    }
+  ]
+}

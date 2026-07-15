@@ -14,6 +14,7 @@ class NodeInfo(BaseModel):
     alive: bool = Field(..., description="Whether the node is alive")
     resources: Dict[str, float] = Field(..., description="Total resources on this node")
     resources_used: Dict[str, float] = Field(..., description="Used resources on this node")
+    pod_name: Optional[str] = Field(None, description="Kubernetes pod name (NodeManagerHostname from Ray)")
     # CML side — present for worker nodes added via POST /resources/nodes
     app_id: Optional[str] = Field(None, description="CML application ID (use this to DELETE the node)")
     app_name: Optional[str] = Field(None, description="CML application name")

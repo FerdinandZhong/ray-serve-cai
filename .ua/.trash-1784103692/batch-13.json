@@ -1,0 +1,127 @@
+{
+  "nodes": [
+    {
+      "id": "document:docs/api.html",
+      "type": "document",
+      "name": "api.html",
+      "filePath": "docs/api.html",
+      "summary": "HTML documentation for the Ray Serve CAI management REST API, providing a browsable reference for all API endpoints.",
+      "tags": ["documentation", "api-schema"],
+      "complexity": "moderate"
+    },
+    {
+      "id": "file:ray_serve_cai/engines/litellm_engine.py",
+      "type": "file",
+      "name": "litellm_engine.py",
+      "filePath": "ray_serve_cai/engines/litellm_engine.py",
+      "summary": "Implements LiteLLMEngine — a Ray Serve deployment that launches LiteLLM proxy as a subprocess and proxies OpenAI-compatible chat, completion, models, and metrics requests plus a catch-all proxy for all other LiteLLM routes.",
+      "tags": ["service", "factory", "api-handler"],
+      "complexity": "complex",
+      "languageNotes": "Like SGLangEngine, LiteLLM is run as a subprocess (subprocess.Popen) with a YAML config file written to a temp file; proxy_catchall rewrites redirect Location headers to strip the Ray Serve route prefix."
+    },
+    {
+      "id": "file:ray_serve_cai/engines/litellm_config.py",
+      "type": "file",
+      "name": "litellm_config.py",
+      "filePath": "ray_serve_cai/engines/litellm_config.py",
+      "summary": "Defines LiteLLMConfigBuilder and LiteLLMDeploymentFactory — the engine-registry components for LiteLLM — providing config validation (model list, provider entries) and deployment creation with venv path resolution.",
+      "tags": ["factory", "configuration", "validation"],
+      "complexity": "moderate"
+    },
+    {
+      "id": "class:ray_serve_cai/engines/litellm_engine.py:LiteLLMEngine",
+      "type": "class",
+      "name": "LiteLLMEngine",
+      "filePath": "ray_serve_cai/engines/litellm_engine.py",
+      "lineRange": [109, 334],
+      "summary": "Ray Serve deployment class that runs LiteLLM proxy as a child process with a temp YAML config, proxying all OpenAI-compatible API requests and handling process lifecycle.",
+      "tags": ["service", "api-handler", "middleware"],
+      "complexity": "complex"
+    },
+    {
+      "id": "class:ray_serve_cai/engines/litellm_config.py:LiteLLMConfigBuilder",
+      "type": "class",
+      "name": "LiteLLMConfigBuilder",
+      "filePath": "ray_serve_cai/engines/litellm_config.py",
+      "lineRange": [13, 109],
+      "summary": "Engine registry config builder for LiteLLM that validates the model list and provider entries and produces a config dict including model specs, port, and scheduling options.",
+      "tags": ["factory", "configuration", "validation"],
+      "complexity": "moderate"
+    },
+    {
+      "id": "class:ray_serve_cai/engines/litellm_config.py:LiteLLMDeploymentFactory",
+      "type": "class",
+      "name": "LiteLLMDeploymentFactory",
+      "filePath": "ray_serve_cai/engines/litellm_config.py",
+      "lineRange": [112, 169],
+      "summary": "Engine registry deployment factory for LiteLLM that resolves venv path, applies scheduling resources and env vars, and returns a bound LiteLLMEngine Ray Serve Application.",
+      "tags": ["factory", "service"],
+      "complexity": "moderate"
+    }
+  ],
+  "edges": [
+    {
+      "source": "file:ray_serve_cai/engines/litellm_engine.py",
+      "target": "class:ray_serve_cai/engines/litellm_engine.py:LiteLLMEngine",
+      "type": "contains",
+      "direction": "forward",
+      "weight": 1.0
+    },
+    {
+      "source": "file:ray_serve_cai/engines/litellm_engine.py",
+      "target": "class:ray_serve_cai/engines/litellm_engine.py:LiteLLMEngine",
+      "type": "exports",
+      "direction": "forward",
+      "weight": 0.8
+    },
+    {
+      "source": "file:ray_serve_cai/engines/litellm_config.py",
+      "target": "class:ray_serve_cai/engines/litellm_config.py:LiteLLMConfigBuilder",
+      "type": "contains",
+      "direction": "forward",
+      "weight": 1.0
+    },
+    {
+      "source": "file:ray_serve_cai/engines/litellm_config.py",
+      "target": "class:ray_serve_cai/engines/litellm_config.py:LiteLLMDeploymentFactory",
+      "type": "contains",
+      "direction": "forward",
+      "weight": 1.0
+    },
+    {
+      "source": "file:ray_serve_cai/engines/litellm_config.py",
+      "target": "class:ray_serve_cai/engines/litellm_config.py:LiteLLMConfigBuilder",
+      "type": "exports",
+      "direction": "forward",
+      "weight": 0.8
+    },
+    {
+      "source": "file:ray_serve_cai/engines/litellm_config.py",
+      "target": "class:ray_serve_cai/engines/litellm_config.py:LiteLLMDeploymentFactory",
+      "type": "exports",
+      "direction": "forward",
+      "weight": 0.8
+    },
+    {
+      "source": "class:ray_serve_cai/engines/litellm_config.py:LiteLLMDeploymentFactory",
+      "target": "class:ray_serve_cai/engines/litellm_engine.py:LiteLLMEngine",
+      "type": "calls",
+      "direction": "forward",
+      "weight": 0.8
+    },
+    {
+      "source": "file:ray_serve_cai/engines/litellm_config.py",
+      "target": "file:ray_serve_cai/engines/litellm_engine.py",
+      "type": "depends_on",
+      "direction": "forward",
+      "weight": 0.6
+    },
+    {
+      "source": "document:docs/api.html",
+      "target": "file:ray_serve_cai/management/app.py",
+      "type": "documents",
+      "direction": "forward",
+      "weight": 0.5
+    }
+  ]
+}

@@ -1,0 +1,967 @@
+{
+  "scriptCompleted": true,
+  "filesAnalyzed": 3,
+  "filesSkipped": [],
+  "results": [
+    {
+      "path": "README.md",
+      "language": "markdown",
+      "fileCategory": "docs",
+      "totalLines": 553,
+      "nonEmptyLines": 441,
+      "sections": [
+        {
+          "heading": "ray-serve-cai",
+          "level": 1,
+          "line": 1
+        },
+        {
+          "heading": "Table of Contents",
+          "level": 2,
+          "line": 21
+        },
+        {
+          "heading": "Why this exists",
+          "level": 2,
+          "line": 50
+        },
+        {
+          "heading": "Architecture",
+          "level": 2,
+          "line": 68
+        },
+        {
+          "heading": "Installation",
+          "level": 2,
+          "line": 107
+        },
+        {
+          "heading": "Concepts",
+          "level": 2,
+          "line": 131
+        },
+        {
+          "heading": "Quick start",
+          "level": 2,
+          "line": 144
+        },
+        {
+          "heading": "1. Launch a cluster",
+          "level": 3,
+          "line": 146
+        },
+        {
+          "heading": "2. Run the Management API",
+          "level": 3,
+          "line": 184
+        },
+        {
+          "heading": "3. Deploy a model",
+          "level": 3,
+          "line": 195
+        },
+        {
+          "heading": "4. Query it",
+          "level": 3,
+          "line": 217
+        },
+        {
+          "heading": "Supported engines",
+          "level": 2,
+          "line": 236
+        },
+        {
+          "heading": "The Management REST API",
+          "level": 2,
+          "line": 247
+        },
+        {
+          "heading": "Applications — `/api/v1/applications`",
+          "level": 3,
+          "line": 251
+        },
+        {
+          "heading": "Scheduling & placement groups",
+          "level": 3,
+          "line": 281
+        },
+        {
+          "heading": "Environments — `/api/v1/environments`",
+          "level": 3,
+          "line": 325
+        },
+        {
+          "heading": "Resources & nodes — `/api/v1/resources`",
+          "level": 3,
+          "line": 346
+        },
+        {
+          "heading": "Engines — `/api/v1/engines`",
+          "level": 3,
+          "line": 359
+        },
+        {
+          "heading": "Cluster & metrics",
+          "level": 3,
+          "line": 366
+        },
+        {
+          "heading": "Node targeting",
+          "level": 2,
+          "line": 381
+        },
+        {
+          "heading": "Adding a custom engine",
+          "level": 2,
+          "line": 411
+        },
+        {
+          "heading": "Configuration reference",
+          "level": 2,
+          "line": 454
+        },
+        {
+          "heading": "Environment variables",
+          "level": 3,
+          "line": 456
+        },
+        {
+          "heading": "`DeployApplicationRequest` key fields",
+          "level": 3,
+          "line": 470
+        },
+        {
+          "heading": "Project layout",
+          "level": 2,
+          "line": 488
+        },
+        {
+          "heading": "Development",
+          "level": 2,
+          "line": 517
+        },
+        {
+          "heading": "Documentation",
+          "level": 2,
+          "line": 537
+        },
+        {
+          "heading": "License",
+          "level": 2,
+          "line": 547
+        }
+      ],
+      "metrics": {
+        "importCount": 0,
+        "exportCount": 0,
+        "functionCount": 0,
+        "classCount": 0,
+        "sectionCount": 28
+      }
+    },
+    {
+      "path": "ray_serve_cai/engines/vllm_config.py",
+      "language": "python",
+      "fileCategory": "code",
+      "totalLines": 301,
+      "nonEmptyLines": 239,
+      "functions": [
+        {
+          "name": "build_vllm_engine_config",
+          "startLine": 13,
+          "endLine": 128,
+          "params": [
+            "user_config"
+          ]
+        },
+        {
+          "name": "validate_vllm_config",
+          "startLine": 131,
+          "endLine": 164,
+          "params": [
+            "user_config"
+          ]
+        }
+      ],
+      "classes": [
+        {
+          "name": "VLLMConfigBuilder",
+          "startLine": 172,
+          "endLine": 229,
+          "methods": [
+            "build_config",
+            "validate_config",
+            "get_default_config"
+          ],
+          "properties": []
+        },
+        {
+          "name": "VLLMDeploymentFactory",
+          "startLine": 232,
+          "endLine": 301,
+          "methods": [
+            "create_deployment"
+          ],
+          "properties": []
+        }
+      ],
+      "exports": [
+        {
+          "name": "build_vllm_engine_config",
+          "line": 13,
+          "isDefault": false
+        },
+        {
+          "name": "validate_vllm_config",
+          "line": 131,
+          "isDefault": false
+        },
+        {
+          "name": "VLLMConfigBuilder",
+          "line": 172,
+          "isDefault": false
+        },
+        {
+          "name": "VLLMDeploymentFactory",
+          "line": 232,
+          "isDefault": false
+        }
+      ],
+      "callGraph": [
+        {
+          "caller": "build_vllm_engine_config",
+          "callee": "user_config.get",
+          "lineNumber": 32
+        },
+        {
+          "caller": "build_vllm_engine_config",
+          "callee": "user_config.get",
+          "lineNumber": 32
+        },
+        {
+          "caller": "build_vllm_engine_config",
+          "callee": "ValueError",
+          "lineNumber": 34
+        },
+        {
+          "caller": "build_vllm_engine_config",
+          "callee": "user_config.get",
+          "lineNumber": 38
+        },
+        {
+          "caller": "build_vllm_engine_config",
+          "callee": "user_config.get",
+          "lineNumber": 39
+        },
+        {
+          "caller": "build_vllm_engine_config",
+          "callee": "user_config.get",
+          "lineNumber": 43
+        },
+        {
+          "caller": "build_vllm_engine_config",
+          "callee": "user_config.get",
+          "lineNumber": 46
+        },
+        {
+          "caller": "build_vllm_engine_config",
+          "callee": "user_config.get",
+          "lineNumber": 50
+        },
+        {
+          "caller": "build_vllm_engine_config",
+          "callee": "user_config.get",
+          "lineNumber": 56
+        },
+        {
+          "caller": "build_vllm_engine_config",
+          "callee": "user_config.get",
+          "lineNumber": 60
+        },
+        {
+          "caller": "build_vllm_engine_config",
+          "callee": "user_config.get",
+          "lineNumber": 63
+        },
+        {
+          "caller": "build_vllm_engine_config",
+          "callee": "logger.info",
+          "lineNumber": 65
+        },
+        {
+          "caller": "build_vllm_engine_config",
+          "callee": "logger.info",
+          "lineNumber": 71
+        },
+        {
+          "caller": "build_vllm_engine_config",
+          "callee": "logger.info",
+          "lineNumber": 78
+        },
+        {
+          "caller": "build_vllm_engine_config",
+          "callee": "user_config.get",
+          "lineNumber": 81
+        },
+        {
+          "caller": "build_vllm_engine_config",
+          "callee": "user_config.get",
+          "lineNumber": 85
+        },
+        {
+          "caller": "build_vllm_engine_config",
+          "callee": "user_config.get",
+          "lineNumber": 89
+        },
+        {
+          "caller": "build_vllm_engine_config",
+          "callee": "logger.info",
+          "lineNumber": 93
+        },
+        {
+          "caller": "build_vllm_engine_config",
+          "callee": "user_config.get",
+          "lineNumber": 96
+        },
+        {
+          "caller": "build_vllm_engine_config",
+          "callee": "user_config.get",
+          "lineNumber": 100
+        },
+        {
+          "caller": "build_vllm_engine_config",
+          "callee": "user_config.get",
+          "lineNumber": 104
+        },
+        {
+          "caller": "build_vllm_engine_config",
+          "callee": "user_config.get",
+          "lineNumber": 120
+        },
+        {
+          "caller": "build_vllm_engine_config",
+          "callee": "user_config.get",
+          "lineNumber": 123
+        },
+        {
+          "caller": "build_vllm_engine_config",
+          "callee": "logger.info",
+          "lineNumber": 126
+        },
+        {
+          "caller": "validate_vllm_config",
+          "callee": "user_config.get",
+          "lineNumber": 144
+        },
+        {
+          "caller": "validate_vllm_config",
+          "callee": "user_config.get",
+          "lineNumber": 144
+        },
+        {
+          "caller": "validate_vllm_config",
+          "callee": "user_config.get",
+          "lineNumber": 149
+        },
+        {
+          "caller": "validate_vllm_config",
+          "callee": "isinstance",
+          "lineNumber": 150
+        },
+        {
+          "caller": "validate_vllm_config",
+          "callee": "user_config.get",
+          "lineNumber": 154
+        },
+        {
+          "caller": "validate_vllm_config",
+          "callee": "isinstance",
+          "lineNumber": 155
+        },
+        {
+          "caller": "validate_vllm_config",
+          "callee": "user_config.get",
+          "lineNumber": 160
+        },
+        {
+          "caller": "build_config",
+          "callee": "self.validate_config",
+          "lineNumber": 194
+        },
+        {
+          "caller": "build_config",
+          "callee": "ValueError",
+          "lineNumber": 196
+        },
+        {
+          "caller": "build_config",
+          "callee": "build_vllm_engine_config",
+          "lineNumber": 199
+        },
+        {
+          "caller": "validate_config",
+          "callee": "validate_vllm_config",
+          "lineNumber": 212
+        },
+        {
+          "caller": "create_deployment",
+          "callee": "logger.info",
+          "lineNumber": 277
+        },
+        {
+          "caller": "create_deployment",
+          "callee": "resolve_venv_path",
+          "lineNumber": 279
+        },
+        {
+          "caller": "create_deployment",
+          "callee": "engine_config.pop",
+          "lineNumber": 283
+        },
+        {
+          "caller": "create_deployment",
+          "callee": "engine_config.pop",
+          "lineNumber": 284
+        },
+        {
+          "caller": "create_deployment",
+          "callee": "kwargs.get",
+          "lineNumber": 285
+        },
+        {
+          "caller": "create_deployment",
+          "callee": "kwargs.get",
+          "lineNumber": 286
+        },
+        {
+          "caller": "create_deployment",
+          "callee": "create_vllm_deployment",
+          "lineNumber": 288
+        },
+        {
+          "caller": "create_deployment",
+          "callee": "kwargs.get",
+          "lineNumber": 294
+        },
+        {
+          "caller": "create_deployment",
+          "callee": "kwargs.get",
+          "lineNumber": 297
+        }
+      ],
+      "metrics": {
+        "importCount": 0,
+        "exportCount": 4,
+        "functionCount": 2,
+        "classCount": 2
+      }
+    },
+    {
+      "path": "ray_serve_cai/engines/sglang_engine.py",
+      "language": "python",
+      "fileCategory": "code",
+      "totalLines": 400,
+      "nonEmptyLines": 350,
+      "functions": [
+        {
+          "name": "create_sglang_deployment",
+          "startLine": 305,
+          "endLine": 400,
+          "params": [
+            "engine_config",
+            "num_replicas",
+            "tensor_parallel_size",
+            "use_cpu",
+            "max_ongoing_requests",
+            "gpu_fraction",
+            "placement_group_bundles",
+            "placement_group_strategy",
+            "venv_path",
+            "scheduling_resources",
+            "scheduling_env_vars"
+          ]
+        }
+      ],
+      "classes": [
+        {
+          "name": "_RoutePathMiddleware",
+          "startLine": 58,
+          "endLine": 73,
+          "methods": [
+            "__init__",
+            "__call__"
+          ],
+          "properties": []
+        },
+        {
+          "name": "SGLangEngine",
+          "startLine": 111,
+          "endLine": 298,
+          "methods": [
+            "__init__",
+            "_wait_for_server",
+            "__del__",
+            "_proxy_json",
+            "_proxy_stream",
+            "chat_completion",
+            "completion",
+            "list_models",
+            "metrics",
+            "health_check"
+          ],
+          "properties": []
+        }
+      ],
+      "exports": [
+        {
+          "name": "_RoutePathMiddleware",
+          "line": 58,
+          "isDefault": false
+        },
+        {
+          "name": "SGLangEngine",
+          "line": 104,
+          "isDefault": false
+        },
+        {
+          "name": "create_sglang_deployment",
+          "line": 305,
+          "isDefault": false
+        }
+      ],
+      "callGraph": [
+        {
+          "caller": "__call__",
+          "callee": "scope.get",
+          "lineNumber": 66
+        },
+        {
+          "caller": "__call__",
+          "callee": "scope.get",
+          "lineNumber": 67
+        },
+        {
+          "caller": "__call__",
+          "callee": "path.startswith",
+          "lineNumber": 68
+        },
+        {
+          "caller": "__call__",
+          "callee": "len",
+          "lineNumber": 69
+        },
+        {
+          "caller": "__call__",
+          "callee": "remainder.startswith",
+          "lineNumber": 70
+        },
+        {
+          "caller": "__call__",
+          "callee": "dict",
+          "lineNumber": 71
+        },
+        {
+          "caller": "__call__",
+          "callee": "self.app",
+          "lineNumber": 73
+        },
+        {
+          "caller": "__init__",
+          "callee": "logger.info",
+          "lineNumber": 120
+        },
+        {
+          "caller": "__init__",
+          "callee": "engine_config.get",
+          "lineNumber": 122
+        },
+        {
+          "caller": "__init__",
+          "callee": "engine_config.get",
+          "lineNumber": 123
+        },
+        {
+          "caller": "__init__",
+          "callee": "engine_config.get",
+          "lineNumber": 124
+        },
+        {
+          "caller": "__init__",
+          "callee": "engine_config.get",
+          "lineNumber": 129
+        },
+        {
+          "caller": "__init__",
+          "callee": "str",
+          "lineNumber": 134
+        },
+        {
+          "caller": "__init__",
+          "callee": "str",
+          "lineNumber": 141
+        },
+        {
+          "caller": "__init__",
+          "callee": "engine_config.get",
+          "lineNumber": 142
+        },
+        {
+          "caller": "__init__",
+          "callee": "engine_config.get",
+          "lineNumber": 144
+        },
+        {
+          "caller": "__init__",
+          "callee": "engine_config.get",
+          "lineNumber": 146
+        },
+        {
+          "caller": "__init__",
+          "callee": "str",
+          "lineNumber": 147
+        },
+        {
+          "caller": "__init__",
+          "callee": "engine_config.get",
+          "lineNumber": 148
+        },
+        {
+          "caller": "__init__",
+          "callee": "str",
+          "lineNumber": 149
+        },
+        {
+          "caller": "__init__",
+          "callee": "engine_config.get",
+          "lineNumber": 150
+        },
+        {
+          "caller": "__init__",
+          "callee": "logger.info",
+          "lineNumber": 153
+        },
+        {
+          "caller": "__init__",
+          "callee": "\" \".join",
+          "lineNumber": 153
+        },
+        {
+          "caller": "__init__",
+          "callee": "subprocess.Popen",
+          "lineNumber": 154
+        },
+        {
+          "caller": "__init__",
+          "callee": "self._wait_for_server",
+          "lineNumber": 161
+        },
+        {
+          "caller": "__init__",
+          "callee": "logger.info",
+          "lineNumber": 162
+        },
+        {
+          "caller": "_wait_for_server",
+          "callee": "time.time",
+          "lineNumber": 166
+        },
+        {
+          "caller": "_wait_for_server",
+          "callee": "time.time",
+          "lineNumber": 168
+        },
+        {
+          "caller": "_wait_for_server",
+          "callee": "self._process.poll",
+          "lineNumber": 170
+        },
+        {
+          "caller": "_wait_for_server",
+          "callee": "self._process.stdout.read().decode",
+          "lineNumber": 171
+        },
+        {
+          "caller": "_wait_for_server",
+          "callee": "self._process.stdout.read",
+          "lineNumber": 171
+        },
+        {
+          "caller": "_wait_for_server",
+          "callee": "RuntimeError",
+          "lineNumber": 172
+        },
+        {
+          "caller": "_wait_for_server",
+          "callee": "urllib.request.urlopen",
+          "lineNumber": 178
+        },
+        {
+          "caller": "_wait_for_server",
+          "callee": "time.sleep",
+          "lineNumber": 183
+        },
+        {
+          "caller": "_wait_for_server",
+          "callee": "TimeoutError",
+          "lineNumber": 184
+        },
+        {
+          "caller": "__del__",
+          "callee": "hasattr",
+          "lineNumber": 189
+        },
+        {
+          "caller": "__del__",
+          "callee": "self._process.poll",
+          "lineNumber": 189
+        },
+        {
+          "caller": "__del__",
+          "callee": "logger.info",
+          "lineNumber": 190
+        },
+        {
+          "caller": "__del__",
+          "callee": "self._process.terminate",
+          "lineNumber": 191
+        },
+        {
+          "caller": "__del__",
+          "callee": "self._process.wait",
+          "lineNumber": 193
+        },
+        {
+          "caller": "__del__",
+          "callee": "self._process.kill",
+          "lineNumber": 195
+        },
+        {
+          "caller": "_proxy_json",
+          "callee": "request.body",
+          "lineNumber": 203
+        },
+        {
+          "caller": "_proxy_json",
+          "callee": "httpx.AsyncClient",
+          "lineNumber": 204
+        },
+        {
+          "caller": "_proxy_json",
+          "callee": "client.request",
+          "lineNumber": 205
+        },
+        {
+          "caller": "_proxy_json",
+          "callee": "JSONResponse",
+          "lineNumber": 211
+        },
+        {
+          "caller": "_proxy_json",
+          "callee": "resp.json",
+          "lineNumber": 212
+        },
+        {
+          "caller": "_proxy_stream",
+          "callee": "request.body",
+          "lineNumber": 218
+        },
+        {
+          "caller": "_stream",
+          "callee": "httpx.AsyncClient",
+          "lineNumber": 221
+        },
+        {
+          "caller": "_stream",
+          "callee": "client.stream",
+          "lineNumber": 222
+        },
+        {
+          "caller": "_stream",
+          "callee": "resp.aiter_bytes",
+          "lineNumber": 228
+        },
+        {
+          "caller": "_proxy_stream",
+          "callee": "StreamingResponse",
+          "lineNumber": 231
+        },
+        {
+          "caller": "_proxy_stream",
+          "callee": "_stream",
+          "lineNumber": 232
+        },
+        {
+          "caller": "chat_completion",
+          "callee": "request.json",
+          "lineNumber": 244
+        },
+        {
+          "caller": "chat_completion",
+          "callee": "Request",
+          "lineNumber": 245
+        },
+        {
+          "caller": "chat_completion",
+          "callee": "body.get",
+          "lineNumber": 247
+        },
+        {
+          "caller": "chat_completion",
+          "callee": "self._proxy_stream",
+          "lineNumber": 248
+        },
+        {
+          "caller": "chat_completion",
+          "callee": "self._proxy_json",
+          "lineNumber": 249
+        },
+        {
+          "caller": "completion",
+          "callee": "request.json",
+          "lineNumber": 255
+        },
+        {
+          "caller": "completion",
+          "callee": "body.get",
+          "lineNumber": 256
+        },
+        {
+          "caller": "completion",
+          "callee": "self._proxy_stream",
+          "lineNumber": 257
+        },
+        {
+          "caller": "completion",
+          "callee": "self._proxy_json",
+          "lineNumber": 258
+        },
+        {
+          "caller": "list_models",
+          "callee": "self._proxy_json",
+          "lineNumber": 264
+        },
+        {
+          "caller": "metrics",
+          "callee": "httpx.AsyncClient",
+          "lineNumber": 271
+        },
+        {
+          "caller": "metrics",
+          "callee": "client.get",
+          "lineNumber": 273
+        },
+        {
+          "caller": "metrics",
+          "callee": "Response",
+          "lineNumber": 274
+        },
+        {
+          "caller": "metrics",
+          "callee": "Response",
+          "lineNumber": 280
+        },
+        {
+          "caller": "health_check",
+          "callee": "self._process.poll",
+          "lineNumber": 289
+        },
+        {
+          "caller": "create_sglang_deployment",
+          "callee": "logger.info",
+          "lineNumber": 319
+        },
+        {
+          "caller": "create_sglang_deployment",
+          "callee": "engine_config.get",
+          "lineNumber": 339
+        },
+        {
+          "caller": "create_sglang_deployment",
+          "callee": "dict",
+          "lineNumber": 341
+        },
+        {
+          "caller": "create_sglang_deployment",
+          "callee": "float",
+          "lineNumber": 351
+        },
+        {
+          "caller": "create_sglang_deployment",
+          "callee": "float",
+          "lineNumber": 352
+        },
+        {
+          "caller": "create_sglang_deployment",
+          "callee": "b.get",
+          "lineNumber": 361
+        },
+        {
+          "caller": "create_sglang_deployment",
+          "callee": "_b.update",
+          "lineNumber": 363
+        },
+        {
+          "caller": "create_sglang_deployment",
+          "callee": "logger.info",
+          "lineNumber": 364
+        },
+        {
+          "caller": "create_sglang_deployment",
+          "callee": "ray_actor_options.setdefault",
+          "lineNumber": 368
+        },
+        {
+          "caller": "create_sglang_deployment",
+          "callee": "ray_actor_options[\"resources\"].update",
+          "lineNumber": 369
+        },
+        {
+          "caller": "create_sglang_deployment",
+          "callee": "logger.info",
+          "lineNumber": 370
+        },
+        {
+          "caller": "create_sglang_deployment",
+          "callee": "logger.info",
+          "lineNumber": 378
+        },
+        {
+          "caller": "create_sglang_deployment",
+          "callee": "logger.info",
+          "lineNumber": 381
+        },
+        {
+          "caller": "create_sglang_deployment",
+          "callee": "list",
+          "lineNumber": 381
+        },
+        {
+          "caller": "create_sglang_deployment",
+          "callee": "scheduling_env_vars.keys",
+          "lineNumber": 381
+        },
+        {
+          "caller": "create_sglang_deployment",
+          "callee": "engine_config.get",
+          "lineNumber": 385
+        },
+        {
+          "caller": "create_sglang_deployment",
+          "callee": "SGLangEngine.options",
+          "lineNumber": 399
+        },
+        {
+          "caller": "create_sglang_deployment",
+          "callee": "deployment.bind",
+          "lineNumber": 400
+        }
+      ],
+      "metrics": {
+        "importCount": 0,
+        "exportCount": 3,
+        "functionCount": 1,
+        "classCount": 2
+      }
+    }
+  ]
+}

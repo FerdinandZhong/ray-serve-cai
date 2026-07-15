@@ -1,0 +1,348 @@
+{
+  "nodes": [
+    {
+      "id": "file:ray_serve_cai/management/api/engines.py",
+      "type": "file",
+      "name": "engines.py",
+      "filePath": "ray_serve_cai/management/api/engines.py",
+      "summary": "FastAPI router that provides endpoints for dynamically registering new LLM engine types at runtime via importlib and listing all registered engines with their default, using an engine registry pattern.",
+      "tags": ["api-handler", "service", "factory"],
+      "complexity": "moderate",
+      "languageNotes": "Uses importlib.import_module for dynamic loading of engine modules at registration time, with whitelist path validation."
+    },
+    {
+      "id": "file:ray_serve_cai/management/api/environments.py",
+      "type": "file",
+      "name": "environments.py",
+      "filePath": "ray_serve_cai/management/api/environments.py",
+      "summary": "FastAPI router managing Python virtual environment lifecycle — listing, inspecting, and creating venvs for LLM engine isolation — with async background creation tracked via an in-memory registry.",
+      "tags": ["api-handler", "service", "middleware"],
+      "complexity": "complex",
+      "languageNotes": "Venv creation runs in a background threading.Thread to avoid blocking the request; status is tracked in a module-level _CREATIONS dict."
+    },
+    {
+      "id": "file:ray_serve_cai/management/services/__init__.py",
+      "type": "file",
+      "name": "__init__.py",
+      "filePath": "ray_serve_cai/management/services/__init__.py",
+      "summary": "Package barrel that re-exports CoordinatorService from the services subpackage for convenient top-level access.",
+      "tags": ["barrel", "entry-point", "service"],
+      "complexity": "simple"
+    },
+    {
+      "id": "file:ray_serve_cai/management/services/coordinator.py",
+      "type": "file",
+      "name": "coordinator.py",
+      "filePath": "ray_serve_cai/management/services/coordinator.py",
+      "summary": "Core orchestration service (CoordinatorService) that bridges the management API layer to Ray cluster operations and Cloudera AI application management, handling worker node add/remove, CML app lifecycle, resource allocation tracking, and enriched node metadata.",
+      "tags": ["service", "middleware", "singleton"],
+      "complexity": "complex"
+    },
+    {
+      "id": "file:ray_serve_cai/management/services/cml_client.py",
+      "type": "file",
+      "name": "cml_client.py",
+      "filePath": "ray_serve_cai/management/services/cml_client.py",
+      "summary": "Cloudera AI (CML/CAI) API client that wraps HTTP calls to the CML platform for managing applications, worker nodes, and cluster metadata used by the coordinator service.",
+      "tags": ["service", "api-handler", "middleware"],
+      "complexity": "moderate"
+    },
+    {
+      "id": "file:ray_serve_cai/management/app.py",
+      "type": "file",
+      "name": "app.py",
+      "filePath": "ray_serve_cai/management/app.py",
+      "summary": "FastAPI application entry point for the management API — defines the lifespan context initializing RayService, CAIService, and CoordinatorService on startup, registers all API routers, and exposes root and health-check endpoints.",
+      "tags": ["entry-point", "service", "middleware"],
+      "complexity": "complex",
+      "languageNotes": "Uses FastAPI async lifespan context manager pattern (replacing deprecated on_event hooks) to wire up shared services as app state for dependency injection."
+    },
+    {
+      "id": "file:ray_serve_cai/management/__init__.py",
+      "type": "file",
+      "name": "__init__.py",
+      "filePath": "ray_serve_cai/management/__init__.py",
+      "summary": "Empty package initializer for the management module.",
+      "tags": ["barrel", "entry-point"],
+      "complexity": "simple"
+    },
+    {
+      "id": "function:ray_serve_cai/management/api/engines.py:register_engine_endpoint",
+      "type": "function",
+      "name": "register_engine_endpoint",
+      "filePath": "ray_serve_cai/management/api/engines.py",
+      "lineRange": [42, 93],
+      "summary": "FastAPI POST endpoint that dynamically loads a Python module by path, validates and extracts engine class references, then registers the new engine type in the engine registry.",
+      "tags": ["api-handler", "factory", "validation"],
+      "complexity": "complex"
+    },
+    {
+      "id": "function:ray_serve_cai/management/api/environments.py:list_environments",
+      "type": "function",
+      "name": "list_environments",
+      "filePath": "ray_serve_cai/management/api/environments.py",
+      "lineRange": [117, 137],
+      "summary": "FastAPI GET endpoint that merges disk-discovered venvs with in-progress creations and returns status, path, and package info for each.",
+      "tags": ["api-handler", "service"],
+      "complexity": "moderate"
+    },
+    {
+      "id": "function:ray_serve_cai/management/api/environments.py:get_environment",
+      "type": "function",
+      "name": "get_environment",
+      "filePath": "ray_serve_cai/management/api/environments.py",
+      "lineRange": [141, 159],
+      "summary": "FastAPI GET endpoint that retrieves status and metadata for a single named venv, raising 404 if not found.",
+      "tags": ["api-handler", "service"],
+      "complexity": "simple"
+    },
+    {
+      "id": "function:ray_serve_cai/management/api/environments.py:create_environment",
+      "type": "function",
+      "name": "create_environment",
+      "filePath": "ray_serve_cai/management/api/environments.py",
+      "lineRange": [163, 196],
+      "summary": "FastAPI POST endpoint that validates the venv name, rejects duplicates, then kicks off background venv creation via a threading.Thread.",
+      "tags": ["api-handler", "service", "factory"],
+      "complexity": "moderate"
+    },
+    {
+      "id": "class:ray_serve_cai/management/api/engines.py:EngineRegisterRequest",
+      "type": "class",
+      "name": "EngineRegisterRequest",
+      "filePath": "ray_serve_cai/management/api/engines.py",
+      "lineRange": [33, 38],
+      "summary": "Pydantic request model for registering a new engine type, specifying the engine_type discriminator, module path, and class names for config builder, deployment factory, and engine implementation.",
+      "tags": ["data-model", "validation"],
+      "complexity": "simple"
+    },
+    {
+      "id": "class:ray_serve_cai/management/services/coordinator.py:CoordinatorService",
+      "type": "class",
+      "name": "CoordinatorService",
+      "filePath": "ray_serve_cai/management/services/coordinator.py",
+      "lineRange": [45, 377],
+      "summary": "Central orchestration class holding references to RayService and CAIService; manages worker node lifecycle, CML application launch/removal, persistent node-to-app mapping state, and resource allocation accounting.",
+      "tags": ["service", "singleton", "middleware"],
+      "complexity": "complex"
+    },
+    {
+      "id": "function:ray_serve_cai/management/app.py:lifespan",
+      "type": "function",
+      "name": "lifespan",
+      "filePath": "ray_serve_cai/management/app.py",
+      "lineRange": [31, 75],
+      "summary": "FastAPI async lifespan context manager that initializes RayService, CAIService, and CoordinatorService on startup, storing them as app state for dependency injection, then cleans up on shutdown.",
+      "tags": ["entry-point", "service", "middleware"],
+      "complexity": "moderate"
+    },
+    {
+      "id": "function:ray_serve_cai/management/app.py:get_coordinator_service",
+      "type": "function",
+      "name": "get_coordinator_service",
+      "filePath": "ray_serve_cai/management/app.py",
+      "lineRange": [128, 136],
+      "summary": "FastAPI dependency function that retrieves the CoordinatorService singleton from app state, raising RuntimeError if not yet initialized.",
+      "tags": ["middleware", "service", "factory"],
+      "complexity": "simple"
+    }
+  ],
+  "edges": [
+    {
+      "source": "file:ray_serve_cai/management/api/engines.py",
+      "target": "file:ray_serve_cai/management/models/requests.py",
+      "type": "imports",
+      "direction": "forward",
+      "weight": 0.7
+    },
+    {
+      "source": "file:ray_serve_cai/management/api/engines.py",
+      "target": "file:ray_serve_cai/management/models/responses.py",
+      "type": "imports",
+      "direction": "forward",
+      "weight": 0.7
+    },
+    {
+      "source": "file:ray_serve_cai/management/api/engines.py",
+      "target": "file:ray_serve_cai/management/services/coordinator.py",
+      "type": "imports",
+      "direction": "forward",
+      "weight": 0.7
+    },
+    {
+      "source": "file:ray_serve_cai/management/api/environments.py",
+      "target": "file:ray_serve_cai/management/models/requests.py",
+      "type": "imports",
+      "direction": "forward",
+      "weight": 0.7
+    },
+    {
+      "source": "file:ray_serve_cai/management/api/environments.py",
+      "target": "file:ray_serve_cai/management/services/coordinator.py",
+      "type": "imports",
+      "direction": "forward",
+      "weight": 0.7
+    },
+    {
+      "source": "file:ray_serve_cai/management/services/__init__.py",
+      "target": "file:ray_serve_cai/management/services/coordinator.py",
+      "type": "imports",
+      "direction": "forward",
+      "weight": 0.7
+    },
+    {
+      "source": "file:ray_serve_cai/management/services/coordinator.py",
+      "target": "file:ray_serve_cai/ray_service.py",
+      "type": "imports",
+      "direction": "forward",
+      "weight": 0.7
+    },
+    {
+      "source": "file:ray_serve_cai/management/services/coordinator.py",
+      "target": "file:ray_serve_cai/management/services/cml_client.py",
+      "type": "imports",
+      "direction": "forward",
+      "weight": 0.7
+    },
+    {
+      "source": "file:ray_serve_cai/management/app.py",
+      "target": "file:ray_serve_cai/management/api/__init__.py",
+      "type": "imports",
+      "direction": "forward",
+      "weight": 0.7
+    },
+    {
+      "source": "file:ray_serve_cai/management/app.py",
+      "target": "file:ray_serve_cai/management/models/__init__.py",
+      "type": "imports",
+      "direction": "forward",
+      "weight": 0.7
+    },
+    {
+      "source": "file:ray_serve_cai/management/api/engines.py",
+      "target": "function:ray_serve_cai/management/api/engines.py:register_engine_endpoint",
+      "type": "contains",
+      "direction": "forward",
+      "weight": 1.0
+    },
+    {
+      "source": "file:ray_serve_cai/management/api/engines.py",
+      "target": "function:ray_serve_cai/management/api/engines.py:register_engine_endpoint",
+      "type": "exports",
+      "direction": "forward",
+      "weight": 0.8
+    },
+    {
+      "source": "file:ray_serve_cai/management/api/engines.py",
+      "target": "class:ray_serve_cai/management/api/engines.py:EngineRegisterRequest",
+      "type": "contains",
+      "direction": "forward",
+      "weight": 1.0
+    },
+    {
+      "source": "file:ray_serve_cai/management/api/engines.py",
+      "target": "class:ray_serve_cai/management/api/engines.py:EngineRegisterRequest",
+      "type": "exports",
+      "direction": "forward",
+      "weight": 0.8
+    },
+    {
+      "source": "file:ray_serve_cai/management/api/environments.py",
+      "target": "function:ray_serve_cai/management/api/environments.py:list_environments",
+      "type": "contains",
+      "direction": "forward",
+      "weight": 1.0
+    },
+    {
+      "source": "file:ray_serve_cai/management/api/environments.py",
+      "target": "function:ray_serve_cai/management/api/environments.py:get_environment",
+      "type": "contains",
+      "direction": "forward",
+      "weight": 1.0
+    },
+    {
+      "source": "file:ray_serve_cai/management/api/environments.py",
+      "target": "function:ray_serve_cai/management/api/environments.py:create_environment",
+      "type": "contains",
+      "direction": "forward",
+      "weight": 1.0
+    },
+    {
+      "source": "file:ray_serve_cai/management/api/environments.py",
+      "target": "function:ray_serve_cai/management/api/environments.py:list_environments",
+      "type": "exports",
+      "direction": "forward",
+      "weight": 0.8
+    },
+    {
+      "source": "file:ray_serve_cai/management/api/environments.py",
+      "target": "function:ray_serve_cai/management/api/environments.py:get_environment",
+      "type": "exports",
+      "direction": "forward",
+      "weight": 0.8
+    },
+    {
+      "source": "file:ray_serve_cai/management/api/environments.py",
+      "target": "function:ray_serve_cai/management/api/environments.py:create_environment",
+      "type": "exports",
+      "direction": "forward",
+      "weight": 0.8
+    },
+    {
+      "source": "file:ray_serve_cai/management/services/coordinator.py",
+      "target": "class:ray_serve_cai/management/services/coordinator.py:CoordinatorService",
+      "type": "contains",
+      "direction": "forward",
+      "weight": 1.0
+    },
+    {
+      "source": "file:ray_serve_cai/management/services/coordinator.py",
+      "target": "class:ray_serve_cai/management/services/coordinator.py:CoordinatorService",
+      "type": "exports",
+      "direction": "forward",
+      "weight": 0.8
+    },
+    {
+      "source": "file:ray_serve_cai/management/app.py",
+      "target": "function:ray_serve_cai/management/app.py:lifespan",
+      "type": "contains",
+      "direction": "forward",
+      "weight": 1.0
+    },
+    {
+      "source": "file:ray_serve_cai/management/app.py",
+      "target": "function:ray_serve_cai/management/app.py:get_coordinator_service",
+      "type": "contains",
+      "direction": "forward",
+      "weight": 1.0
+    },
+    {
+      "source": "file:ray_serve_cai/management/app.py",
+      "target": "function:ray_serve_cai/management/app.py:lifespan",
+      "type": "exports",
+      "direction": "forward",
+      "weight": 0.8
+    },
+    {
+      "source": "file:ray_serve_cai/management/app.py",
+      "target": "function:ray_serve_cai/management/app.py:get_coordinator_service",
+      "type": "exports",
+      "direction": "forward",
+      "weight": 0.8
+    },
+    {
+      "source": "file:ray_serve_cai/management/app.py",
+      "target": "class:ray_serve_cai/management/services/coordinator.py:CoordinatorService",
+      "type": "calls",
+      "direction": "forward",
+      "weight": 0.8
+    },
+    {
+      "source": "file:ray_serve_cai/management/services/coordinator.py",
+      "target": "file:ray_serve_cai/management/services/cml_client.py",
+      "type": "depends_on",
+      "direction": "forward",
+      "weight": 0.6
+    }
+  ]
+}

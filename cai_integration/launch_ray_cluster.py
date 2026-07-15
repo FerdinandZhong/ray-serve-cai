@@ -472,7 +472,7 @@ def main():
             import urllib.request as _urlreq
             import json as _json
             print(f"\n🔧 Adding {total_workers} worker(s) via Management API...")
-            add_url = f"{management_url}/api/v1/resources/nodes/add"
+            add_url = f"{management_url}/api/v1/resources/nodes"
             for g in worker_groups:
                 for i in range(g.count):
                     payload = _json.dumps({
@@ -540,7 +540,7 @@ def main():
             print(f"   • Interactive Docs: {cluster_info['management_api_url']}/docs")
             print(f"   • Cluster Status: GET {cluster_info['management_api_url']}/api/v1/cluster/status")
             print(f"   • List Nodes: GET {cluster_info['management_api_url']}/api/v1/resources/nodes")
-            print(f"   • Add Worker: POST {cluster_info['management_api_url']}/api/v1/resources/nodes/add")
+            print(f"   • Add Worker: POST {cluster_info['management_api_url']}/api/v1/resources/nodes")
             print(f"   • List Apps: GET {cluster_info['management_api_url']}/api/v1/applications")
 
         print("\n" + "=" * 70)

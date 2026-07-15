@@ -1,0 +1,23 @@
+{
+  "projectRoot": "/Users/zhongqishuai/Projects/cldr_projects/ray-serve-cai",
+  "batchFiles": [
+    {"path": "cai_integration/launch_ray_cluster.py", "language": "python", "sizeLines": 162, "fileCategory": "code"},
+    {"path": "cai_integration/launch_ray_cluster_job.py", "language": "python", "sizeLines": 32, "fileCategory": "code"},
+    {"path": "cai_integration/setup_litellm_env.py", "language": "python", "sizeLines": 66, "fileCategory": "code"},
+    {"path": "cai_integration/setup_project.py", "language": "python", "sizeLines": 120, "fileCategory": "code"},
+    {"path": "cai_integration/create_jobs.py", "language": "python", "sizeLines": 169, "fileCategory": "code"},
+    {"path": "cai_integration/trigger_jobs.py", "language": "python", "sizeLines": 43, "fileCategory": "code"},
+    {"path": "cai_integration/test_cluster_deployment_job.py", "language": "python", "sizeLines": 97, "fileCategory": "code"},
+    {"path": "cai_integration/test_list_applications.py", "language": "python", "sizeLines": 43, "fileCategory": "code"}
+  ],
+  "batchImportData": {
+    "cai_integration/launch_ray_cluster.py": [],
+    "cai_integration/launch_ray_cluster_job.py": [],
+    "cai_integration/setup_litellm_env.py": [],
+    "cai_integration/setup_project.py": [],
+    "cai_integration/create_jobs.py": [],
+    "cai_integration/trigger_jobs.py": [],
+    "cai_integration/test_cluster_deployment_job.py": [],
+    "cai_integration/test_list_applications.py": []
+  }
+}

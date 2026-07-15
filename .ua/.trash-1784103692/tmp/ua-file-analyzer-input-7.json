@@ -1,0 +1,11 @@
+{
+  "projectRoot": "/Users/zhongqishuai/Projects/cldr_projects/ray-serve-cai",
+  "batchFiles": [
+    {"path": "tests/test_cluster_deployment.py", "language": "python", "sizeLines": 149, "fileCategory": "code"},
+    {"path": "tests/test_e2e_deployment.py", "language": "python", "sizeLines": 156, "fileCategory": "code"}
+  ],
+  "batchImportData": {
+    "tests/test_cluster_deployment.py": [],
+    "tests/test_e2e_deployment.py": []
+  }
+}

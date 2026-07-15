@@ -1,0 +1,149 @@
+{
+  "scriptCompleted": true,
+  "filesAnalyzed": 1,
+  "filesSkipped": [
+    "ray_serve_cai/engines/mlflow_config.py",
+    "ray_serve_cai/engines/utils.py"
+  ],
+  "results": [
+    {
+      "path": "ray_serve_cai/engines/sglang_config.py",
+      "language": "python",
+      "fileCategory": "code",
+      "totalLines": 115,
+      "nonEmptyLines": 92,
+      "classes": [
+        {
+          "name": "SGLangConfigBuilder",
+          "startLine": 13,
+          "endLine": 74,
+          "methods": [
+            "build_config",
+            "validate_config",
+            "get_default_config"
+          ],
+          "properties": []
+        },
+        {
+          "name": "SGLangDeploymentFactory",
+          "startLine": 77,
+          "endLine": 115,
+          "methods": [
+            "create_deployment"
+          ],
+          "properties": []
+        }
+      ],
+      "exports": [
+        {
+          "name": "SGLangConfigBuilder",
+          "line": 13,
+          "isDefault": false
+        },
+        {
+          "name": "SGLangDeploymentFactory",
+          "line": 77,
+          "isDefault": false
+        }
+      ],
+      "callGraph": [
+        {
+          "caller": "build_config",
+          "callee": "self.validate_config",
+          "lineNumber": 35
+        },
+        {
+          "caller": "build_config",
+          "callee": "ValueError",
+          "lineNumber": 37
+        },
+        {
+          "caller": "build_config",
+          "callee": "user_config.get",
+          "lineNumber": 39
+        },
+        {
+          "caller": "build_config",
+          "callee": "user_config.get",
+          "lineNumber": 39
+        },
+        {
+          "caller": "build_config",
+          "callee": "user_config.get",
+          "lineNumber": 43
+        },
+        {
+          "caller": "build_config",
+          "callee": "user_config.get",
+          "lineNumber": 49
+        },
+        {
+          "caller": "build_config",
+          "callee": "logger.info",
+          "lineNumber": 53
+        },
+        {
+          "caller": "validate_config",
+          "callee": "user_config.get",
+          "lineNumber": 60
+        },
+        {
+          "caller": "validate_config",
+          "callee": "user_config.get",
+          "lineNumber": 60
+        },
+        {
+          "caller": "validate_config",
+          "callee": "user_config.get",
+          "lineNumber": 64
+        },
+        {
+          "caller": "validate_config",
+          "callee": "isinstance",
+          "lineNumber": 65
+        },
+        {
+          "caller": "create_deployment",
+          "callee": "resolve_venv_path",
+          "lineNumber": 96
+        },
+        {
+          "caller": "create_deployment",
+          "callee": "engine_config.pop",
+          "lineNumber": 98
+        },
+        {
+          "caller": "create_deployment",
+          "callee": "engine_config.pop",
+          "lineNumber": 99
+        },
+        {
+          "caller": "create_deployment",
+          "callee": "kwargs.get",
+          "lineNumber": 100
+        },
+        {
+          "caller": "create_deployment",
+          "callee": "kwargs.get",
+          "lineNumber": 101
+        },
+        {
+          "caller": "create_deployment",
+          "callee": "create_sglang_deployment",
+          "lineNumber": 103
+        },
+        {
+          "caller": "create_deployment",
+          "callee": "kwargs.get",
+          "lineNumber": 109
+        }
+      ],
+      "metrics": {
+        "importCount": 0,
+        "exportCount": 2,
+        "functionCount": 0,
+        "classCount": 2
+      }
+    }
+  ]
+}

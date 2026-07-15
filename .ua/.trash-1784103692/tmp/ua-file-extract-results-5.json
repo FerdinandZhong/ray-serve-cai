@@ -1,0 +1,2964 @@
+{
+  "scriptCompleted": true,
+  "filesAnalyzed": 8,
+  "filesSkipped": [],
+  "results": [
+    {
+      "path": "cai_integration/launch_ray_cluster.py",
+      "language": "python",
+      "fileCategory": "code",
+      "totalLines": 565,
+      "nonEmptyLines": 496,
+      "functions": [
+        {
+          "name": "create_ray_launcher_scripts",
+          "startLine": 62,
+          "endLine": 150,
+          "params": [
+            "worker_groups",
+            "head_address",
+            "ray_port",
+            "dashboard_port",
+            "metrics_port",
+            "mgmt_cpu",
+            "mgmt_memory_gb",
+            "proxy_health_check_period_s",
+            "proxy_health_check_timeout_s",
+            "proxy_ready_check_timeout_s",
+            "proxy_min_draining_period_s"
+          ]
+        },
+        {
+          "name": "load_config",
+          "startLine": 154,
+          "endLine": 251,
+          "params": []
+        },
+        {
+          "name": "_wait_for_management_api",
+          "startLine": 254,
+          "endLine": 294,
+          "params": [
+            "cluster_info",
+            "timeout"
+          ]
+        },
+        {
+          "name": "main",
+          "startLine": 297,
+          "endLine": 559,
+          "params": []
+        }
+      ],
+      "exports": [
+        {
+          "name": "create_ray_launcher_scripts",
+          "line": 62,
+          "isDefault": false
+        },
+        {
+          "name": "load_config",
+          "line": 154,
+          "isDefault": false
+        },
+        {
+          "name": "_wait_for_management_api",
+          "line": 254,
+          "isDefault": false
+        },
+        {
+          "name": "main",
+          "line": 297,
+          "isDefault": false
+        }
+      ],
+      "callGraph": [
+        {
+          "caller": "create_ray_launcher_scripts",
+          "callee": "Path",
+          "lineNumber": 99
+        },
+        {
+          "caller": "create_ray_launcher_scripts",
+          "callee": "Environment",
+          "lineNumber": 102
+        },
+        {
+          "caller": "create_ray_launcher_scripts",
+          "callee": "FileSystemLoader",
+          "lineNumber": 103
+        },
+        {
+          "caller": "create_ray_launcher_scripts",
+          "callee": "str",
+          "lineNumber": 103
+        },
+        {
+          "caller": "create_ray_launcher_scripts",
+          "callee": "str",
+          "lineNumber": 109
+        },
+        {
+          "caller": "create_ray_launcher_scripts",
+          "callee": "str",
+          "lineNumber": 110
+        },
+        {
+          "caller": "create_ray_launcher_scripts",
+          "callee": "head_script_path.write_text",
+          "lineNumber": 122
+        },
+        {
+          "caller": "create_ray_launcher_scripts",
+          "callee": "env.get_template(\"ray_head_launcher.py.j2\").render",
+          "lineNumber": 123
+        },
+        {
+          "caller": "create_ray_launcher_scripts",
+          "callee": "env.get_template",
+          "lineNumber": 123
+        },
+        {
+          "caller": "create_ray_launcher_scripts",
+          "callee": "head_script_path.chmod",
+          "lineNumber": 125
+        },
+        {
+          "caller": "create_ray_launcher_scripts",
+          "callee": "print",
+          "lineNumber": 126
+        },
+        {
+          "caller": "create_ray_launcher_scripts",
+          "callee": "print",
+          "lineNumber": 127
+        },
+        {
+          "caller": "create_ray_launcher_scripts",
+          "callee": "env.get_template",
+          "lineNumber": 130
+        },
+        {
+          "caller": "create_ray_launcher_scripts",
+          "callee": "str",
+          "lineNumber": 133
+        },
+        {
+          "caller": "create_ray_launcher_scripts",
+          "callee": "str",
+          "lineNumber": 134
+        },
+        {
+          "caller": "create_ray_launcher_scripts",
+          "callee": "group.name.replace(\"-\", \"_\").replace",
+          "lineNumber": 143
+        },
+        {
+          "caller": "create_ray_launcher_scripts",
+          "callee": "group.name.replace",
+          "lineNumber": 143
+        },
+        {
+          "caller": "create_ray_launcher_scripts",
+          "callee": "script_path.write_text",
+          "lineNumber": 145
+        },
+        {
+          "caller": "create_ray_launcher_scripts",
+          "callee": "worker_template.render",
+          "lineNumber": 145
+        },
+        {
+          "caller": "create_ray_launcher_scripts",
+          "callee": "script_path.chmod",
+          "lineNumber": 146
+        },
+        {
+          "caller": "create_ray_launcher_scripts",
+          "callee": "str",
+          "lineNumber": 147
+        },
+        {
+          "caller": "create_ray_launcher_scripts",
+          "callee": "print",
+          "lineNumber": 148
+        },
+        {
+          "caller": "create_ray_launcher_scripts",
+          "callee": "str",
+          "lineNumber": 150
+        },
+        {
+          "caller": "load_config",
+          "callee": "Path",
+          "lineNumber": 195
+        },
+        {
+          "caller": "load_config",
+          "callee": "config_path.exists",
+          "lineNumber": 196
+        },
+        {
+          "caller": "load_config",
+          "callee": "open",
+          "lineNumber": 198
+        },
+        {
+          "caller": "load_config",
+          "callee": "yaml.safe_load",
+          "lineNumber": 199
+        },
+        {
+          "caller": "load_config",
+          "callee": "config.update",
+          "lineNumber": 200
+        },
+        {
+          "caller": "load_config",
+          "callee": "file_config.get",
+          "lineNumber": 200
+        },
+        {
+          "caller": "load_config",
+          "callee": "file_config.get",
+          "lineNumber": 201
+        },
+        {
+          "caller": "load_config",
+          "callee": "float",
+          "lineNumber": 205
+        },
+        {
+          "caller": "load_config",
+          "callee": "file_config.get",
+          "lineNumber": 206
+        },
+        {
+          "caller": "load_config",
+          "callee": "print",
+          "lineNumber": 213
+        },
+        {
+          "caller": "load_config",
+          "callee": "print",
+          "lineNumber": 215
+        },
+        {
+          "caller": "load_config",
+          "callee": "os.environ.get",
+          "lineNumber": 232
+        },
+        {
+          "caller": "load_config",
+          "callee": "int",
+          "lineNumber": 234
+        },
+        {
+          "caller": "load_config",
+          "callee": "os.environ.get",
+          "lineNumber": 236
+        },
+        {
+          "caller": "load_config",
+          "callee": "os.environ.get",
+          "lineNumber": 247
+        },
+        {
+          "caller": "load_config",
+          "callee": "float",
+          "lineNumber": 249
+        },
+        {
+          "caller": "_wait_for_management_api",
+          "callee": "cluster_info.get(\"head_url\", \"\").rstrip",
+          "lineNumber": 271
+        },
+        {
+          "caller": "_wait_for_management_api",
+          "callee": "cluster_info.get",
+          "lineNumber": 271
+        },
+        {
+          "caller": "_wait_for_management_api",
+          "callee": "print",
+          "lineNumber": 273
+        },
+        {
+          "caller": "_wait_for_management_api",
+          "callee": "print",
+          "lineNumber": 277
+        },
+        {
+          "caller": "_wait_for_management_api",
+          "callee": "time.time",
+          "lineNumber": 279
+        },
+        {
+          "caller": "_wait_for_management_api",
+          "callee": "time.time",
+          "lineNumber": 281
+        },
+        {
+          "caller": "_wait_for_management_api",
+          "callee": "urllib.request.urlopen",
+          "lineNumber": 284
+        },
+        {
+          "caller": "_wait_for_management_api",
+          "callee": "int",
+          "lineNumber": 286
+        },
+        {
+          "caller": "_wait_for_management_api",
+          "callee": "time.time",
+          "lineNumber": 286
+        },
+        {
+          "caller": "_wait_for_management_api",
+          "callee": "print",
+          "lineNumber": 287
+        },
+        {
+          "caller": "_wait_for_management_api",
+          "callee": "time.sleep",
+          "lineNumber": 291
+        },
+        {
+          "caller": "_wait_for_management_api",
+          "callee": "print",
+          "lineNumber": 293
+        },
+        {
+          "caller": "main",
+          "callee": "print",
+          "lineNumber": 299
+        },
+        {
+          "caller": "main",
+          "callee": "print",
+          "lineNumber": 300
+        },
+        {
+          "caller": "main",
+          "callee": "print",
+          "lineNumber": 301
+        },
+        {
+          "caller": "main",
+          "callee": "os.environ.get",
+          "lineNumber": 305
+        },
+        {
+          "caller": "main",
+          "callee": "os.environ.get",
+          "lineNumber": 308
+        },
+        {
+          "caller": "main",
+          "callee": "os.environ.get",
+          "lineNumber": 312
+        },
+        {
+          "caller": "main",
+          "callee": "os.environ.get",
+          "lineNumber": 312
+        },
+        {
+          "caller": "main",
+          "callee": "os.environ.get",
+          "lineNumber": 313
+        },
+        {
+          "caller": "main",
+          "callee": "os.environ.get",
+          "lineNumber": 313
+        },
+        {
+          "caller": "main",
+          "callee": "load_config",
+          "lineNumber": 316
+        },
+        {
+          "caller": "main",
+          "callee": "os.environ.get",
+          "lineNumber": 319
+        },
+        {
+          "caller": "main",
+          "callee": "os.environ.get",
+          "lineNumber": 320
+        },
+        {
+          "caller": "main",
+          "callee": "print",
+          "lineNumber": 322
+        },
+        {
+          "caller": "main",
+          "callee": "print",
+          "lineNumber": 323
+        },
+        {
+          "caller": "main",
+          "callee": "print",
+          "lineNumber": 324
+        },
+        {
+          "caller": "main",
+          "callee": "print",
+          "lineNumber": 325
+        },
+        {
+          "caller": "main",
+          "callee": "print",
+          "lineNumber": 326
+        },
+        {
+          "caller": "main",
+          "callee": "all",
+          "lineNumber": 328
+        },
+        {
+          "caller": "main",
+          "callee": "print",
+          "lineNumber": 329
+        },
+        {
+          "caller": "main",
+          "callee": "print",
+          "lineNumber": 330
+        },
+        {
+          "caller": "main",
+          "callee": "os.environ.get(\"CDSW_DOMAIN\", \"\").strip",
+          "lineNumber": 335
+        },
+        {
+          "caller": "main",
+          "callee": "os.environ.get",
+          "lineNumber": 335
+        },
+        {
+          "caller": "main",
+          "callee": "print",
+          "lineNumber": 339
+        },
+        {
+          "caller": "main",
+          "callee": "print",
+          "lineNumber": 340
+        },
+        {
+          "caller": "main",
+          "callee": "max",
+          "lineNumber": 346
+        },
+        {
+          "caller": "main",
+          "callee": "max",
+          "lineNumber": 347
+        },
+        {
+          "caller": "main",
+          "callee": "ray_config.get",
+          "lineNumber": 352
+        },
+        {
+          "caller": "main",
+          "callee": "WorkerGroupConfig",
+          "lineNumber": 354
+        },
+        {
+          "caller": "main",
+          "callee": "g.get",
+          "lineNumber": 360
+        },
+        {
+          "caller": "main",
+          "callee": "g.get",
+          "lineNumber": 361
+        },
+        {
+          "caller": "main",
+          "callee": "g.get",
+          "lineNumber": 362
+        },
+        {
+          "caller": "main",
+          "callee": "g.get",
+          "lineNumber": 363
+        },
+        {
+          "caller": "main",
+          "callee": "WorkerGroupConfig",
+          "lineNumber": 372
+        },
+        {
+          "caller": "main",
+          "callee": "print",
+          "lineNumber": 381
+        },
+        {
+          "caller": "main",
+          "callee": "print",
+          "lineNumber": 382
+        },
+        {
+          "caller": "main",
+          "callee": "print",
+          "lineNumber": 383
+        },
+        {
+          "caller": "main",
+          "callee": "print",
+          "lineNumber": 385
+        },
+        {
+          "caller": "main",
+          "callee": "print",
+          "lineNumber": 387
+        },
+        {
+          "caller": "main",
+          "callee": "print",
+          "lineNumber": 388
+        },
+        {
+          "caller": "main",
+          "callee": "print",
+          "lineNumber": 392
+        },
+        {
+          "caller": "main",
+          "callee": "create_ray_launcher_scripts",
+          "lineNumber": 393
+        },
+        {
+          "caller": "main",
+          "callee": "print",
+          "lineNumber": 407
+        },
+        {
+          "caller": "main",
+          "callee": "CAIClusterManager",
+          "lineNumber": 408
+        },
+        {
+          "caller": "main",
+          "callee": "print",
+          "lineNumber": 414
+        },
+        {
+          "caller": "main",
+          "callee": "Path",
+          "lineNumber": 417
+        },
+        {
+          "caller": "main",
+          "callee": "print",
+          "lineNumber": 418
+        },
+        {
+          "caller": "main",
+          "callee": "print",
+          "lineNumber": 419
+        },
+        {
+          "caller": "main",
+          "callee": "manager.start_cluster",
+          "lineNumber": 420
+        },
+        {
+          "caller": "main",
+          "callee": "print",
+          "lineNumber": 437
+        },
+        {
+          "caller": "main",
+          "callee": "cluster_info.get",
+          "lineNumber": 437
+        },
+        {
+          "caller": "main",
+          "callee": "print",
+          "lineNumber": 440
+        },
+        {
+          "caller": "main",
+          "callee": "_wait_for_management_api",
+          "lineNumber": 441
+        },
+        {
+          "caller": "main",
+          "callee": "print",
+          "lineNumber": 445
+        },
+        {
+          "caller": "main",
+          "callee": "cluster_info.get",
+          "lineNumber": 447
+        },
+        {
+          "caller": "main",
+          "callee": "print",
+          "lineNumber": 448
+        },
+        {
+          "caller": "main",
+          "callee": "cluster_info.get",
+          "lineNumber": 454
+        },
+        {
+          "caller": "main",
+          "callee": "_urlreq2.urlopen",
+          "lineNumber": 457
+        },
+        {
+          "caller": "main",
+          "callee": "json.loads(_r.read()).get",
+          "lineNumber": 460
+        },
+        {
+          "caller": "main",
+          "callee": "json.loads",
+          "lineNumber": 460
+        },
+        {
+          "caller": "main",
+          "callee": "_r.read",
+          "lineNumber": 460
+        },
+        {
+          "caller": "main",
+          "callee": "open",
+          "lineNumber": 463
+        },
+        {
+          "caller": "main",
+          "callee": "json.dump",
+          "lineNumber": 464
+        },
+        {
+          "caller": "main",
+          "callee": "print",
+          "lineNumber": 465
+        },
+        {
+          "caller": "main",
+          "callee": "print",
+          "lineNumber": 467
+        },
+        {
+          "caller": "main",
+          "callee": "sum",
+          "lineNumber": 470
+        },
+        {
+          "caller": "main",
+          "callee": "print",
+          "lineNumber": 474
+        },
+        {
+          "caller": "main",
+          "callee": "range",
+          "lineNumber": 477
+        },
+        {
+          "caller": "main",
+          "callee": "_json.dumps({\n                        \"node_type\": g.node_type,\n                        \"cpu\":       g.cpu,\n                        \"memory\":    g.memory,\n                        \"gpus\":      g.gpus,\n                    }).encode",
+          "lineNumber": 478
+        },
+        {
+          "caller": "main",
+          "callee": "_json.dumps",
+          "lineNumber": 478
+        },
+        {
+          "caller": "main",
+          "callee": "_urlreq.Request",
+          "lineNumber": 484
+        },
+        {
+          "caller": "main",
+          "callee": "_urlreq.urlopen",
+          "lineNumber": 491
+        },
+        {
+          "caller": "main",
+          "callee": "_json.loads",
+          "lineNumber": 492
+        },
+        {
+          "caller": "main",
+          "callee": "resp.read",
+          "lineNumber": 492
+        },
+        {
+          "caller": "main",
+          "callee": "print",
+          "lineNumber": 493
+        },
+        {
+          "caller": "main",
+          "callee": "result.get",
+          "lineNumber": 494
+        },
+        {
+          "caller": "main",
+          "callee": "print",
+          "lineNumber": 496
+        },
+        {
+          "caller": "main",
+          "callee": "print",
+          "lineNumber": 498
+        },
+        {
+          "caller": "main",
+          "callee": "Path",
+          "lineNumber": 501
+        },
+        {
+          "caller": "main",
+          "callee": "open",
+          "lineNumber": 502
+        },
+        {
+          "caller": "main",
+          "callee": "json.dump",
+          "lineNumber": 503
+        },
+        {
+          "caller": "main",
+          "callee": "print",
+          "lineNumber": 504
+        },
+        {
+          "caller": "main",
+          "callee": "print",
+          "lineNumber": 507
+        },
+        {
+          "caller": "main",
+          "callee": "print",
+          "lineNumber": 508
+        },
+        {
+          "caller": "main",
+          "callee": "print",
+          "lineNumber": 509
+        },
+        {
+          "caller": "main",
+          "callee": "cluster_info.get",
+          "lineNumber": 510
+        },
+        {
+          "caller": "main",
+          "callee": "print",
+          "lineNumber": 511
+        },
+        {
+          "caller": "main",
+          "callee": "print",
+          "lineNumber": 512
+        },
+        {
+          "caller": "main",
+          "callee": "print",
+          "lineNumber": 513
+        },
+        {
+          "caller": "main",
+          "callee": "print",
+          "lineNumber": 515
+        },
+        {
+          "caller": "main",
+          "callee": "head_address.split",
+          "lineNumber": 515
+        },
+        {
+          "caller": "main",
+          "callee": "print",
+          "lineNumber": 516
+        },
+        {
+          "caller": "main",
+          "callee": "cluster_info.get",
+          "lineNumber": 517
+        },
+        {
+          "caller": "main",
+          "callee": "print",
+          "lineNumber": 518
+        },
+        {
+          "caller": "main",
+          "callee": "print",
+          "lineNumber": 521
+        },
+        {
+          "caller": "main",
+          "callee": "print",
+          "lineNumber": 523
+        },
+        {
+          "caller": "main",
+          "callee": "print",
+          "lineNumber": 524
+        },
+        {
+          "caller": "main",
+          "callee": "print",
+          "lineNumber": 526
+        },
+        {
+          "caller": "main",
+          "callee": "cluster_info.get",
+          "lineNumber": 527
+        },
+        {
+          "caller": "main",
+          "callee": "print",
+          "lineNumber": 528
+        },
+        {
+          "caller": "main",
+          "callee": "print",
+          "lineNumber": 529
+        },
+        {
+          "caller": "main",
+          "callee": "print",
+          "lineNumber": 531
+        },
+        {
+          "caller": "main",
+          "callee": "print",
+          "lineNumber": 532
+        },
+        {
+          "caller": "main",
+          "callee": "print",
+          "lineNumber": 533
+        },
+        {
+          "caller": "main",
+          "callee": "print",
+          "lineNumber": 534
+        },
+        {
+          "caller": "main",
+          "callee": "print",
+          "lineNumber": 535
+        },
+        {
+          "caller": "main",
+          "callee": "print",
+          "lineNumber": 536
+        },
+        {
+          "caller": "main",
+          "callee": "cluster_info.get",
+          "lineNumber": 538
+        },
+        {
+          "caller": "main",
+          "callee": "print",
+          "lineNumber": 539
+        },
+        {
+          "caller": "main",
+          "callee": "print",
+          "lineNumber": 540
+        },
+        {
+          "caller": "main",
+          "callee": "print",
+          "lineNumber": 541
+        },
+        {
+          "caller": "main",
+          "callee": "print",
+          "lineNumber": 542
+        },
+        {
+          "caller": "main",
+          "callee": "print",
+          "lineNumber": 543
+        },
+        {
+          "caller": "main",
+          "callee": "print",
+          "lineNumber": 544
+        },
+        {
+          "caller": "main",
+          "callee": "print",
+          "lineNumber": 546
+        },
+        {
+          "caller": "main",
+          "callee": "print",
+          "lineNumber": 547
+        },
+        {
+          "caller": "main",
+          "callee": "print",
+          "lineNumber": 548
+        },
+        {
+          "caller": "main",
+          "callee": "print",
+          "lineNumber": 553
+        },
+        {
+          "caller": "main",
+          "callee": "print",
+          "lineNumber": 556
+        },
+        {
+          "caller": "main",
+          "callee": "traceback.print_exc",
+          "lineNumber": 558
+        }
+      ],
+      "metrics": {
+        "importCount": 0,
+        "exportCount": 4,
+        "functionCount": 4,
+        "classCount": 0
+      }
+    },
+    {
+      "path": "cai_integration/launch_ray_cluster_job.py",
+      "language": "python",
+      "fileCategory": "code",
+      "totalLines": 77,
+      "nonEmptyLines": 62,
+      "functions": [
+        {
+          "name": "main",
+          "startLine": 25,
+          "endLine": 71,
+          "params": []
+        }
+      ],
+      "exports": [
+        {
+          "name": "main",
+          "line": 25,
+          "isDefault": false
+        }
+      ],
+      "callGraph": [
+        {
+          "caller": "main",
+          "callee": "Path(__file__).resolve",
+          "lineNumber": 30
+        },
+        {
+          "caller": "main",
+          "callee": "Path",
+          "lineNumber": 30
+        },
+        {
+          "caller": "main",
+          "callee": "Path.cwd",
+          "lineNumber": 34
+        },
+        {
+          "caller": "main",
+          "callee": "bash_wrapper.exists",
+          "lineNumber": 40
+        },
+        {
+          "caller": "main",
+          "callee": "print",
+          "lineNumber": 41
+        },
+        {
+          "caller": "main",
+          "callee": "print",
+          "lineNumber": 42
+        },
+        {
+          "caller": "main",
+          "callee": "print",
+          "lineNumber": 45
+        },
+        {
+          "caller": "main",
+          "callee": "print",
+          "lineNumber": 46
+        },
+        {
+          "caller": "main",
+          "callee": "print",
+          "lineNumber": 47
+        },
+        {
+          "caller": "main",
+          "callee": "print",
+          "lineNumber": 48
+        },
+        {
+          "caller": "main",
+          "callee": "print",
+          "lineNumber": 49
+        },
+        {
+          "caller": "main",
+          "callee": "print",
+          "lineNumber": 50
+        },
+        {
+          "caller": "main",
+          "callee": "venv_python.exists",
+          "lineNumber": 53
+        },
+        {
+          "caller": "main",
+          "callee": "print",
+          "lineNumber": 54
+        },
+        {
+          "caller": "main",
+          "callee": "print",
+          "lineNumber": 55
+        },
+        {
+          "caller": "main",
+          "callee": "subprocess.run",
+          "lineNumber": 59
+        },
+        {
+          "caller": "main",
+          "callee": "str",
+          "lineNumber": 60
+        },
+        {
+          "caller": "main",
+          "callee": "str",
+          "lineNumber": 61
+        },
+        {
+          "caller": "main",
+          "callee": "str",
+          "lineNumber": 63
+        },
+        {
+          "caller": "main",
+          "callee": "print",
+          "lineNumber": 68
+        },
+        {
+          "caller": "main",
+          "callee": "traceback.print_exc",
+          "lineNumber": 70
+        }
+      ],
+      "metrics": {
+        "importCount": 0,
+        "exportCount": 1,
+        "functionCount": 1,
+        "classCount": 0
+      }
+    },
+    {
+      "path": "cai_integration/setup_litellm_env.py",
+      "language": "python",
+      "fileCategory": "code",
+      "totalLines": 79,
+      "nonEmptyLines": 61,
+      "functions": [
+        {
+          "name": "main",
+          "startLine": 35,
+          "endLine": 75,
+          "params": []
+        }
+      ],
+      "exports": [
+        {
+          "name": "main",
+          "line": 35,
+          "isDefault": false
+        }
+      ],
+      "callGraph": [
+        {
+          "caller": "main",
+          "callee": "argparse.ArgumentParser",
+          "lineNumber": 36
+        },
+        {
+          "caller": "main",
+          "callee": "parser.add_argument",
+          "lineNumber": 37
+        },
+        {
+          "caller": "main",
+          "callee": "parser.parse_known_args",
+          "lineNumber": 43
+        },
+        {
+          "caller": "main",
+          "callee": "os.environ.get(\"SETUP_FORCE_RECREATE\", \"\").strip",
+          "lineNumber": 45
+        },
+        {
+          "caller": "main",
+          "callee": "os.environ.get",
+          "lineNumber": 45
+        },
+        {
+          "caller": "main",
+          "callee": "print",
+          "lineNumber": 47
+        },
+        {
+          "caller": "main",
+          "callee": "print",
+          "lineNumber": 48
+        },
+        {
+          "caller": "main",
+          "callee": "print",
+          "lineNumber": 49
+        },
+        {
+          "caller": "main",
+          "callee": "os.path.exists",
+          "lineNumber": 51
+        },
+        {
+          "caller": "main",
+          "callee": "print",
+          "lineNumber": 52
+        },
+        {
+          "caller": "main",
+          "callee": "shutil.rmtree",
+          "lineNumber": 53
+        },
+        {
+          "caller": "main",
+          "callee": "os.path.exists",
+          "lineNumber": 55
+        },
+        {
+          "caller": "main",
+          "callee": "os.remove",
+          "lineNumber": 56
+        },
+        {
+          "caller": "main",
+          "callee": "setup_engine_venv",
+          "lineNumber": 58
+        },
+        {
+          "caller": "main",
+          "callee": "print",
+          "lineNumber": 61
+        },
+        {
+          "caller": "main",
+          "callee": "sys.exit",
+          "lineNumber": 62
+        },
+        {
+          "caller": "main",
+          "callee": "subprocess.run",
+          "lineNumber": 66
+        },
+        {
+          "caller": "main",
+          "callee": "print",
+          "lineNumber": 72
+        },
+        {
+          "caller": "main",
+          "callee": "result.stdout.strip",
+          "lineNumber": 72
+        },
+        {
+          "caller": "main",
+          "callee": "print",
+          "lineNumber": 74
+        },
+        {
+          "caller": "main",
+          "callee": "sys.exit",
+          "lineNumber": 75
+        }
+      ],
+      "metrics": {
+        "importCount": 0,
+        "exportCount": 1,
+        "functionCount": 1,
+        "classCount": 0
+      }
+    },
+    {
+      "path": "cai_integration/setup_project.py",
+      "language": "python",
+      "fileCategory": "code",
+      "totalLines": 255,
+      "nonEmptyLines": 208,
+      "functions": [
+        {
+          "name": "main",
+          "startLine": 237,
+          "endLine": 251,
+          "params": []
+        }
+      ],
+      "classes": [
+        {
+          "name": "ProjectSetup",
+          "startLine": 21,
+          "endLine": 234,
+          "methods": [
+            "__init__",
+            "make_request",
+            "search_projects",
+            "create_project_with_git",
+            "configure_project_resources",
+            "get_or_create_project",
+            "wait_for_git_clone",
+            "run"
+          ],
+          "properties": []
+        }
+      ],
+      "exports": [
+        {
+          "name": "ProjectSetup",
+          "line": 21,
+          "isDefault": false
+        },
+        {
+          "name": "main",
+          "line": 237,
+          "isDefault": false
+        }
+      ],
+      "callGraph": [
+        {
+          "caller": "__init__",
+          "callee": "os.environ.get",
+          "lineNumber": 26
+        },
+        {
+          "caller": "__init__",
+          "callee": "os.environ.get",
+          "lineNumber": 27
+        },
+        {
+          "caller": "__init__",
+          "callee": "os.environ.get",
+          "lineNumber": 28
+        },
+        {
+          "caller": "__init__",
+          "callee": "os.environ.get",
+          "lineNumber": 29
+        },
+        {
+          "caller": "__init__",
+          "callee": "os.environ.get",
+          "lineNumber": 29
+        },
+        {
+          "caller": "__init__",
+          "callee": "all",
+          "lineNumber": 32
+        },
+        {
+          "caller": "__init__",
+          "callee": "print",
+          "lineNumber": 33
+        },
+        {
+          "caller": "__init__",
+          "callee": "print",
+          "lineNumber": 34
+        },
+        {
+          "caller": "__init__",
+          "callee": "sys.exit",
+          "lineNumber": 35
+        },
+        {
+          "caller": "__init__",
+          "callee": "self.cml_host.rstrip",
+          "lineNumber": 37
+        },
+        {
+          "caller": "__init__",
+          "callee": "self.api_key.strip",
+          "lineNumber": 41
+        },
+        {
+          "caller": "make_request",
+          "callee": "endpoint.lstrip",
+          "lineNumber": 48
+        },
+        {
+          "caller": "make_request",
+          "callee": "requests.request",
+          "lineNumber": 51
+        },
+        {
+          "caller": "make_request",
+          "callee": "response.json",
+          "lineNumber": 63
+        },
+        {
+          "caller": "make_request",
+          "callee": "print",
+          "lineNumber": 68
+        },
+        {
+          "caller": "make_request",
+          "callee": "print",
+          "lineNumber": 72
+        },
+        {
+          "caller": "search_projects",
+          "callee": "print",
+          "lineNumber": 77
+        },
+        {
+          "caller": "search_projects",
+          "callee": "self.make_request",
+          "lineNumber": 80
+        },
+        {
+          "caller": "search_projects",
+          "callee": "result.get",
+          "lineNumber": 85
+        },
+        {
+          "caller": "search_projects",
+          "callee": "projects[0].get",
+          "lineNumber": 87
+        },
+        {
+          "caller": "search_projects",
+          "callee": "print",
+          "lineNumber": 88
+        },
+        {
+          "caller": "search_projects",
+          "callee": "print",
+          "lineNumber": 91
+        },
+        {
+          "caller": "create_project_with_git",
+          "callee": "print",
+          "lineNumber": 98
+        },
+        {
+          "caller": "create_project_with_git",
+          "callee": "self.make_request",
+          "lineNumber": 111
+        },
+        {
+          "caller": "create_project_with_git",
+          "callee": "result.get",
+          "lineNumber": 114
+        },
+        {
+          "caller": "create_project_with_git",
+          "callee": "print",
+          "lineNumber": 115
+        },
+        {
+          "caller": "configure_project_resources",
+          "callee": "print",
+          "lineNumber": 122
+        },
+        {
+          "caller": "configure_project_resources",
+          "callee": "self.make_request",
+          "lineNumber": 123
+        },
+        {
+          "caller": "configure_project_resources",
+          "callee": "print",
+          "lineNumber": 133
+        },
+        {
+          "caller": "configure_project_resources",
+          "callee": "print",
+          "lineNumber": 135
+        },
+        {
+          "caller": "get_or_create_project",
+          "callee": "print",
+          "lineNumber": 140
+        },
+        {
+          "caller": "get_or_create_project",
+          "callee": "print",
+          "lineNumber": 141
+        },
+        {
+          "caller": "get_or_create_project",
+          "callee": "print",
+          "lineNumber": 142
+        },
+        {
+          "caller": "get_or_create_project",
+          "callee": "self.search_projects",
+          "lineNumber": 145
+        },
+        {
+          "caller": "get_or_create_project",
+          "callee": "print",
+          "lineNumber": 151
+        },
+        {
+          "caller": "get_or_create_project",
+          "callee": "print",
+          "lineNumber": 152
+        },
+        {
+          "caller": "get_or_create_project",
+          "callee": "self.create_project_with_git",
+          "lineNumber": 156
+        },
+        {
+          "caller": "wait_for_git_clone",
+          "callee": "print",
+          "lineNumber": 164
+        },
+        {
+          "caller": "wait_for_git_clone",
+          "callee": "time.time",
+          "lineNumber": 166
+        },
+        {
+          "caller": "wait_for_git_clone",
+          "callee": "time.time",
+          "lineNumber": 169
+        },
+        {
+          "caller": "wait_for_git_clone",
+          "callee": "int",
+          "lineNumber": 170
+        },
+        {
+          "caller": "wait_for_git_clone",
+          "callee": "time.time",
+          "lineNumber": 170
+        },
+        {
+          "caller": "wait_for_git_clone",
+          "callee": "self.make_request",
+          "lineNumber": 171
+        },
+        {
+          "caller": "wait_for_git_clone",
+          "callee": "result.get",
+          "lineNumber": 175
+        },
+        {
+          "caller": "wait_for_git_clone",
+          "callee": "print",
+          "lineNumber": 176
+        },
+        {
+          "caller": "wait_for_git_clone",
+          "callee": "print",
+          "lineNumber": 180
+        },
+        {
+          "caller": "wait_for_git_clone",
+          "callee": "print",
+          "lineNumber": 182
+        },
+        {
+          "caller": "wait_for_git_clone",
+          "callee": "result.get",
+          "lineNumber": 183
+        },
+        {
+          "caller": "wait_for_git_clone",
+          "callee": "print",
+          "lineNumber": 184
+        },
+        {
+          "caller": "wait_for_git_clone",
+          "callee": "print",
+          "lineNumber": 188
+        },
+        {
+          "caller": "wait_for_git_clone",
+          "callee": "print",
+          "lineNumber": 189
+        },
+        {
+          "caller": "wait_for_git_clone",
+          "callee": "time.sleep",
+          "lineNumber": 190
+        },
+        {
+          "caller": "wait_for_git_clone",
+          "callee": "print",
+          "lineNumber": 191
+        },
+        {
+          "caller": "wait_for_git_clone",
+          "callee": "min",
+          "lineNumber": 197
+        },
+        {
+          "caller": "wait_for_git_clone",
+          "callee": "time.sleep",
+          "lineNumber": 198
+        },
+        {
+          "caller": "wait_for_git_clone",
+          "callee": "int",
+          "lineNumber": 200
+        },
+        {
+          "caller": "wait_for_git_clone",
+          "callee": "time.time",
+          "lineNumber": 200
+        },
+        {
+          "caller": "wait_for_git_clone",
+          "callee": "print",
+          "lineNumber": 201
+        },
+        {
+          "caller": "run",
+          "callee": "print",
+          "lineNumber": 206
+        },
+        {
+          "caller": "run",
+          "callee": "print",
+          "lineNumber": 207
+        },
+        {
+          "caller": "run",
+          "callee": "print",
+          "lineNumber": 208
+        },
+        {
+          "caller": "run",
+          "callee": "self.get_or_create_project",
+          "lineNumber": 210
+        },
+        {
+          "caller": "run",
+          "callee": "print",
+          "lineNumber": 212
+        },
+        {
+          "caller": "run",
+          "callee": "self.configure_project_resources",
+          "lineNumber": 215
+        },
+        {
+          "caller": "run",
+          "callee": "self.wait_for_git_clone",
+          "lineNumber": 219
+        },
+        {
+          "caller": "run",
+          "callee": "print",
+          "lineNumber": 220
+        },
+        {
+          "caller": "run",
+          "callee": "print",
+          "lineNumber": 223
+        },
+        {
+          "caller": "run",
+          "callee": "print",
+          "lineNumber": 224
+        },
+        {
+          "caller": "run",
+          "callee": "print",
+          "lineNumber": 225
+        },
+        {
+          "caller": "run",
+          "callee": "print",
+          "lineNumber": 226
+        },
+        {
+          "caller": "run",
+          "callee": "open",
+          "lineNumber": 231
+        },
+        {
+          "caller": "run",
+          "callee": "f.write",
+          "lineNumber": 232
+        },
+        {
+          "caller": "main",
+          "callee": "ProjectSetup",
+          "lineNumber": 240
+        },
+        {
+          "caller": "main",
+          "callee": "setup.run",
+          "lineNumber": 241
+        },
+        {
+          "caller": "main",
+          "callee": "sys.exit",
+          "lineNumber": 242
+        },
+        {
+          "caller": "main",
+          "callee": "print",
+          "lineNumber": 244
+        },
+        {
+          "caller": "main",
+          "callee": "sys.exit",
+          "lineNumber": 245
+        },
+        {
+          "caller": "main",
+          "callee": "print",
+          "lineNumber": 247
+        },
+        {
+          "caller": "main",
+          "callee": "traceback.print_exc",
+          "lineNumber": 250
+        },
+        {
+          "caller": "main",
+          "callee": "sys.exit",
+          "lineNumber": 251
+        }
+      ],
+      "metrics": {
+        "importCount": 0,
+        "exportCount": 2,
+        "functionCount": 1,
+        "classCount": 1
+      }
+    },
+    {
+      "path": "cai_integration/create_jobs.py",
+      "language": "python",
+      "fileCategory": "code",
+      "totalLines": 288,
+      "nonEmptyLines": 239,
+      "functions": [
+        {
+          "name": "main",
+          "startLine": 261,
+          "endLine": 284,
+          "params": []
+        }
+      ],
+      "classes": [
+        {
+          "name": "JobManager",
+          "startLine": 24,
+          "endLine": 258,
+          "methods": [
+            "__init__",
+            "make_request",
+            "load_jobs_config",
+            "get_runtime_identifier",
+            "list_jobs",
+            "create_job",
+            "update_job",
+            "create_or_update_jobs",
+            "run"
+          ],
+          "properties": []
+        }
+      ],
+      "exports": [
+        {
+          "name": "JobManager",
+          "line": 24,
+          "isDefault": false
+        },
+        {
+          "name": "main",
+          "line": 261,
+          "isDefault": false
+        }
+      ],
+      "callGraph": [
+        {
+          "caller": "__init__",
+          "callee": "os.environ.get",
+          "lineNumber": 29
+        },
+        {
+          "caller": "__init__",
+          "callee": "os.environ.get",
+          "lineNumber": 30
+        },
+        {
+          "caller": "__init__",
+          "callee": "all",
+          "lineNumber": 32
+        },
+        {
+          "caller": "__init__",
+          "callee": "print",
+          "lineNumber": 33
+        },
+        {
+          "caller": "__init__",
+          "callee": "print",
+          "lineNumber": 34
+        },
+        {
+          "caller": "__init__",
+          "callee": "sys.exit",
+          "lineNumber": 35
+        },
+        {
+          "caller": "__init__",
+          "callee": "self.cml_host.rstrip",
+          "lineNumber": 37
+        },
+        {
+          "caller": "__init__",
+          "callee": "self.api_key.strip",
+          "lineNumber": 41
+        },
+        {
+          "caller": "make_request",
+          "callee": "endpoint.lstrip",
+          "lineNumber": 48
+        },
+        {
+          "caller": "make_request",
+          "callee": "requests.request",
+          "lineNumber": 51
+        },
+        {
+          "caller": "make_request",
+          "callee": "response.json",
+          "lineNumber": 63
+        },
+        {
+          "caller": "make_request",
+          "callee": "print",
+          "lineNumber": 68
+        },
+        {
+          "caller": "make_request",
+          "callee": "print",
+          "lineNumber": 72
+        },
+        {
+          "caller": "load_jobs_config",
+          "callee": "Path",
+          "lineNumber": 77
+        },
+        {
+          "caller": "load_jobs_config",
+          "callee": "open",
+          "lineNumber": 80
+        },
+        {
+          "caller": "load_jobs_config",
+          "callee": "yaml.safe_load",
+          "lineNumber": 81
+        },
+        {
+          "caller": "load_jobs_config",
+          "callee": "print",
+          "lineNumber": 82
+        },
+        {
+          "caller": "load_jobs_config",
+          "callee": "print",
+          "lineNumber": 85
+        },
+        {
+          "caller": "get_runtime_identifier",
+          "callee": "os.environ.get",
+          "lineNumber": 91
+        },
+        {
+          "caller": "get_runtime_identifier",
+          "callee": "print",
+          "lineNumber": 93
+        },
+        {
+          "caller": "get_runtime_identifier",
+          "callee": "Path",
+          "lineNumber": 97
+        },
+        {
+          "caller": "get_runtime_identifier",
+          "callee": "open",
+          "lineNumber": 99
+        },
+        {
+          "caller": "get_runtime_identifier",
+          "callee": "yaml.safe_load",
+          "lineNumber": 100
+        },
+        {
+          "caller": "get_runtime_identifier",
+          "callee": "config.get",
+          "lineNumber": 101
+        },
+        {
+          "caller": "get_runtime_identifier",
+          "callee": "cai_config.get",
+          "lineNumber": 104
+        },
+        {
+          "caller": "get_runtime_identifier",
+          "callee": "cai_config.get",
+          "lineNumber": 105
+        },
+        {
+          "caller": "get_runtime_identifier",
+          "callee": "print",
+          "lineNumber": 108
+        },
+        {
+          "caller": "get_runtime_identifier",
+          "callee": "print",
+          "lineNumber": 111
+        },
+        {
+          "caller": "get_runtime_identifier",
+          "callee": "print",
+          "lineNumber": 113
+        },
+        {
+          "caller": "list_jobs",
+          "callee": "print",
+          "lineNumber": 118
+        },
+        {
+          "caller": "list_jobs",
+          "callee": "self.make_request",
+          "lineNumber": 119
+        },
+        {
+          "caller": "list_jobs",
+          "callee": "result.get",
+          "lineNumber": 123
+        },
+        {
+          "caller": "list_jobs",
+          "callee": "job.get",
+          "lineNumber": 124
+        },
+        {
+          "caller": "list_jobs",
+          "callee": "job.get",
+          "lineNumber": 124
+        },
+        {
+          "caller": "list_jobs",
+          "callee": "print",
+          "lineNumber": 125
+        },
+        {
+          "caller": "list_jobs",
+          "callee": "len",
+          "lineNumber": 125
+        },
+        {
+          "caller": "list_jobs",
+          "callee": "print",
+          "lineNumber": 127
+        },
+        {
+          "caller": "create_job",
+          "callee": "print",
+          "lineNumber": 138
+        },
+        {
+          "caller": "create_job",
+          "callee": "job_config.get",
+          "lineNumber": 143
+        },
+        {
+          "caller": "create_job",
+          "callee": "job_config.get",
+          "lineNumber": 144
+        },
+        {
+          "caller": "create_job",
+          "callee": "job_config.get",
+          "lineNumber": 145
+        },
+        {
+          "caller": "create_job",
+          "callee": "self.make_request",
+          "lineNumber": 155
+        },
+        {
+          "caller": "create_job",
+          "callee": "result.get",
+          "lineNumber": 158
+        },
+        {
+          "caller": "create_job",
+          "callee": "print",
+          "lineNumber": 159
+        },
+        {
+          "caller": "create_job",
+          "callee": "print",
+          "lineNumber": 162
+        },
+        {
+          "caller": "update_job",
+          "callee": "print",
+          "lineNumber": 170
+        },
+        {
+          "caller": "update_job",
+          "callee": "job_config.get",
+          "lineNumber": 175
+        },
+        {
+          "caller": "update_job",
+          "callee": "job_config.get",
+          "lineNumber": 176
+        },
+        {
+          "caller": "update_job",
+          "callee": "job_config.get",
+          "lineNumber": 177
+        },
+        {
+          "caller": "update_job",
+          "callee": "self.make_request",
+          "lineNumber": 184
+        },
+        {
+          "caller": "update_job",
+          "callee": "print",
+          "lineNumber": 189
+        },
+        {
+          "caller": "update_job",
+          "callee": "print",
+          "lineNumber": 192
+        },
+        {
+          "caller": "create_or_update_jobs",
+          "callee": "print",
+          "lineNumber": 199
+        },
+        {
+          "caller": "create_or_update_jobs",
+          "callee": "print",
+          "lineNumber": 200
+        },
+        {
+          "caller": "create_or_update_jobs",
+          "callee": "self.get_runtime_identifier",
+          "lineNumber": 203
+        },
+        {
+          "caller": "create_or_update_jobs",
+          "callee": "print",
+          "lineNumber": 205
+        },
+        {
+          "caller": "create_or_update_jobs",
+          "callee": "self.list_jobs",
+          "lineNumber": 208
+        },
+        {
+          "caller": "create_or_update_jobs",
+          "callee": "jobs_config.get(\"jobs\", {}).items",
+          "lineNumber": 210
+        },
+        {
+          "caller": "create_or_update_jobs",
+          "callee": "jobs_config.get",
+          "lineNumber": 210
+        },
+        {
+          "caller": "create_or_update_jobs",
+          "callee": "job_config.get",
+          "lineNumber": 215
+        },
+        {
+          "caller": "create_or_update_jobs",
+          "callee": "self.update_job",
+          "lineNumber": 222
+        },
+        {
+          "caller": "create_or_update_jobs",
+          "callee": "self.create_job",
+          "lineNumber": 225
+        },
+        {
+          "caller": "create_or_update_jobs",
+          "callee": "print",
+          "lineNumber": 229
+        },
+        {
+          "caller": "run",
+          "callee": "print",
+          "lineNumber": 234
+        },
+        {
+          "caller": "run",
+          "callee": "print",
+          "lineNumber": 235
+        },
+        {
+          "caller": "run",
+          "callee": "print",
+          "lineNumber": 236
+        },
+        {
+          "caller": "run",
+          "callee": "self.load_jobs_config",
+          "lineNumber": 239
+        },
+        {
+          "caller": "run",
+          "callee": "print",
+          "lineNumber": 241
+        },
+        {
+          "caller": "run",
+          "callee": "self.create_or_update_jobs",
+          "lineNumber": 245
+        },
+        {
+          "caller": "run",
+          "callee": "print",
+          "lineNumber": 247
+        },
+        {
+          "caller": "run",
+          "callee": "print",
+          "lineNumber": 250
+        },
+        {
+          "caller": "run",
+          "callee": "print",
+          "lineNumber": 251
+        },
+        {
+          "caller": "run",
+          "callee": "print",
+          "lineNumber": 252
+        },
+        {
+          "caller": "run",
+          "callee": "print",
+          "lineNumber": 253
+        },
+        {
+          "caller": "run",
+          "callee": "print",
+          "lineNumber": 254
+        },
+        {
+          "caller": "run",
+          "callee": "len",
+          "lineNumber": 254
+        },
+        {
+          "caller": "run",
+          "callee": "job_ids.items",
+          "lineNumber": 255
+        },
+        {
+          "caller": "run",
+          "callee": "print",
+          "lineNumber": 256
+        },
+        {
+          "caller": "main",
+          "callee": "argparse.ArgumentParser",
+          "lineNumber": 263
+        },
+        {
+          "caller": "main",
+          "callee": "parser.add_argument",
+          "lineNumber": 266
+        },
+        {
+          "caller": "main",
+          "callee": "parser.parse_args",
+          "lineNumber": 270
+        },
+        {
+          "caller": "main",
+          "callee": "JobManager",
+          "lineNumber": 273
+        },
+        {
+          "caller": "main",
+          "callee": "manager.run",
+          "lineNumber": 274
+        },
+        {
+          "caller": "main",
+          "callee": "sys.exit",
+          "lineNumber": 275
+        },
+        {
+          "caller": "main",
+          "callee": "print",
+          "lineNumber": 277
+        },
+        {
+          "caller": "main",
+          "callee": "sys.exit",
+          "lineNumber": 278
+        },
+        {
+          "caller": "main",
+          "callee": "print",
+          "lineNumber": 280
+        },
+        {
+          "caller": "main",
+          "callee": "traceback.print_exc",
+          "lineNumber": 283
+        },
+        {
+          "caller": "main",
+          "callee": "sys.exit",
+          "lineNumber": 284
+        }
+      ],
+      "metrics": {
+        "importCount": 0,
+        "exportCount": 2,
+        "functionCount": 1,
+        "classCount": 1
+      }
+    },
+    {
+      "path": "cai_integration/trigger_jobs.py",
+      "language": "python",
+      "fileCategory": "code",
+      "totalLines": 378,
+      "nonEmptyLines": 306,
+      "functions": [
+        {
+          "name": "main",
+          "startLine": 329,
+          "endLine": 374,
+          "params": []
+        }
+      ],
+      "classes": [
+        {
+          "name": "JobTrigger",
+          "startLine": 23,
+          "endLine": 326,
+          "methods": [
+            "__init__",
+            "make_request",
+            "get_job_ids_by_name",
+            "job_succeeded_recently",
+            "trigger_job",
+            "wait_for_job_completion",
+            "_topological_order",
+            "_wait_for_new_run",
+            "run"
+          ],
+          "properties": []
+        }
+      ],
+      "exports": [
+        {
+          "name": "JobTrigger",
+          "line": 23,
+          "isDefault": false
+        },
+        {
+          "name": "main",
+          "line": 329,
+          "isDefault": false
+        }
+      ],
+      "callGraph": [
+        {
+          "caller": "__init__",
+          "callee": "os.environ.get",
+          "lineNumber": 28
+        },
+        {
+          "caller": "__init__",
+          "callee": "os.environ.get",
+          "lineNumber": 29
+        },
+        {
+          "caller": "__init__",
+          "callee": "os.environ.get(\"FORCE_REBUILD\", \"\").lower",
+          "lineNumber": 30
+        },
+        {
+          "caller": "__init__",
+          "callee": "os.environ.get",
+          "lineNumber": 30
+        },
+        {
+          "caller": "__init__",
+          "callee": "all",
+          "lineNumber": 32
+        },
+        {
+          "caller": "__init__",
+          "callee": "print",
+          "lineNumber": 33
+        },
+        {
+          "caller": "__init__",
+          "callee": "print",
+          "lineNumber": 34
+        },
+        {
+          "caller": "__init__",
+          "callee": "sys.exit",
+          "lineNumber": 35
+        },
+        {
+          "caller": "__init__",
+          "callee": "self.cml_host.rstrip",
+          "lineNumber": 37
+        },
+        {
+          "caller": "__init__",
+          "callee": "self.api_key.strip",
+          "lineNumber": 41
+        },
+        {
+          "caller": "make_request",
+          "callee": "endpoint.lstrip",
+          "lineNumber": 48
+        },
+        {
+          "caller": "make_request",
+          "callee": "requests.request",
+          "lineNumber": 51
+        },
+        {
+          "caller": "make_request",
+          "callee": "response.json",
+          "lineNumber": 63
+        },
+        {
+          "caller": "make_request",
+          "callee": "print",
+          "lineNumber": 68
+        },
+        {
+          "caller": "make_request",
+          "callee": "print",
+          "lineNumber": 72
+        },
+        {
+          "caller": "get_job_ids_by_name",
+          "callee": "print",
+          "lineNumber": 77
+        },
+        {
+          "caller": "get_job_ids_by_name",
+          "callee": "self.make_request",
+          "lineNumber": 79
+        },
+        {
+          "caller": "get_job_ids_by_name",
+          "callee": "print",
+          "lineNumber": 81
+        },
+        {
+          "caller": "get_job_ids_by_name",
+          "callee": "result.get",
+          "lineNumber": 84
+        },
+        {
+          "caller": "get_job_ids_by_name",
+          "callee": "job.get",
+          "lineNumber": 88
+        },
+        {
+          "caller": "get_job_ids_by_name",
+          "callee": "job.get",
+          "lineNumber": 89
+        },
+        {
+          "caller": "get_job_ids_by_name",
+          "callee": "job_names.items",
+          "lineNumber": 95
+        },
+        {
+          "caller": "get_job_ids_by_name",
+          "callee": "print",
+          "lineNumber": 98
+        },
+        {
+          "caller": "get_job_ids_by_name",
+          "callee": "print",
+          "lineNumber": 100
+        },
+        {
+          "caller": "job_succeeded_recently",
+          "callee": "self.make_request",
+          "lineNumber": 106
+        },
+        {
+          "caller": "job_succeeded_recently",
+          "callee": "result.get",
+          "lineNumber": 111
+        },
+        {
+          "caller": "job_succeeded_recently",
+          "callee": "runs[0].get(\"status\", \"\").lower",
+          "lineNumber": 113
+        },
+        {
+          "caller": "job_succeeded_recently",
+          "callee": "runs[0].get",
+          "lineNumber": 113
+        },
+        {
+          "caller": "trigger_job",
+          "callee": "self.make_request",
+          "lineNumber": 121
+        },
+        {
+          "caller": "trigger_job",
+          "callee": "result.get",
+          "lineNumber": 124
+        },
+        {
+          "caller": "wait_for_job_completion",
+          "callee": "print",
+          "lineNumber": 133
+        },
+        {
+          "caller": "wait_for_job_completion",
+          "callee": "print",
+          "lineNumber": 134
+        },
+        {
+          "caller": "wait_for_job_completion",
+          "callee": "time.time",
+          "lineNumber": 136
+        },
+        {
+          "caller": "wait_for_job_completion",
+          "callee": "time.time",
+          "lineNumber": 139
+        },
+        {
+          "caller": "wait_for_job_completion",
+          "callee": "self.make_request",
+          "lineNumber": 140
+        },
+        {
+          "caller": "wait_for_job_completion",
+          "callee": "result.get(\"status\", \"unknown\").lower",
+          "lineNumber": 145
+        },
+        {
+          "caller": "wait_for_job_completion",
+          "callee": "result.get",
+          "lineNumber": 145
+        },
+        {
+          "caller": "wait_for_job_completion",
+          "callee": "int",
+          "lineNumber": 149
+        },
+        {
+          "caller": "wait_for_job_completion",
+          "callee": "time.time",
+          "lineNumber": 149
+        },
+        {
+          "caller": "wait_for_job_completion",
+          "callee": "print",
+          "lineNumber": 150
+        },
+        {
+          "caller": "wait_for_job_completion",
+          "callee": "print",
+          "lineNumber": 155
+        },
+        {
+          "caller": "wait_for_job_completion",
+          "callee": "print",
+          "lineNumber": 160
+        },
+        {
+          "caller": "wait_for_job_completion",
+          "callee": "time.sleep",
+          "lineNumber": 163
+        },
+        {
+          "caller": "wait_for_job_completion",
+          "callee": "int",
+          "lineNumber": 165
+        },
+        {
+          "caller": "wait_for_job_completion",
+          "callee": "time.time",
+          "lineNumber": 165
+        },
+        {
+          "caller": "wait_for_job_completion",
+          "callee": "print",
+          "lineNumber": 166
+        },
+        {
+          "caller": "_topological_order",
+          "callee": "job_configs.get",
+          "lineNumber": 171
+        },
+        {
+          "caller": "_topological_order",
+          "callee": "set",
+          "lineNumber": 173
+        },
+        {
+          "caller": "_topological_order",
+          "callee": "jobs.keys",
+          "lineNumber": 173
+        },
+        {
+          "caller": "_topological_order",
+          "callee": "sorted",
+          "lineNumber": 177
+        },
+        {
+          "caller": "_topological_order",
+          "callee": "jobs[k].get",
+          "lineNumber": 179
+        },
+        {
+          "caller": "_topological_order",
+          "callee": "jobs[k].get",
+          "lineNumber": 180
+        },
+        {
+          "caller": "_topological_order",
+          "callee": "order.extend",
+          "lineNumber": 184
+        },
+        {
+          "caller": "_topological_order",
+          "callee": "sorted",
+          "lineNumber": 184
+        },
+        {
+          "caller": "_topological_order",
+          "callee": "order.extend",
+          "lineNumber": 186
+        },
+        {
+          "caller": "_topological_order",
+          "callee": "set",
+          "lineNumber": 187
+        },
+        {
+          "caller": "_wait_for_new_run",
+          "callee": "print",
+          "lineNumber": 205
+        },
+        {
+          "caller": "_wait_for_new_run",
+          "callee": "time.time",
+          "lineNumber": 206
+        },
+        {
+          "caller": "_wait_for_new_run",
+          "callee": "time.time",
+          "lineNumber": 208
+        },
+        {
+          "caller": "_wait_for_new_run",
+          "callee": "self.make_request",
+          "lineNumber": 209
+        },
+        {
+          "caller": "_wait_for_new_run",
+          "callee": "result.get",
+          "lineNumber": 215
+        },
+        {
+          "caller": "_wait_for_new_run",
+          "callee": "run.get",
+          "lineNumber": 216
+        },
+        {
+          "caller": "_wait_for_new_run",
+          "callee": "run.get",
+          "lineNumber": 217
+        },
+        {
+          "caller": "_wait_for_new_run",
+          "callee": "created_at.rstrip",
+          "lineNumber": 224
+        },
+        {
+          "caller": "_wait_for_new_run",
+          "callee": "datetime.strptime(ts, fmt).replace",
+          "lineNumber": 226
+        },
+        {
+          "caller": "_wait_for_new_run",
+          "callee": "datetime.strptime",
+          "lineNumber": 226
+        },
+        {
+          "caller": "_wait_for_new_run",
+          "callee": "dt.timestamp",
+          "lineNumber": 227
+        },
+        {
+          "caller": "_wait_for_new_run",
+          "callee": "int",
+          "lineNumber": 228
+        },
+        {
+          "caller": "_wait_for_new_run",
+          "callee": "time.time",
+          "lineNumber": 228
+        },
+        {
+          "caller": "_wait_for_new_run",
+          "callee": "print",
+          "lineNumber": 229
+        },
+        {
+          "caller": "_wait_for_new_run",
+          "callee": "time.sleep",
+          "lineNumber": 236
+        },
+        {
+          "caller": "_wait_for_new_run",
+          "callee": "print",
+          "lineNumber": 238
+        },
+        {
+          "caller": "run",
+          "callee": "print",
+          "lineNumber": 251
+        },
+        {
+          "caller": "run",
+          "callee": "print",
+          "lineNumber": 252
+        },
+        {
+          "caller": "run",
+          "callee": "print",
+          "lineNumber": 253
+        },
+        {
+          "caller": "run",
+          "callee": "print",
+          "lineNumber": 256
+        },
+        {
+          "caller": "run",
+          "callee": "print",
+          "lineNumber": 258
+        },
+        {
+          "caller": "run",
+          "callee": "self._topological_order",
+          "lineNumber": 261
+        },
+        {
+          "caller": "run",
+          "callee": "job_configs.get",
+          "lineNumber": 262
+        },
+        {
+          "caller": "run",
+          "callee": "print",
+          "lineNumber": 267
+        },
+        {
+          "caller": "run",
+          "callee": "jobs.get",
+          "lineNumber": 271
+        },
+        {
+          "caller": "run",
+          "callee": "root_job_config.get",
+          "lineNumber": 272
+        },
+        {
+          "caller": "run",
+          "callee": "print",
+          "lineNumber": 274
+        },
+        {
+          "caller": "run",
+          "callee": "self.job_succeeded_recently",
+          "lineNumber": 279
+        },
+        {
+          "caller": "run",
+          "callee": "print",
+          "lineNumber": 281
+        },
+        {
+          "caller": "run",
+          "callee": "self.trigger_job",
+          "lineNumber": 283
+        },
+        {
+          "caller": "run",
+          "callee": "print",
+          "lineNumber": 285
+        },
+        {
+          "caller": "run",
+          "callee": "print",
+          "lineNumber": 288
+        },
+        {
+          "caller": "run",
+          "callee": "time.time",
+          "lineNumber": 289
+        },
+        {
+          "caller": "run",
+          "callee": "root_job_config.get",
+          "lineNumber": 291
+        },
+        {
+          "caller": "run",
+          "callee": "self.wait_for_job_completion",
+          "lineNumber": 292
+        },
+        {
+          "caller": "run",
+          "callee": "print",
+          "lineNumber": 293
+        },
+        {
+          "caller": "run",
+          "callee": "print",
+          "lineNumber": 296
+        },
+        {
+          "caller": "run",
+          "callee": "job_ids.get",
+          "lineNumber": 300
+        },
+        {
+          "caller": "run",
+          "callee": "print",
+          "lineNumber": 302
+        },
+        {
+          "caller": "run",
+          "callee": "jobs.get",
+          "lineNumber": 305
+        },
+        {
+          "caller": "run",
+          "callee": "job_config.get",
+          "lineNumber": 306
+        },
+        {
+          "caller": "run",
+          "callee": "job_config.get",
+          "lineNumber": 307
+        },
+        {
+          "caller": "run",
+          "callee": "print",
+          "lineNumber": 309
+        },
+        {
+          "caller": "run",
+          "callee": "self._wait_for_new_run",
+          "lineNumber": 311
+        },
+        {
+          "caller": "run",
+          "callee": "self.wait_for_job_completion",
+          "lineNumber": 317
+        },
+        {
+          "caller": "run",
+          "callee": "print",
+          "lineNumber": 318
+        },
+        {
+          "caller": "run",
+          "callee": "print",
+          "lineNumber": 321
+        },
+        {
+          "caller": "run",
+          "callee": "print",
+          "lineNumber": 323
+        },
+        {
+          "caller": "run",
+          "callee": "print",
+          "lineNumber": 324
+        },
+        {
+          "caller": "run",
+          "callee": "print",
+          "lineNumber": 325
+        },
+        {
+          "caller": "main",
+          "callee": "argparse.ArgumentParser",
+          "lineNumber": 331
+        },
+        {
+          "caller": "main",
+          "callee": "parser.add_argument",
+          "lineNumber": 332
+        },
+        {
+          "caller": "main",
+          "callee": "parser.add_argument",
+          "lineNumber": 333
+        },
+        {
+          "caller": "main",
+          "callee": "parser.parse_args",
+          "lineNumber": 339
+        },
+        {
+          "caller": "main",
+          "callee": "open",
+          "lineNumber": 345
+        },
+        {
+          "caller": "main",
+          "callee": "yaml.safe_load",
+          "lineNumber": 346
+        },
+        {
+          "caller": "main",
+          "callee": "JobTrigger",
+          "lineNumber": 349
+        },
+        {
+          "caller": "main",
+          "callee": "job_configs.get(\"jobs\", {}).items",
+          "lineNumber": 354
+        },
+        {
+          "caller": "main",
+          "callee": "job_configs.get",
+          "lineNumber": 354
+        },
+        {
+          "caller": "main",
+          "callee": "trigger.get_job_ids_by_name",
+          "lineNumber": 356
+        },
+        {
+          "caller": "main",
+          "callee": "print",
+          "lineNumber": 359
+        },
+        {
+          "caller": "main",
+          "callee": "sys.exit",
+          "lineNumber": 360
+        },
+        {
+          "caller": "main",
+          "callee": "trigger.run",
+          "lineNumber": 363
+        },
+        {
+          "caller": "main",
+          "callee": "sys.exit",
+          "lineNumber": 364
+        },
+        {
+          "caller": "main",
+          "callee": "print",
+          "lineNumber": 367
+        },
+        {
+          "caller": "main",
+          "callee": "sys.exit",
+          "lineNumber": 368
+        },
+        {
+          "caller": "main",
+          "callee": "print",
+          "lineNumber": 370
+        },
+        {
+          "caller": "main",
+          "callee": "traceback.print_exc",
+          "lineNumber": 373
+        },
+        {
+          "caller": "main",
+          "callee": "sys.exit",
+          "lineNumber": 374
+        }
+      ],
+      "metrics": {
+        "importCount": 0,
+        "exportCount": 2,
+        "functionCount": 1,
+        "classCount": 1
+      }
+    },
+    {
+      "path": "cai_integration/test_cluster_deployment_job.py",
+      "language": "python",
+      "fileCategory": "code",
+      "totalLines": 69,
+      "nonEmptyLines": 55,
+      "functions": [
+        {
+          "name": "main",
+          "startLine": 25,
+          "endLine": 65,
+          "params": []
+        }
+      ],
+      "exports": [
+        {
+          "name": "main",
+          "line": 25,
+          "isDefault": false
+        }
+      ],
+      "callGraph": [
+        {
+          "caller": "main",
+          "callee": "Path(__file__).resolve",
+          "lineNumber": 30
+        },
+        {
+          "caller": "main",
+          "callee": "Path",
+          "lineNumber": 30
+        },
+        {
+          "caller": "main",
+          "callee": "Path.cwd",
+          "lineNumber": 34
+        },
+        {
+          "caller": "main",
+          "callee": "bash_wrapper.exists",
+          "lineNumber": 40
+        },
+        {
+          "caller": "main",
+          "callee": "print",
+          "lineNumber": 41
+        },
+        {
+          "caller": "main",
+          "callee": "print",
+          "lineNumber": 42
+        },
+        {
+          "caller": "main",
+          "callee": "print",
+          "lineNumber": 45
+        },
+        {
+          "caller": "main",
+          "callee": "print",
+          "lineNumber": 46
+        },
+        {
+          "caller": "main",
+          "callee": "print",
+          "lineNumber": 47
+        },
+        {
+          "caller": "main",
+          "callee": "print",
+          "lineNumber": 48
+        },
+        {
+          "caller": "main",
+          "callee": "print",
+          "lineNumber": 49
+        },
+        {
+          "caller": "main",
+          "callee": "print",
+          "lineNumber": 50
+        },
+        {
+          "caller": "main",
+          "callee": "subprocess.run",
+          "lineNumber": 55
+        },
+        {
+          "caller": "main",
+          "callee": "str",
+          "lineNumber": 56
+        },
+        {
+          "caller": "main",
+          "callee": "str",
+          "lineNumber": 57
+        },
+        {
+          "caller": "main",
+          "callee": "print",
+          "lineNumber": 62
+        },
+        {
+          "caller": "main",
+          "callee": "traceback.print_exc",
+          "lineNumber": 64
+        }
+      ],
+      "metrics": {
+        "importCount": 0,
+        "exportCount": 1,
+        "functionCount": 1,
+        "classCount": 0
+      }
+    },
+    {
+      "path": "cai_integration/test_list_applications.py",
+      "language": "python",
+      "fileCategory": "code",
+      "totalLines": 60,
+      "nonEmptyLines": 48,
+      "metrics": {
+        "importCount": 0,
+        "exportCount": 0,
+        "functionCount": 0,
+        "classCount": 0
+      }
+    }
+  ]
+}

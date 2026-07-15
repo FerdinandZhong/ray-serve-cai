@@ -1,0 +1,19 @@
+{
+  "projectRoot": "/Users/zhongqishuai/Projects/cldr_projects/ray-serve-cai",
+  "batchFiles": [
+    {"path": "ray_serve_cai/ray_service.py", "language": "python", "sizeLines": 328, "fileCategory": "code"},
+    {"path": "ray_serve_cai/engines/__init__.py", "language": "python", "sizeLines": 32, "fileCategory": "code"},
+    {"path": "ray_serve_cai/engines/registry.py", "language": "python", "sizeLines": 89, "fileCategory": "code"},
+    {"path": "ray_serve_cai/engines/vllm_engine.py", "language": "python", "sizeLines": 262, "fileCategory": "code"},
+    {"path": "ray_serve_cai/engines/base_engine.py", "language": "python", "sizeLines": 180, "fileCategory": "code"},
+    {"path": "ray_serve_cai/engines/mlflow_engine.py", "language": "python", "sizeLines": 132, "fileCategory": "code"}
+  ],
+  "batchImportData": {
+    "ray_serve_cai/ray_service.py": ["ray_serve_cai/engines/__init__.py"],
+    "ray_serve_cai/engines/__init__.py": ["ray_serve_cai/engines/registry.py","ray_serve_cai/engines/vllm_engine.py","ray_serve_cai/engines/base_engine.py","ray_serve_cai/engines/mlflow_engine.py"],
+    "ray_serve_cai/engines/registry.py": [],
+    "ray_serve_cai/engines/vllm_engine.py": ["ray_serve_cai/engines/base_engine.py"],
+    "ray_serve_cai/engines/base_engine.py": [],
+    "ray_serve_cai/engines/mlflow_engine.py": ["ray_serve_cai/engines/base_engine.py"]
+  }
+}

@@ -1,0 +1,221 @@
+{
+  "nodes": [
+    {
+      "id": "file:cai_integration/launch_ray_cluster.py",
+      "type": "file",
+      "name": "launch_ray_cluster.py",
+      "filePath": "cai_integration/launch_ray_cluster.py",
+      "summary": "Main cluster launch orchestration script that generates Jinja2-templated Ray head/worker launcher scripts, starts the Ray cluster via CAIClusterManager, registers worker nodes through the management API, and writes cluster connection info to disk.",
+      "tags": ["entry-point", "script", "service"],
+      "complexity": "complex",
+      "languageNotes": "Uses Jinja2 templates (ray_head_launcher.py.j2 / worker) to generate per-node startup scripts; post-startup, calls the management API's /add_node endpoint via urllib directly without requests."
+    },
+    {
+      "id": "file:cai_integration/launch_ray_cluster_job.py",
+      "type": "file",
+      "name": "launch_ray_cluster_job.py",
+      "filePath": "cai_integration/launch_ray_cluster_job.py",
+      "summary": "Thin CML job wrapper that locates the base venv Python interpreter and invokes launch_ray_cluster.py via subprocess, used as the CML job script entry point.",
+      "tags": ["entry-point", "script"],
+      "complexity": "simple"
+    },
+    {
+      "id": "file:cai_integration/setup_litellm_env.py",
+      "type": "file",
+      "name": "setup_litellm_env.py",
+      "filePath": "cai_integration/setup_litellm_env.py",
+      "summary": "CLI script that sets up an isolated LiteLLM venv by calling setup_engine_venv() with the LiteLLM package list, supporting forced recreate via environment variable.",
+      "tags": ["entry-point", "script", "utility"],
+      "complexity": "simple"
+    },
+    {
+      "id": "file:cai_integration/setup_project.py",
+      "type": "file",
+      "name": "setup_project.py",
+      "filePath": "cai_integration/setup_project.py",
+      "summary": "CML project bootstrap script with a ProjectSetup class that creates or retrieves the CML project via API, configures resource profiles, waits for git clone, and writes a project.env file with connection settings.",
+      "tags": ["entry-point", "script", "service"],
+      "complexity": "complex"
+    },
+    {
+      "id": "file:cai_integration/create_jobs.py",
+      "type": "file",
+      "name": "create_jobs.py",
+      "filePath": "cai_integration/create_jobs.py",
+      "summary": "CML job management script with a JobManager class that reads a YAML jobs config, resolves the runtime identifier, then creates or updates CML jobs via the CML REST API.",
+      "tags": ["entry-point", "script", "service"],
+      "complexity": "complex"
+    },
+    {
+      "id": "file:cai_integration/trigger_jobs.py",
+      "type": "file",
+      "name": "trigger_jobs.py",
+      "filePath": "cai_integration/trigger_jobs.py",
+      "summary": "CML job orchestration script with a JobTrigger class that triggers jobs in topological dependency order, skips recently succeeded jobs, and polls for completion with configurable timeouts.",
+      "tags": ["entry-point", "script", "service"],
+      "complexity": "complex",
+      "languageNotes": "Implements a simple topological sort to execute dependent jobs in the correct order, with skip-if-recently-succeeded logic controlled by FORCE_REBUILD env var."
+    },
+    {
+      "id": "file:cai_integration/test_cluster_deployment_job.py",
+      "type": "file",
+      "name": "test_cluster_deployment_job.py",
+      "filePath": "cai_integration/test_cluster_deployment_job.py",
+      "summary": "CML test job script that invokes the cluster deployment test suite via the base venv Python interpreter, serving as the CML job entry point for integration tests.",
+      "tags": ["test", "entry-point", "script"],
+      "complexity": "simple"
+    },
+    {
+      "id": "file:cai_integration/test_list_applications.py",
+      "type": "file",
+      "name": "test_list_applications.py",
+      "filePath": "cai_integration/test_list_applications.py",
+      "summary": "Standalone test script that queries the management API to list deployed Ray Serve applications and prints the results, used for smoke-testing a live cluster.",
+      "tags": ["test", "script"],
+      "complexity": "simple"
+    },
+    {
+      "id": "class:cai_integration/setup_project.py:ProjectSetup",
+      "type": "class",
+      "name": "ProjectSetup",
+      "filePath": "cai_integration/setup_project.py",
+      "lineRange": [21, 234],
+      "summary": "CML project setup class that authenticates against the CML API, creates or retrieves projects via git clone, configures resource profiles, and waits for repository cloning to complete.",
+      "tags": ["service", "factory"],
+      "complexity": "complex"
+    },
+    {
+      "id": "class:cai_integration/create_jobs.py:JobManager",
+      "type": "class",
+      "name": "JobManager",
+      "filePath": "cai_integration/create_jobs.py",
+      "lineRange": [24, 258],
+      "summary": "CML job manager that loads a YAML job config, resolves the runtime identifier from the project config, and creates or updates CML jobs via the REST API idempotently.",
+      "tags": ["service", "factory"],
+      "complexity": "complex"
+    },
+    {
+      "id": "class:cai_integration/trigger_jobs.py:JobTrigger",
+      "type": "class",
+      "name": "JobTrigger",
+      "filePath": "cai_integration/trigger_jobs.py",
+      "lineRange": [23, 326],
+      "summary": "CML job trigger orchestrator that executes jobs in topological order, polls for run completion, and implements skip logic for recently succeeded jobs.",
+      "tags": ["service", "middleware"],
+      "complexity": "complex"
+    },
+    {
+      "id": "function:cai_integration/launch_ray_cluster.py:main",
+      "type": "function",
+      "name": "main",
+      "filePath": "cai_integration/launch_ray_cluster.py",
+      "lineRange": [297, 559],
+      "summary": "Main entry point that loads cluster config, generates launcher scripts, starts the Ray cluster, waits for the management API, registers worker nodes, and writes cluster info JSON files.",
+      "tags": ["entry-point", "script", "service"],
+      "complexity": "complex"
+    },
+    {
+      "id": "function:cai_integration/launch_ray_cluster.py:create_ray_launcher_scripts",
+      "type": "function",
+      "name": "create_ray_launcher_scripts",
+      "filePath": "cai_integration/launch_ray_cluster.py",
+      "lineRange": [62, 150],
+      "summary": "Generates head-node and per-worker-group Ray launcher Python scripts from Jinja2 templates, writing them to disk with executable permissions.",
+      "tags": ["factory", "script"],
+      "complexity": "moderate"
+    }
+  ],
+  "edges": [
+    {
+      "source": "file:cai_integration/launch_ray_cluster.py",
+      "target": "function:cai_integration/launch_ray_cluster.py:main",
+      "type": "contains",
+      "direction": "forward",
+      "weight": 1.0
+    },
+    {
+      "source": "file:cai_integration/launch_ray_cluster.py",
+      "target": "function:cai_integration/launch_ray_cluster.py:create_ray_launcher_scripts",
+      "type": "contains",
+      "direction": "forward",
+      "weight": 1.0
+    },
+    {
+      "source": "file:cai_integration/launch_ray_cluster.py",
+      "target": "function:cai_integration/launch_ray_cluster.py:main",
+      "type": "exports",
+      "direction": "forward",
+      "weight": 0.8
+    },
+    {
+      "source": "file:cai_integration/launch_ray_cluster.py",
+      "target": "function:cai_integration/launch_ray_cluster.py:create_ray_launcher_scripts",
+      "type": "exports",
+      "direction": "forward",
+      "weight": 0.8
+    },
+    {
+      "source": "file:cai_integration/setup_project.py",
+      "target": "class:cai_integration/setup_project.py:ProjectSetup",
+      "type": "contains",
+      "direction": "forward",
+      "weight": 1.0
+    },
+    {
+      "source": "file:cai_integration/setup_project.py",
+      "target": "class:cai_integration/setup_project.py:ProjectSetup",
+      "type": "exports",
+      "direction": "forward",
+      "weight": 0.8
+    },
+    {
+      "source": "file:cai_integration/create_jobs.py",
+      "target": "class:cai_integration/create_jobs.py:JobManager",
+      "type": "contains",
+      "direction": "forward",
+      "weight": 1.0
+    },
+    {
+      "source": "file:cai_integration/create_jobs.py",
+      "target": "class:cai_integration/create_jobs.py:JobManager",
+      "type": "exports",
+      "direction": "forward",
+      "weight": 0.8
+    },
+    {
+      "source": "file:cai_integration/trigger_jobs.py",
+      "target": "class:cai_integration/trigger_jobs.py:JobTrigger",
+      "type": "contains",
+      "direction": "forward",
+      "weight": 1.0
+    },
+    {
+      "source": "file:cai_integration/trigger_jobs.py",
+      "target": "class:cai_integration/trigger_jobs.py:JobTrigger",
+      "type": "exports",
+      "direction": "forward",
+      "weight": 0.8
+    },
+    {
+      "source": "file:cai_integration/launch_ray_cluster_job.py",
+      "target": "file:cai_integration/launch_ray_cluster.py",
+      "type": "depends_on",
+      "direction": "forward",
+      "weight": 0.6
+    },
+    {
+      "source": "file:cai_integration/setup_litellm_env.py",
+      "target": "file:cai_integration/setup_environment.py",
+      "type": "depends_on",
+      "direction": "forward",
+      "weight": 0.6
+    },
+    {
+      "source": "file:cai_integration/test_cluster_deployment_job.py",
+      "target": "file:cai_integration/launch_ray_cluster.py",
+      "type": "related",
+      "direction": "forward",
+      "weight": 0.5
+    }
+  ]
+}

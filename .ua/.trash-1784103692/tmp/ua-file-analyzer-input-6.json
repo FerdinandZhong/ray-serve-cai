@@ -1,0 +1,19 @@
+{
+  "projectRoot": "/Users/zhongqishuai/Projects/cldr_projects/ray-serve-cai",
+  "batchFiles": [
+    {"path": "tests/__init__.py", "language": "python", "sizeLines": 0, "fileCategory": "code"},
+    {"path": "tests/test_coordinator.py", "language": "python", "sizeLines": 119, "fileCategory": "code"},
+    {"path": "tests/test_deploy_api.py", "language": "python", "sizeLines": 200, "fileCategory": "code"},
+    {"path": "tests/test_engine_registry.py", "language": "python", "sizeLines": 60, "fileCategory": "code"},
+    {"path": "tests/test_requests_models.py", "language": "python", "sizeLines": 163, "fileCategory": "code"},
+    {"path": "tests/test_resource_map.py", "language": "python", "sizeLines": 175, "fileCategory": "code"}
+  ],
+  "batchImportData": {
+    "tests/__init__.py": [],
+    "tests/test_coordinator.py": ["ray_serve_cai/management/services/coordinator.py","ray_serve_cai/management/models/requests.py"],
+    "tests/test_deploy_api.py": ["ray_serve_cai/management/api/applications.py","ray_serve_cai/management/models/requests.py","ray_serve_cai/management/models/responses.py"],
+    "tests/test_engine_registry.py": ["ray_serve_cai/engines/registry.py"],
+    "tests/test_requests_models.py": ["ray_serve_cai/management/models/requests.py"],
+    "tests/test_resource_map.py": []
+  }
+}

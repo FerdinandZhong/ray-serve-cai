@@ -1,0 +1,10 @@
+{
+  "projectRoot": "/Users/zhongqishuai/Projects/cldr_projects/ray-serve-cai",
+  "batchFiles": [
+    {"path": "ray_serve_cai/engines/yolo_engine.py", "language": "python", "sizeLines": 0, "fileCategory": "code"},
+    {"path": "ray_serve_cai/engines/yolo_config.py", "language": "python", "sizeLines": 0, "fileCategory": "code"},
+    {"path": "ray_serve_cai/engines/mcp_engine.py", "language": "python", "sizeLines": 0, "fileCategory": "code"},
+    {"path": "ray_serve_cai/engines/mcp_config.py", "language": "python", "sizeLines": 0, "fileCategory": "code"}
+  ],
+  "batchImportData": {}
+}

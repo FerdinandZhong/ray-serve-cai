@@ -1,0 +1,7 @@
+{
+  "projectRoot": "/Users/zhongqishuai/Projects/cldr_projects/ray-serve-cai",
+  "batchFiles": [
+    {"path": "ray_serve_cai/management/services/cai_service.py", "language": "python", "sizeLines": 0, "fileCategory": "code"}
+  ],
+  "batchImportData": {}
+}

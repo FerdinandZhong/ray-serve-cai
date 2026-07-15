@@ -1,0 +1,25 @@
+{
+  "projectRoot": "/Users/zhongqishuai/Projects/cldr_projects/ray-serve-cai",
+  "batchFiles": [
+    {"path": "ray_serve_cai/management/api/__init__.py", "language": "python", "sizeLines": 19, "fileCategory": "code"},
+    {"path": "ray_serve_cai/management/api/applications.py", "language": "python", "sizeLines": 152, "fileCategory": "code"},
+    {"path": "ray_serve_cai/management/api/cluster.py", "language": "python", "sizeLines": 97, "fileCategory": "code"},
+    {"path": "ray_serve_cai/management/api/cml_apps.py", "language": "python", "sizeLines": 60, "fileCategory": "code"},
+    {"path": "ray_serve_cai/management/api/metrics.py", "language": "python", "sizeLines": 220, "fileCategory": "code"},
+    {"path": "ray_serve_cai/management/api/resources.py", "language": "python", "sizeLines": 138, "fileCategory": "code"},
+    {"path": "ray_serve_cai/management/models/__init__.py", "language": "python", "sizeLines": 24, "fileCategory": "code"},
+    {"path": "ray_serve_cai/management/models/requests.py", "language": "python", "sizeLines": 457, "fileCategory": "code"},
+    {"path": "ray_serve_cai/management/models/responses.py", "language": "python", "sizeLines": 79, "fileCategory": "code"}
+  ],
+  "batchImportData": {
+    "ray_serve_cai/management/api/__init__.py": ["ray_serve_cai/management/api/applications.py","ray_serve_cai/management/api/cluster.py","ray_serve_cai/management/api/cml_apps.py","ray_serve_cai/management/api/engines.py","ray_serve_cai/management/api/environments.py","ray_serve_cai/management/api/metrics.py","ray_serve_cai/management/api/resources.py"],
+    "ray_serve_cai/management/api/applications.py": ["ray_serve_cai/management/models/requests.py","ray_serve_cai/management/models/responses.py","ray_serve_cai/management/services/coordinator.py"],
+    "ray_serve_cai/management/api/cluster.py": ["ray_serve_cai/management/models/responses.py","ray_serve_cai/management/services/coordinator.py"],
+    "ray_serve_cai/management/api/cml_apps.py": ["ray_serve_cai/management/models/requests.py","ray_serve_cai/management/services/coordinator.py"],
+    "ray_serve_cai/management/api/metrics.py": [],
+    "ray_serve_cai/management/api/resources.py": ["ray_serve_cai/management/models/requests.py","ray_serve_cai/management/models/responses.py","ray_serve_cai/management/services/coordinator.py"],
+    "ray_serve_cai/management/models/__init__.py": ["ray_serve_cai/management/models/requests.py","ray_serve_cai/management/models/responses.py"],
+    "ray_serve_cai/management/models/requests.py": [],
+    "ray_serve_cai/management/models/responses.py": []
+  }
+}

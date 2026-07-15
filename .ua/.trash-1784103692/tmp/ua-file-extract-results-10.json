@@ -1,0 +1,423 @@
+{
+  "scriptCompleted": true,
+  "filesAnalyzed": 2,
+  "filesSkipped": [
+    "ray_serve_cai/management/services/validate_venv.py",
+    "ray_serve_cai/management/services/venv_utils.py"
+  ],
+  "results": [
+    {
+      "path": "pyproject.toml",
+      "language": "toml",
+      "fileCategory": "config",
+      "totalLines": 193,
+      "nonEmptyLines": 178,
+      "sections": [
+        {
+          "heading": "build-system",
+          "level": 1,
+          "line": 1
+        },
+        {
+          "heading": "project",
+          "level": 1,
+          "line": 5
+        },
+        {
+          "heading": "project.optional-dependencies",
+          "level": 2,
+          "line": 55
+        },
+        {
+          "heading": "project.urls",
+          "level": 2,
+          "line": 86
+        },
+        {
+          "heading": "project.scripts",
+          "level": 2,
+          "line": 92
+        },
+        {
+          "heading": "tool.setuptools.packages.find",
+          "level": 4,
+          "line": 95
+        },
+        {
+          "heading": "tool.setuptools.package-data",
+          "level": 3,
+          "line": 99
+        },
+        {
+          "heading": "tool.black",
+          "level": 2,
+          "line": 103
+        },
+        {
+          "heading": "tool.ruff",
+          "level": 2,
+          "line": 122
+        },
+        {
+          "heading": "tool.ruff.per-file-ignores",
+          "level": 3,
+          "line": 140
+        },
+        {
+          "heading": "tool.pytest.ini_options",
+          "level": 3,
+          "line": 144
+        },
+        {
+          "heading": "tool.mypy",
+          "level": 2,
+          "line": 154
+        },
+        {
+          "heading": "[[tool.mypy.overrides]]",
+          "level": 3,
+          "line": 167
+        },
+        {
+          "heading": "tool.coverage.run",
+          "level": 3,
+          "line": 176
+        },
+        {
+          "heading": "tool.coverage.report",
+          "level": 3,
+          "line": 183
+        }
+      ],
+      "metrics": {
+        "importCount": 0,
+        "exportCount": 0,
+        "functionCount": 0,
+        "classCount": 0,
+        "sectionCount": 15
+      }
+    },
+    {
+      "path": "ray_serve_cai/management/services/resource_map.py",
+      "language": "python",
+      "fileCategory": "code",
+      "totalLines": 252,
+      "nonEmptyLines": 215,
+      "functions": [
+        {
+          "name": "_sum_resources",
+          "startLine": 246,
+          "endLine": 252,
+          "params": [
+            "entries"
+          ]
+        }
+      ],
+      "classes": [
+        {
+          "name": "ResourceMap",
+          "startLine": 46,
+          "endLine": 241,
+          "methods": [
+            "__init__",
+            "_load",
+            "_save",
+            "register_worker",
+            "unregister_worker",
+            "allocate",
+            "release",
+            "sync",
+            "get_summary",
+            "validate"
+          ],
+          "properties": []
+        }
+      ],
+      "exports": [
+        {
+          "name": "ResourceMap",
+          "line": 46,
+          "isDefault": false
+        },
+        {
+          "name": "_sum_resources",
+          "line": 246,
+          "isDefault": false
+        }
+      ],
+      "callGraph": [
+        {
+          "caller": "_load",
+          "callee": "self._path.exists",
+          "lineNumber": 55
+        },
+        {
+          "caller": "_load",
+          "callee": "open",
+          "lineNumber": 57
+        },
+        {
+          "caller": "_load",
+          "callee": "json.load",
+          "lineNumber": 58
+        },
+        {
+          "caller": "_load",
+          "callee": "data.setdefault",
+          "lineNumber": 59
+        },
+        {
+          "caller": "_load",
+          "callee": "data.setdefault",
+          "lineNumber": 60
+        },
+        {
+          "caller": "_load",
+          "callee": "logger.error",
+          "lineNumber": 63
+        },
+        {
+          "caller": "_save",
+          "callee": "datetime.now(timezone.utc).isoformat",
+          "lineNumber": 67
+        },
+        {
+          "caller": "_save",
+          "callee": "datetime.now",
+          "lineNumber": 67
+        },
+        {
+          "caller": "_save",
+          "callee": "open",
+          "lineNumber": 69
+        },
+        {
+          "caller": "_save",
+          "callee": "json.dump",
+          "lineNumber": 70
+        },
+        {
+          "caller": "_save",
+          "callee": "logger.error",
+          "lineNumber": 72
+        },
+        {
+          "caller": "register_worker",
+          "callee": "self._load",
+          "lineNumber": 86
+        },
+        {
+          "caller": "register_worker",
+          "callee": "self._save",
+          "lineNumber": 95
+        },
+        {
+          "caller": "register_worker",
+          "callee": "logger.info",
+          "lineNumber": 96
+        },
+        {
+          "caller": "unregister_worker",
+          "callee": "self._load",
+          "lineNumber": 101
+        },
+        {
+          "caller": "unregister_worker",
+          "callee": "data[\"workers\"].pop",
+          "lineNumber": 102
+        },
+        {
+          "caller": "unregister_worker",
+          "callee": "self._save",
+          "lineNumber": 104
+        },
+        {
+          "caller": "unregister_worker",
+          "callee": "logger.info",
+          "lineNumber": 105
+        },
+        {
+          "caller": "unregister_worker",
+          "callee": "logger.warning",
+          "lineNumber": 107
+        },
+        {
+          "caller": "allocate",
+          "callee": "self._load",
+          "lineNumber": 120
+        },
+        {
+          "caller": "allocate",
+          "callee": "self._save",
+          "lineNumber": 128
+        },
+        {
+          "caller": "allocate",
+          "callee": "logger.info",
+          "lineNumber": 129
+        },
+        {
+          "caller": "release",
+          "callee": "self._load",
+          "lineNumber": 134
+        },
+        {
+          "caller": "release",
+          "callee": "data[\"applications\"].pop",
+          "lineNumber": 135
+        },
+        {
+          "caller": "release",
+          "callee": "self._save",
+          "lineNumber": 137
+        },
+        {
+          "caller": "release",
+          "callee": "logger.info",
+          "lineNumber": 138
+        },
+        {
+          "caller": "release",
+          "callee": "logger.warning",
+          "lineNumber": 140
+        },
+        {
+          "caller": "sync",
+          "callee": "self._load",
+          "lineNumber": 154
+        },
+        {
+          "caller": "sync",
+          "callee": "data[section].pop",
+          "lineNumber": 163
+        },
+        {
+          "caller": "sync",
+          "callee": "logger.info",
+          "lineNumber": 164
+        },
+        {
+          "caller": "sync",
+          "callee": "section.rstrip",
+          "lineNumber": 166
+        },
+        {
+          "caller": "sync",
+          "callee": "entry.get",
+          "lineNumber": 167
+        },
+        {
+          "caller": "sync",
+          "callee": "self._save",
+          "lineNumber": 173
+        },
+        {
+          "caller": "get_summary",
+          "callee": "self._load",
+          "lineNumber": 181
+        },
+        {
+          "caller": "get_summary",
+          "callee": "_sum_resources",
+          "lineNumber": 183
+        },
+        {
+          "caller": "get_summary",
+          "callee": "data[\"workers\"].values",
+          "lineNumber": 183
+        },
+        {
+          "caller": "get_summary",
+          "callee": "_sum_resources",
+          "lineNumber": 184
+        },
+        {
+          "caller": "get_summary",
+          "callee": "data[\"applications\"].values",
+          "lineNumber": 184
+        },
+        {
+          "caller": "get_summary",
+          "callee": "list",
+          "lineNumber": 191
+        },
+        {
+          "caller": "get_summary",
+          "callee": "data[\"workers\"].values",
+          "lineNumber": 191
+        },
+        {
+          "caller": "get_summary",
+          "callee": "list",
+          "lineNumber": 192
+        },
+        {
+          "caller": "get_summary",
+          "callee": "data[\"applications\"].values",
+          "lineNumber": 192
+        },
+        {
+          "caller": "get_summary",
+          "callee": "data.get",
+          "lineNumber": 196
+        },
+        {
+          "caller": "validate",
+          "callee": "self.get_summary",
+          "lineNumber": 211
+        },
+        {
+          "caller": "validate",
+          "callee": "ValueError",
+          "lineNumber": 216
+        },
+        {
+          "caller": "validate",
+          "callee": "shortfalls.append",
+          "lineNumber": 223
+        },
+        {
+          "caller": "validate",
+          "callee": "shortfalls.append",
+          "lineNumber": 228
+        },
+        {
+          "caller": "validate",
+          "callee": "shortfalls.append",
+          "lineNumber": 233
+        },
+        {
+          "caller": "validate",
+          "callee": "ValueError",
+          "lineNumber": 239
+        },
+        {
+          "caller": "validate",
+          "callee": "\"\\n  \".join",
+          "lineNumber": 240
+        },
+        {
+          "caller": "_sum_resources",
+          "callee": "e.get",
+          "lineNumber": 249
+        },
+        {
+          "caller": "_sum_resources",
+          "callee": "e.get",
+          "lineNumber": 250
+        },
+        {
+          "caller": "_sum_resources",
+          "callee": "e.get",
+          "lineNumber": 251
+        }
+      ],
+      "metrics": {
+        "importCount": 0,
+        "exportCount": 2,
+        "functionCount": 1,
+        "classCount": 1
+      }
+    }
+  ]
+}

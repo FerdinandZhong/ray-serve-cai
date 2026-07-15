@@ -1,0 +1,160 @@
+[
+  {
+    "id": "layer:api",
+    "name": "API Layer",
+    "description": "FastAPI routers handling HTTP endpoints for Ray Serve application deployment, cluster status, worker resources, CML apps, engine registration, environment lifecycle, and Prometheus metrics scraping.",
+    "nodeIds": [
+      "file:ray_serve_cai/management/api/__init__.py",
+      "file:ray_serve_cai/management/api/applications.py",
+      "file:ray_serve_cai/management/api/cluster.py",
+      "file:ray_serve_cai/management/api/cml_apps.py",
+      "file:ray_serve_cai/management/api/metrics.py",
+      "file:ray_serve_cai/management/api/resources.py",
+      "file:ray_serve_cai/management/api/environments.py",
+      "file:ray_serve_cai/management/api/engines.py"
+    ]
+  },
+  {
+    "id": "layer:types",
+    "name": "Types Layer",
+    "description": "Pydantic v2 request and response models defining the contract between API callers and the management service, including node, application, cluster, and resource schemas.",
+    "nodeIds": [
+      "file:ray_serve_cai/management/models/__init__.py",
+      "file:ray_serve_cai/management/models/requests.py",
+      "file:ray_serve_cai/management/models/responses.py"
+    ]
+  },
+  {
+    "id": "layer:service",
+    "name": "Service Layer",
+    "description": "Core management business logic: the CoordinatorService orchestrating node/app lifecycle, CAIService and RayService adapters, ResourceMap for NFS-backed capacity accounting, and the FastAPI application factory wiring all services together.",
+    "nodeIds": [
+      "file:ray_serve_cai/management/app.py",
+      "file:ray_serve_cai/management/__init__.py",
+      "file:ray_serve_cai/management/services/__init__.py",
+      "file:ray_serve_cai/management/services/coordinator.py",
+      "file:ray_serve_cai/management/services/cai_service.py",
+      "file:ray_serve_cai/management/services/ray_service.py",
+      "file:ray_serve_cai/management/services/resource_map.py",
+      "file:ray_serve_cai/management/services/cml_client.py",
+      "file:ray_serve_cai/utils/logging.py"
+    ]
+  },
+  {
+    "id": "layer:engines",
+    "name": "Inference Engines Layer",
+    "description": "Pluggable Ray Serve inference engine actors and their config/factory pairs for vLLM, SGLang, LiteLLM, YOLO, and MCP, plus the EngineRegistry singleton and venv path utilities enabling isolated NFS-based actor environments.",
+    "nodeIds": [
+      "file:ray_serve_cai/engines/__init__.py",
+      "file:ray_serve_cai/engines/base.py",
+      "file:ray_serve_cai/engines/registry.py",
+      "file:ray_serve_cai/engines/engine_utils.py",
+      "file:ray_serve_cai/engines/venv_utils.py",
+      "file:ray_serve_cai/engines/vllm_engine.py",
+      "file:ray_serve_cai/engines/vllm_config.py",
+      "file:ray_serve_cai/engines/sglang_engine.py",
+      "file:ray_serve_cai/engines/sglang_config.py",
+      "file:ray_serve_cai/engines/litellm_engine.py",
+      "file:ray_serve_cai/engines/litellm_config.py",
+      "file:ray_serve_cai/engines/yolo_engine.py",
+      "file:ray_serve_cai/engines/yolo_config.py",
+      "file:ray_serve_cai/engines/mcp_engine.py",
+      "file:ray_serve_cai/engines/mcp_config.py",
+      "file:ray_serve_cai/engines/mcps/__init__.py",
+      "file:ray_serve_cai/engines/mcps/weather_tools.py"
+    ]
+  },
+  {
+    "id": "layer:cluster",
+    "name": "Cluster Management Layer",
+    "description": "Core CML API client and cluster lifecycle management: CAIClusterManager for head/worker node provisioning, the Ray backend entry point, the CLI cluster launcher, and the package root exporting the public surface.",
+    "nodeIds": [
+      "file:ray_serve_cai/__init__.py",
+      "file:ray_serve_cai/cai_cluster.py",
+      "file:ray_serve_cai/ray_backend.py",
+      "file:ray_serve_cai/launch_cluster.py"
+    ]
+  },
+  {
+    "id": "layer:integration",
+    "name": "Integration Layer",
+    "description": "CML platform integration scripts for bootstrapping the project, creating and triggering the job chain, setting up engine venvs, launching the Ray cluster, and the GitHub Actions workflow for automated cluster deployment.",
+    "nodeIds": [
+      "file:cai_integration/setup_environment.py",
+      "file:cai_integration/setup_vllm_env.py",
+      "file:cai_integration/setup_litellm_env.py",
+      "file:cai_integration/launch_ray_cluster.py",
+      "file:cai_integration/create_jobs.py",
+      "file:cai_integration/launch_ray_cluster_job.py",
+      "file:cai_integration/setup_project.py",
+      "file:cai_integration/trigger_jobs.py",
+      "file:cai_integration/test_cluster_deployment_job.py",
+      "file:cai_integration/test_list_applications.py",
+      "file:cai_integration/templates/ray_head_launcher.py.j2",
+      "file:cai_integration/templates/ray_worker_launcher.py.j2",
+      "file:cai_integration/jobs_config.yaml",
+      "file:cai_integration/launch_ray_cluster.sh",
+      "file:cai_integration/quick_start.sh",
+      "file:cai_integration/test_cluster.sh",
+      "file:.github/workflows/deploy-ray-cluster.yml"
+    ]
+  },
+  {
+    "id": "layer:config",
+    "name": "Configuration Layer",
+    "description": "Cluster topology YAML configs for local and multi-node Ray deployments, the main CML cluster config, and the pyproject.toml defining package dependencies and optional engine extras.",
+    "nodeIds": [
+      "file:ray_serve_cai/configs/local_basic.yaml",
+      "file:ray_serve_cai/configs/local_cpu.yaml",
+      "file:ray_serve_cai/configs/local_gpu.yaml",
+      "file:ray_serve_cai/configs/multi_node_example.yaml",
+      "file:configs/ray_cluster_config.yaml",
+      "file:pyproject.toml"
+    ]
+  },
+  {
+    "id": "layer:test",
+    "name": "Test Layer",
+    "description": "End-to-end and integration tests for cluster deployment and Ray Serve application lifecycle, along with the test runner script and testing guides.",
+    "nodeIds": [
+      "file:tests/test_e2e_deployment.py",
+      "file:tests/test_cluster_deployment.py",
+      "file:tests/run_test.sh",
+      "file:tests/README.md",
+      "file:tests/TESTING_GUIDE.md"
+    ]
+  },
+  {
+    "id": "layer:examples",
+    "name": "Examples & Scripts Layer",
+    "description": "Usage examples for programmatic cluster launch and custom engine authoring, an operational model deployment script, benchmark scripts for YOLO inference, and a git sync utility for CML project synchronization.",
+    "nodeIds": [
+      "file:examples/cai_cluster_example.py",
+      "file:examples/custom_engine_template/my_engine.py",
+      "file:scripts/deploy_qwen3_model.py",
+      "file:benchmark_scripts/launch_yolo_standalone.py",
+      "file:benchmark_scripts/run_yolo_server.py",
+      "file:benchmark_scripts/yolo_api_server.py",
+      "file:.git_sync.py"
+    ]
+  },
+  {
+    "id": "layer:documentation",
+    "name": "Documentation Layer",
+    "description": "Project README, quickstart guides, API reference, architecture design docs, deployment architecture diagrams, and isolated venv design documentation covering the full operator and developer knowledge base.",
+    "nodeIds": [
+      "document:README.md",
+      "document:QUICK_REFERENCE.md",
+      "document:LAUNCH_MODEL_GUIDE.md",
+      "document:VERIFICATION_isolated_env.md",
+      "document:docs/ARCHITECTURE.md",
+      "document:docs/CLUSTER_SETUP.md",
+      "document:docs/DEPLOYMENT_ARCHITECTURE.md",
+      "document:docs/ISOLATED_ENV_DESIGN.md",
+      "document:docs/NGINX_PROXY_DESIGN.md",
+      "document:docs/QUICKSTART.md",
+      "file:demo_configs/nginx_architecture.html",
+      "file:demo_configs/vllm_executor_backend.html"
+    ]
+  }
+]

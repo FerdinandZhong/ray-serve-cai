@@ -11,6 +11,7 @@ Run this as a CML job to prepare the environment for Ray cluster deployment.
 """
 
 import os
+import re
 import sys
 import subprocess
 from pathlib import Path
@@ -184,6 +185,88 @@ def install_nginx():
         return False
 
 
+# Base venv created by main() — the cluster head and Management API run from
+# here.  Every engine venv MUST run the same Ray version as this one; see
+# _pin_ray_to_base().
+_BASE_VENV = "/home/cdsw/.venv"
+
+
+def venv_ray_version(venv_dir: str) -> str | None:
+    """Return the Ray version installed in *venv_dir*, or None if absent."""
+    check = f'{venv_dir}/bin/python -c "import ray; print(ray.__version__)"'
+    result = subprocess.run(check, shell=True, capture_output=True, text=True)
+    return result.stdout.strip() if result.returncode == 0 else None
+
+
+def _pin_ray_to_base(packages: list, base_version: str | None) -> list:
+    """Rewrite any floating ``ray``/``ray[serve]`` requirement to an exact pin.
+
+    Ray Serve requires the worker venv and the cluster head to run the SAME
+    Ray version — otherwise DeploymentConfig proto (de)serialization mismatches
+    and the actor dies with an opaque error (e.g. a missing FieldDescriptor
+    attribute).  A floating ``>=`` lets the engine venv drift to a newer PyPI
+    release than the base env when they're installed at different times.
+    Pinning every engine venv to the base env's exact version prevents this.
+    """
+    if not base_version:
+        print("⚠️  Could not read base env Ray version — leaving ray requirement unpinned")
+        return packages
+    pinned = []
+    for pkg in packages:
+        m = re.match(r"^ray(\[[^\]]*\])?(?:[<>=!~].*)?$", pkg.strip())
+        if m:
+            extras = m.group(1) or ""
+            pinned.append(f"ray{extras}=={base_version}")
+        else:
+            pinned.append(pkg)
+    return pinned
+
+
+def _base_pkg_version(pkg_name: str) -> str | None:
+    """Return the version of *pkg_name* installed in the base venv, or None."""
+    check = (
+        f'{_BASE_VENV}/bin/python -c '
+        f'"import importlib.metadata; print(importlib.metadata.version(\'{pkg_name}\'))"'
+    )
+    result = subprocess.run(check, shell=True, capture_output=True, text=True)
+    return result.stdout.strip() if result.returncode == 0 else None
+
+
+def _pin_pkgs_to_base(packages: list, pkg_names: list[str]) -> list:
+    """Rewrite floating requirements for *pkg_names* to exact base-env versions.
+
+    Ray cloudpickles certain objects (e.g. the FastAPI app) on the head node
+    and unpickles them inside each engine venv actor.  If an internal class was
+    renamed or removed between versions, unpickling fails with AttributeError.
+    Pinning these packages to the base env's exact version prevents the drift.
+    """
+    versions = {}
+    for name in pkg_names:
+        v = _base_pkg_version(name)
+        if v:
+            versions[name] = v
+        else:
+            print(f"⚠️  Could not read base env {name} version — leaving unpinned")
+
+    if not versions:
+        return packages
+
+    pinned = []
+    for pkg in packages:
+        matched = False
+        for name, version in versions.items():
+            # Match bare name or name[extras], ignoring any existing specifier.
+            m = re.match(rf"^{re.escape(name)}(\[[^\]]*\])?(?:[<>=!~].*)?$", pkg.strip(), re.IGNORECASE)
+            if m:
+                extras = m.group(1) or ""
+                pinned.append(f"{name}{extras}=={version}")
+                matched = True
+                break
+        if not matched:
+            pinned.append(pkg)
+    return pinned
+
+
 def setup_engine_venv(
     engine: str,
     packages: list,
@@ -221,28 +304,66 @@ def setup_engine_venv(
             print(f"❌ Failed to create {engine} venv")
             return False
 
+        # Pin Ray to the base env's exact version so the worker actor and the
+        # cluster head never run mismatched Ray (see _pin_ray_to_base).
+        base_version = venv_ray_version(_BASE_VENV)
+        packages = _pin_ray_to_base(packages, base_version)
+        # Pin fastapi: Ray cloudpickles the FastAPI app on the head and
+        # unpickles it in the actor; mismatched versions cause AttributeError
+        # on renamed internal classes (e.g. '_IncludedRouter').
+        packages = _pin_pkgs_to_base(packages, ["fastapi"])
+
         uv_install = f"uv pip install --python {venv_dir}/bin/python"
         for pkg in packages:
             if not run_command(f"{uv_install} '{pkg}'"):
                 print(f"⚠️  {pkg} failed for {engine} venv — continuing")
 
         ready = is_venv_ready(venv_dir)
-        if ready:
-            print(f"✅ {engine} venv ready")
-        else:
+        if not ready:
             print(f"❌ {engine} venv not ready after install")
-        return ready
+            return False
+
+        # Hard gate: the engine venv's Ray MUST match the base env's Ray.
+        engine_version = venv_ray_version(venv_dir)
+        if base_version and engine_version != base_version:
+            print(
+                f"❌ {engine} venv Ray {engine_version} != base env Ray "
+                f"{base_version}. Ray Serve requires identical versions on the "
+                f"worker and head — recreate this venv."
+            )
+            return False
+
+        print(f"✅ {engine} venv ready (Ray {engine_version})")
+        return True
     finally:
         fcntl.flock(lock_fd, fcntl.LOCK_UN)
         lock_fd.close()
 
 
+# protobuf<7 is REQUIRED until the cluster Ray includes ray-project/ray#64362:
+# protobuf 7 removed the deprecated FieldDescriptor.label that Ray Serve's
+# _proto_to_dict relies on, so an actor in a venv with protobuf 7.x dies on
+# DeploymentConfig deserialization ("'FieldDescriptor' object has no attribute
+# 'label'").  Every engine venv deserializes DeploymentConfig, so all need it.
+# Exact pins for packages that must match the head env to avoid actor startup
+# failures:
+#   ray[serve]:  worker and head MUST run the same Ray version
+#   protobuf:    <7 required until Ray ships ray-project/ray#64362 (protobuf 7
+#                removed FieldDescriptor.label used by Ray Serve's _proto_to_dict)
+#   fastapi:     Ray cloudpickles the FastAPI app on the head; mismatched versions
+#                cause AttributeError on renamed internal classes (_IncludedRouter)
+_RAY_BASE = [
+    "ray[serve]==2.55.1",
+    "protobuf>=5.29.6,<7.0",
+    "fastapi==0.138.0",
+]
+
 _ENGINE_PACKAGES = {
-    "vllm":    ["vllm>=0.13.0", "ninja"],
-    "sglang":  ["sglang>=0.5.7"],
-    "yolo":    ["ultralytics>=8.0.0", "Pillow>=9.0.0", "opencv-python-headless>=4.8.0"],
-    "mcp":     ["mcp>=1.0.0", "httpx>=0.27.0"],
-    "litellm": ["litellm>=1.83.0"],
+    "vllm":    _RAY_BASE + ["vllm>=0.13.0", "ninja"],
+    "sglang":  _RAY_BASE + ["sglang>=0.5.7"],
+    "yolo":    _RAY_BASE + ["ultralytics>=8.0.0", "Pillow>=9.0.0", "opencv-python-headless>=4.8.0"],
+    "mcp":     _RAY_BASE + ["mcp>=1.0.0", "httpx>=0.27.0"],
+    "litellm": _RAY_BASE + ["litellm>=1.83.0"],
 }
 
 
