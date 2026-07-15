@@ -1,0 +1,282 @@
+{
+  "scriptCompleted": true,
+  "filesAnalyzed": 1,
+  "filesSkipped": [],
+  "results": [
+    {
+      "path": "ray_serve_cai/management/services/cai_service.py",
+      "language": "python",
+      "fileCategory": "code",
+      "totalLines": 304,
+      "nonEmptyLines": 265,
+      "classes": [
+        {
+          "name": "CAIService",
+          "startLine": 18,
+          "endLine": 304,
+          "methods": [
+            "__init__",
+            "_load_cluster_info",
+            "_group_from_cluster_info",
+            "create_worker_node",
+            "delete_application",
+            "launch_cai_application",
+            "list_applications",
+            "get_application"
+          ],
+          "properties": []
+        }
+      ],
+      "exports": [
+        {
+          "name": "CAIService",
+          "line": 18,
+          "isDefault": false
+        }
+      ],
+      "callGraph": [
+        {
+          "caller": "__init__",
+          "callee": "os.environ.get",
+          "lineNumber": 31
+        },
+        {
+          "caller": "__init__",
+          "callee": "os.environ.get",
+          "lineNumber": 34
+        },
+        {
+          "caller": "__init__",
+          "callee": "os.environ.get",
+          "lineNumber": 35
+        },
+        {
+          "caller": "__init__",
+          "callee": "ValueError",
+          "lineNumber": 39
+        },
+        {
+          "caller": "__init__",
+          "callee": "CAIClusterManager",
+          "lineNumber": 44
+        },
+        {
+          "caller": "_load_cluster_info",
+          "callee": "_CLUSTER_INFO_PATH.exists",
+          "lineNumber": 54
+        },
+        {
+          "caller": "_load_cluster_info",
+          "callee": "RuntimeError",
+          "lineNumber": 55
+        },
+        {
+          "caller": "_load_cluster_info",
+          "callee": "open",
+          "lineNumber": 59
+        },
+        {
+          "caller": "_load_cluster_info",
+          "callee": "json.load",
+          "lineNumber": 60
+        },
+        {
+          "caller": "_group_from_cluster_info",
+          "callee": "self._load_cluster_info",
+          "lineNumber": 67
+        },
+        {
+          "caller": "_group_from_cluster_info",
+          "callee": "cluster_info.get",
+          "lineNumber": 68
+        },
+        {
+          "caller": "_group_from_cluster_info",
+          "callee": "WorkerGroupConfig",
+          "lineNumber": 70
+        },
+        {
+          "caller": "_group_from_cluster_info",
+          "callee": "g.get",
+          "lineNumber": 76
+        },
+        {
+          "caller": "_group_from_cluster_info",
+          "callee": "g.get",
+          "lineNumber": 77
+        },
+        {
+          "caller": "_group_from_cluster_info",
+          "callee": "g.get",
+          "lineNumber": 78
+        },
+        {
+          "caller": "_group_from_cluster_info",
+          "callee": "g.get",
+          "lineNumber": 79
+        },
+        {
+          "caller": "_group_from_cluster_info",
+          "callee": "g.get",
+          "lineNumber": 80
+        },
+        {
+          "caller": "_group_from_cluster_info",
+          "callee": "cluster_info.get",
+          "lineNumber": 82
+        },
+        {
+          "caller": "_group_from_cluster_info",
+          "callee": "RuntimeError",
+          "lineNumber": 83
+        },
+        {
+          "caller": "create_worker_node",
+          "callee": "self._group_from_cluster_info",
+          "lineNumber": 119
+        },
+        {
+          "caller": "create_worker_node",
+          "callee": "int",
+          "lineNumber": 131
+        },
+        {
+          "caller": "create_worker_node",
+          "callee": "time.time",
+          "lineNumber": 131
+        },
+        {
+          "caller": "create_worker_node",
+          "callee": "self._load_cluster_info",
+          "lineNumber": 138
+        },
+        {
+          "caller": "create_worker_node",
+          "callee": "str",
+          "lineNumber": 140
+        },
+        {
+          "caller": "create_worker_node",
+          "callee": "str",
+          "lineNumber": 141
+        },
+        {
+          "caller": "create_worker_node",
+          "callee": "str",
+          "lineNumber": 142
+        },
+        {
+          "caller": "create_worker_node",
+          "callee": "cluster_info.get",
+          "lineNumber": 144
+        },
+        {
+          "caller": "create_worker_node",
+          "callee": "_nl.items",
+          "lineNumber": 170
+        },
+        {
+          "caller": "create_worker_node",
+          "callee": "_k.split",
+          "lineNumber": 171
+        },
+        {
+          "caller": "create_worker_node",
+          "callee": "_ray.update",
+          "lineNumber": 174
+        },
+        {
+          "caller": "create_worker_node",
+          "callee": "json.dumps",
+          "lineNumber": 175
+        },
+        {
+          "caller": "create_worker_node",
+          "callee": "self.manager.launch_worker",
+          "lineNumber": 177
+        },
+        {
+          "caller": "create_worker_node",
+          "callee": "logger.info",
+          "lineNumber": 183
+        },
+        {
+          "caller": "delete_application",
+          "callee": "self.manager.stop_application",
+          "lineNumber": 207
+        },
+        {
+          "caller": "delete_application",
+          "callee": "RuntimeError",
+          "lineNumber": 209
+        },
+        {
+          "caller": "delete_application",
+          "callee": "logger.info",
+          "lineNumber": 213
+        },
+        {
+          "caller": "launch_cai_application",
+          "callee": "self._load_cluster_info",
+          "lineNumber": 246
+        },
+        {
+          "caller": "launch_cai_application",
+          "callee": "cluster_info.get",
+          "lineNumber": 248
+        },
+        {
+          "caller": "launch_cai_application",
+          "callee": "cluster_info.get",
+          "lineNumber": 249
+        },
+        {
+          "caller": "launch_cai_application",
+          "callee": "RuntimeError",
+          "lineNumber": 255
+        },
+        {
+          "caller": "launch_cai_application",
+          "callee": "name.replace(\"_\", \"-\").lower",
+          "lineNumber": 260
+        },
+        {
+          "caller": "launch_cai_application",
+          "callee": "name.replace",
+          "lineNumber": 260
+        },
+        {
+          "caller": "launch_cai_application",
+          "callee": "self.manager.cml_client.create_application",
+          "lineNumber": 261
+        },
+        {
+          "caller": "launch_cai_application",
+          "callee": "logger.info",
+          "lineNumber": 273
+        },
+        {
+          "caller": "list_applications",
+          "callee": "self.manager.list_applications",
+          "lineNumber": 288
+        },
+        {
+          "caller": "get_application",
+          "callee": "self.manager.get_application",
+          "lineNumber": 301
+        },
+        {
+          "caller": "get_application",
+          "callee": "logger.error",
+          "lineNumber": 303
+        }
+      ],
+      "metrics": {
+        "importCount": 0,
+        "exportCount": 1,
+        "functionCount": 0,
+        "classCount": 1
+      }
+    }
+  ]
+}

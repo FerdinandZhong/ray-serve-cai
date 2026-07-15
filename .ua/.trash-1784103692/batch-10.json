@@ -1,0 +1,88 @@
+{
+  "nodes": [
+    {
+      "id": "config:pyproject.toml",
+      "type": "config",
+      "name": "pyproject.toml",
+      "filePath": "pyproject.toml",
+      "summary": "Project build and tool configuration: declares package metadata, optional dependency groups (vllm, sglang, mlflow, dev), CLI entry points, setuptools package discovery, and configures black, ruff, pytest, mypy, and coverage.",
+      "tags": ["configuration", "build-system", "development"],
+      "complexity": "moderate"
+    },
+    {
+      "id": "file:ray_serve_cai/management/services/resource_map.py",
+      "type": "file",
+      "name": "resource_map.py",
+      "filePath": "ray_serve_cai/management/services/resource_map.py",
+      "summary": "Implements ResourceMap — a persistent JSON-backed data structure that tracks CPU/memory/GPU allocation across registered worker nodes and launched applications, with register, unregister, allocate, release, sync, and validate operations used by CoordinatorService.",
+      "tags": ["data-model", "service", "utility"],
+      "complexity": "complex",
+      "languageNotes": "State is persisted to a JSON file with load/save helpers; sync() reconciles in-memory state against live CML application lists to remove stale entries."
+    },
+    {
+      "id": "file:ray_serve_cai/management/services/validate_venv.py",
+      "type": "file",
+      "name": "validate_venv.py",
+      "filePath": "ray_serve_cai/management/services/validate_venv.py",
+      "summary": "Utility module providing venv name validation (validate_venv_name) and path resolution (venv_dir_for) functions used by the environments API router.",
+      "tags": ["utility", "validation"],
+      "complexity": "simple"
+    },
+    {
+      "id": "file:ray_serve_cai/management/services/venv_utils.py",
+      "type": "file",
+      "name": "venv_utils.py",
+      "filePath": "ray_serve_cai/management/services/venv_utils.py",
+      "summary": "Utility module providing venv readiness checking and path utilities shared between the management services layer and the environments API router.",
+      "tags": ["utility", "service"],
+      "complexity": "simple"
+    },
+    {
+      "id": "class:ray_serve_cai/management/services/resource_map.py:ResourceMap",
+      "type": "class",
+      "name": "ResourceMap",
+      "filePath": "ray_serve_cai/management/services/resource_map.py",
+      "lineRange": [46, 241],
+      "summary": "Persistent resource allocation tracker that maintains a JSON-backed map of registered workers and allocated applications, supporting atomic register/allocate/release/sync operations with capacity validation.",
+      "tags": ["data-model", "service", "singleton"],
+      "complexity": "complex"
+    }
+  ],
+  "edges": [
+    {
+      "source": "config:pyproject.toml",
+      "target": "file:ray_serve_cai/management/app.py",
+      "type": "configures",
+      "direction": "forward",
+      "weight": 0.6
+    },
+    {
+      "source": "config:pyproject.toml",
+      "target": "file:cai_integration/setup_environment.py",
+      "type": "configures",
+      "direction": "forward",
+      "weight": 0.6
+    },
+    {
+      "source": "file:ray_serve_cai/management/services/resource_map.py",
+      "target": "class:ray_serve_cai/management/services/resource_map.py:ResourceMap",
+      "type": "contains",
+      "direction": "forward",
+      "weight": 1.0
+    },
+    {
+      "source": "file:ray_serve_cai/management/services/resource_map.py",
+      "target": "class:ray_serve_cai/management/services/resource_map.py:ResourceMap",
+      "type": "exports",
+      "direction": "forward",
+      "weight": 0.8
+    },
+    {
+      "source": "file:ray_serve_cai/management/services/coordinator.py",
+      "target": "file:ray_serve_cai/management/services/resource_map.py",
+      "type": "depends_on",
+      "direction": "forward",
+      "weight": 0.6
+    }
+  ]
+}

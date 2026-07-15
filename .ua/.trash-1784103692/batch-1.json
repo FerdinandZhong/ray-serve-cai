@@ -1,0 +1,959 @@
+{
+  "nodes": [
+    {
+      "id": "file:ray_serve_cai/management/api/__init__.py",
+      "type": "file",
+      "name": "__init__.py",
+      "filePath": "ray_serve_cai/management/api/__init__.py",
+      "summary": "Package barrel that imports and re-exports all FastAPI routers for the management API, assembling the full router set from applications, cluster, cml_apps, engines, environments, metrics, and resources submodules.",
+      "tags": ["entry-point", "barrel", "api-handler"],
+      "complexity": "simple"
+    },
+    {
+      "id": "file:ray_serve_cai/management/api/applications.py",
+      "type": "file",
+      "name": "applications.py",
+      "filePath": "ray_serve_cai/management/api/applications.py",
+      "summary": "FastAPI router implementing CRUD endpoints for Ray Serve applications — deploy, delete, list, and get status — delegating to the coordinator service for all underlying Ray operations.",
+      "tags": ["api-handler", "service", "middleware"],
+      "complexity": "complex"
+    },
+    {
+      "id": "file:ray_serve_cai/management/api/cluster.py",
+      "type": "file",
+      "name": "cluster.py",
+      "filePath": "ray_serve_cai/management/api/cluster.py",
+      "summary": "FastAPI router exposing Ray cluster status, cluster info (head address, dashboard URL, Ray version), and GCS address endpoints, reading cluster state from filesystem and the coordinator service.",
+      "tags": ["api-handler", "service", "monitoring"],
+      "complexity": "moderate"
+    },
+    {
+      "id": "file:ray_serve_cai/management/api/cml_apps.py",
+      "type": "file",
+      "name": "cml_apps.py",
+      "filePath": "ray_serve_cai/management/api/cml_apps.py",
+      "summary": "FastAPI router for launching and removing Cloudera AI (CML) applications, bridging the management API to the coordinator's CML application lifecycle methods.",
+      "tags": ["api-handler", "service", "middleware"],
+      "complexity": "simple"
+    },
+    {
+      "id": "file:ray_serve_cai/management/api/metrics.py",
+      "type": "file",
+      "name": "metrics.py",
+      "filePath": "ray_serve_cai/management/api/metrics.py",
+      "summary": "FastAPI router that aggregates Prometheus metrics from Ray head and worker nodes via async HTTP scraping, and provides a per-application metrics endpoint and a Prometheus service-discovery JSON endpoint.",
+      "tags": ["api-handler", "monitoring", "service"],
+      "complexity": "complex",
+      "languageNotes": "Uses asyncio.gather for concurrent metric scraping across multiple Ray nodes, and serves Prometheus-format plain text responses."
+    },
+    {
+      "id": "file:ray_serve_cai/management/api/resources.py",
+      "type": "file",
+      "name": "resources.py",
+      "filePath": "ray_serve_cai/management/api/resources.py",
+      "summary": "FastAPI router managing Ray cluster resource operations — adding/removing worker nodes, listing nodes and workers, retrieving resource allocation maps, and reporting cluster capacity utilization.",
+      "tags": ["api-handler", "service", "middleware"],
+      "complexity": "complex"
+    },
+    {
+      "id": "file:ray_serve_cai/management/models/__init__.py",
+      "type": "file",
+      "name": "__init__.py",
+      "filePath": "ray_serve_cai/management/models/__init__.py",
+      "summary": "Package barrel that re-exports all Pydantic request and response models from the models subpackage for convenient top-level access.",
+      "tags": ["barrel", "entry-point", "data-model"],
+      "complexity": "simple"
+    },
+    {
+      "id": "file:ray_serve_cai/management/models/requests.py",
+      "type": "file",
+      "name": "requests.py",
+      "filePath": "ray_serve_cai/management/models/requests.py",
+      "summary": "Defines Pydantic v2 request models for the management API, including AddNodeRequest, LaunchCaiApplicationRequest, SchedulingConfig (with placement group and env-var validation), and the complex DeployApplicationRequest with multi-engine discriminated union support.",
+      "tags": ["data-model", "validation", "type-definition"],
+      "complexity": "complex",
+      "languageNotes": "Uses Pydantic v2 model_validator and field_validator decorators, discriminated unions for engine type routing, and complex JSON schema annotations for OpenAPI generation."
+    },
+    {
+      "id": "file:ray_serve_cai/management/models/responses.py",
+      "type": "file",
+      "name": "responses.py",
+      "filePath": "ray_serve_cai/management/models/responses.py",
+      "summary": "Defines Pydantic v2 response models for the management API — NodeInfo, NodesListResponse, ApplicationInfo, ApplicationsListResponse, ResourceCapacity, ClusterStatus, and ClusterInfo — used to serialize API responses.",
+      "tags": ["data-model", "type-definition", "serialization"],
+      "complexity": "moderate"
+    },
+    {
+      "id": "function:ray_serve_cai/management/api/applications.py:deploy_application",
+      "type": "function",
+      "name": "deploy_application",
+      "filePath": "ray_serve_cai/management/api/applications.py",
+      "lineRange": [34, 109],
+      "summary": "FastAPI POST endpoint that deploys a Ray Serve application, constructing actor options from scheduling config (GPU resources, placement groups, env vars) then calling coordinator.ray_service.deploy_application.",
+      "tags": ["api-handler", "service", "middleware"],
+      "complexity": "complex"
+    },
+    {
+      "id": "function:ray_serve_cai/management/api/applications.py:delete_application",
+      "type": "function",
+      "name": "delete_application",
+      "filePath": "ray_serve_cai/management/api/applications.py",
+      "lineRange": [113, 122],
+      "summary": "FastAPI DELETE endpoint that removes a named Ray Serve application via the coordinator service.",
+      "tags": ["api-handler", "service"],
+      "complexity": "simple"
+    },
+    {
+      "id": "function:ray_serve_cai/management/api/applications.py:list_applications",
+      "type": "function",
+      "name": "list_applications",
+      "filePath": "ray_serve_cai/management/api/applications.py",
+      "lineRange": [126, 135],
+      "summary": "FastAPI GET endpoint that retrieves all deployed Ray Serve applications and returns them as an ApplicationsListResponse.",
+      "tags": ["api-handler", "service"],
+      "complexity": "simple"
+    },
+    {
+      "id": "function:ray_serve_cai/management/api/applications.py:get_application",
+      "type": "function",
+      "name": "get_application",
+      "filePath": "ray_serve_cai/management/api/applications.py",
+      "lineRange": [139, 152],
+      "summary": "FastAPI GET endpoint that retrieves status for a single named Ray Serve application, returning an ApplicationInfo model.",
+      "tags": ["api-handler", "service"],
+      "complexity": "simple"
+    },
+    {
+      "id": "function:ray_serve_cai/management/api/cluster.py:get_cluster_status",
+      "type": "function",
+      "name": "get_cluster_status",
+      "filePath": "ray_serve_cai/management/api/cluster.py",
+      "lineRange": [21, 31],
+      "summary": "FastAPI GET endpoint returning overall Ray cluster health status including node counts and resource summary.",
+      "tags": ["api-handler", "monitoring"],
+      "complexity": "simple"
+    },
+    {
+      "id": "function:ray_serve_cai/management/api/cluster.py:get_cluster_info",
+      "type": "function",
+      "name": "get_cluster_info",
+      "filePath": "ray_serve_cai/management/api/cluster.py",
+      "lineRange": [35, 72],
+      "summary": "FastAPI GET endpoint that reads cluster connection data from a JSON file on disk and connects to the Ray cluster, returning head address, dashboard URL, management API URL, Ray version, and cluster name.",
+      "tags": ["api-handler", "service"],
+      "complexity": "moderate"
+    },
+    {
+      "id": "function:ray_serve_cai/management/api/cluster.py:get_gcs_address",
+      "type": "function",
+      "name": "get_gcs_address",
+      "filePath": "ray_serve_cai/management/api/cluster.py",
+      "lineRange": [76, 97],
+      "summary": "FastAPI GET endpoint that resolves the Ray GCS address by reading it from a filesystem file, falling back to environment variables.",
+      "tags": ["api-handler", "service"],
+      "complexity": "simple"
+    },
+    {
+      "id": "function:ray_serve_cai/management/api/cml_apps.py:launch_cai_application",
+      "type": "function",
+      "name": "launch_cai_application",
+      "filePath": "ray_serve_cai/management/api/cml_apps.py",
+      "lineRange": [24, 48],
+      "summary": "FastAPI POST endpoint that launches a new Cloudera AI application using parameters from LaunchCaiApplicationRequest, delegating to coordinator.launch_cai_application.",
+      "tags": ["api-handler", "service"],
+      "complexity": "moderate"
+    },
+    {
+      "id": "function:ray_serve_cai/management/api/cml_apps.py:remove_cai_application",
+      "type": "function",
+      "name": "remove_cai_application",
+      "filePath": "ray_serve_cai/management/api/cml_apps.py",
+      "lineRange": [52, 60],
+      "summary": "FastAPI DELETE endpoint that removes a CML application by ID via the coordinator service.",
+      "tags": ["api-handler", "service"],
+      "complexity": "simple"
+    },
+    {
+      "id": "function:ray_serve_cai/management/api/metrics.py:_fetch_metrics",
+      "type": "function",
+      "name": "_fetch_metrics",
+      "filePath": "ray_serve_cai/management/api/metrics.py",
+      "lineRange": [35, 48],
+      "summary": "Internal async helper that fetches Prometheus metrics text from a single Ray node over HTTP using httpx.",
+      "tags": ["utility", "monitoring"],
+      "complexity": "simple"
+    },
+    {
+      "id": "function:ray_serve_cai/management/api/metrics.py:head_metrics",
+      "type": "function",
+      "name": "head_metrics",
+      "filePath": "ray_serve_cai/management/api/metrics.py",
+      "lineRange": [59, 72],
+      "summary": "FastAPI GET endpoint that fetches and proxies Prometheus metrics from the Ray head node.",
+      "tags": ["api-handler", "monitoring"],
+      "complexity": "simple"
+    },
+    {
+      "id": "function:ray_serve_cai/management/api/metrics.py:all_metrics",
+      "type": "function",
+      "name": "all_metrics",
+      "filePath": "ray_serve_cai/management/api/metrics.py",
+      "lineRange": [78, 127],
+      "summary": "FastAPI GET endpoint that concurrently scrapes Prometheus metrics from all alive Ray nodes and returns them concatenated as a single plain text response.",
+      "tags": ["api-handler", "monitoring", "service"],
+      "complexity": "complex"
+    },
+    {
+      "id": "function:ray_serve_cai/management/api/metrics.py:app_metrics",
+      "type": "function",
+      "name": "app_metrics",
+      "filePath": "ray_serve_cai/management/api/metrics.py",
+      "lineRange": [133, 191],
+      "summary": "FastAPI GET endpoint that scrapes per-application Prometheus metrics by discovering running Ray Serve applications and fetching from each application's metrics port concurrently.",
+      "tags": ["api-handler", "monitoring", "service"],
+      "complexity": "complex"
+    },
+    {
+      "id": "function:ray_serve_cai/management/api/metrics.py:metrics_discovery",
+      "type": "function",
+      "name": "metrics_discovery",
+      "filePath": "ray_serve_cai/management/api/metrics.py",
+      "lineRange": [197, 220],
+      "summary": "FastAPI GET endpoint serving a Prometheus HTTP service-discovery JSON file to enable dynamic scrape target registration.",
+      "tags": ["api-handler", "monitoring"],
+      "complexity": "simple"
+    },
+    {
+      "id": "function:ray_serve_cai/management/api/resources.py:add_node",
+      "type": "function",
+      "name": "add_node",
+      "filePath": "ray_serve_cai/management/api/resources.py",
+      "lineRange": [20, 38],
+      "summary": "FastAPI POST endpoint that provisions a new Ray worker node with given CPU/memory/GPU resources via the coordinator.",
+      "tags": ["api-handler", "service"],
+      "complexity": "simple"
+    },
+    {
+      "id": "function:ray_serve_cai/management/api/resources.py:get_resource_allocation",
+      "type": "function",
+      "name": "get_resource_allocation",
+      "filePath": "ray_serve_cai/management/api/resources.py",
+      "lineRange": [42, 54],
+      "summary": "FastAPI GET endpoint returning the current resource allocation map across the Ray cluster.",
+      "tags": ["api-handler", "monitoring"],
+      "complexity": "simple"
+    },
+    {
+      "id": "function:ray_serve_cai/management/api/resources.py:remove_node",
+      "type": "function",
+      "name": "remove_node",
+      "filePath": "ray_serve_cai/management/api/resources.py",
+      "lineRange": [58, 68],
+      "summary": "FastAPI DELETE endpoint that removes a worker node from the Ray cluster by application ID.",
+      "tags": ["api-handler", "service"],
+      "complexity": "simple"
+    },
+    {
+      "id": "function:ray_serve_cai/management/api/resources.py:list_nodes",
+      "type": "function",
+      "name": "list_nodes",
+      "filePath": "ray_serve_cai/management/api/resources.py",
+      "lineRange": [72, 86],
+      "summary": "FastAPI GET endpoint that lists enriched Ray node info (including CML metadata) and returns a NodesListResponse.",
+      "tags": ["api-handler", "service"],
+      "complexity": "simple"
+    },
+    {
+      "id": "function:ray_serve_cai/management/api/resources.py:list_workers",
+      "type": "function",
+      "name": "list_workers",
+      "filePath": "ray_serve_cai/management/api/resources.py",
+      "lineRange": [90, 108],
+      "summary": "FastAPI GET endpoint that lists worker applications currently running on the Ray cluster.",
+      "tags": ["api-handler", "service"],
+      "complexity": "simple"
+    },
+    {
+      "id": "function:ray_serve_cai/management/api/resources.py:get_capacity",
+      "type": "function",
+      "name": "get_capacity",
+      "filePath": "ray_serve_cai/management/api/resources.py",
+      "lineRange": [112, 138],
+      "summary": "FastAPI GET endpoint that queries total and available cluster CPU/memory/GPU resources and returns a ResourceCapacity model with utilization percentages.",
+      "tags": ["api-handler", "monitoring", "service"],
+      "complexity": "moderate"
+    },
+    {
+      "id": "class:ray_serve_cai/management/models/requests.py:AddNodeRequest",
+      "type": "class",
+      "name": "AddNodeRequest",
+      "filePath": "ray_serve_cai/management/models/requests.py",
+      "lineRange": [23, 74],
+      "summary": "Pydantic model for requesting a new Ray worker node with CPU, memory, GPU, runtime identifier, and optional label/resource fields.",
+      "tags": ["data-model", "validation"],
+      "complexity": "moderate"
+    },
+    {
+      "id": "class:ray_serve_cai/management/models/requests.py:LaunchCaiApplicationRequest",
+      "type": "class",
+      "name": "LaunchCaiApplicationRequest",
+      "filePath": "ray_serve_cai/management/models/requests.py",
+      "lineRange": [77, 108],
+      "summary": "Pydantic model for launching a Cloudera AI application with resource requirements, runtime identifier, environment variables, and authentication bypass flag.",
+      "tags": ["data-model", "validation"],
+      "complexity": "simple"
+    },
+    {
+      "id": "class:ray_serve_cai/management/models/requests.py:SchedulingConfig",
+      "type": "class",
+      "name": "SchedulingConfig",
+      "filePath": "ray_serve_cai/management/models/requests.py",
+      "lineRange": [111, 206],
+      "summary": "Pydantic model encapsulating Ray scheduling configuration — custom resources, placement group bundles and strategy, and env vars — with a validator ensuring unique env var keys.",
+      "tags": ["data-model", "validation", "configuration"],
+      "complexity": "complex"
+    },
+    {
+      "id": "class:ray_serve_cai/management/models/requests.py:DeployApplicationRequest",
+      "type": "class",
+      "name": "DeployApplicationRequest",
+      "filePath": "ray_serve_cai/management/models/requests.py",
+      "lineRange": [209, 451],
+      "summary": "Central Pydantic model for deploying a Ray Serve application, supporting multiple engine types via discriminated union, with validators for import path format, engine-type consistency, and autoscaling/replica mutual exclusion.",
+      "tags": ["data-model", "validation", "factory"],
+      "complexity": "complex"
+    },
+    {
+      "id": "class:ray_serve_cai/management/models/responses.py:NodeInfo",
+      "type": "class",
+      "name": "NodeInfo",
+      "filePath": "ray_serve_cai/management/models/responses.py",
+      "lineRange": [8, 21],
+      "summary": "Pydantic response model describing a Ray node with its ID, resources, alive status, and CML-specific metadata (pod name, app ID).",
+      "tags": ["data-model", "type-definition"],
+      "complexity": "simple"
+    },
+    {
+      "id": "class:ray_serve_cai/management/models/responses.py:NodesListResponse",
+      "type": "class",
+      "name": "NodesListResponse",
+      "filePath": "ray_serve_cai/management/models/responses.py",
+      "lineRange": [24, 29],
+      "summary": "Pydantic response model wrapping a list of NodeInfo objects with aggregate counts for total and alive nodes.",
+      "tags": ["data-model", "type-definition"],
+      "complexity": "simple"
+    },
+    {
+      "id": "class:ray_serve_cai/management/models/responses.py:ApplicationInfo",
+      "type": "class",
+      "name": "ApplicationInfo",
+      "filePath": "ray_serve_cai/management/models/responses.py",
+      "lineRange": [32, 40],
+      "summary": "Pydantic response model describing a deployed Ray Serve application with its status, route prefix, replica count, and last deployment time.",
+      "tags": ["data-model", "type-definition"],
+      "complexity": "simple"
+    },
+    {
+      "id": "class:ray_serve_cai/management/models/responses.py:ApplicationsListResponse",
+      "type": "class",
+      "name": "ApplicationsListResponse",
+      "filePath": "ray_serve_cai/management/models/responses.py",
+      "lineRange": [43, 47],
+      "summary": "Pydantic response model wrapping a list of ApplicationInfo objects with a total count.",
+      "tags": ["data-model", "type-definition"],
+      "complexity": "simple"
+    },
+    {
+      "id": "class:ray_serve_cai/management/models/responses.py:ResourceCapacity",
+      "type": "class",
+      "name": "ResourceCapacity",
+      "filePath": "ray_serve_cai/management/models/responses.py",
+      "lineRange": [50, 59],
+      "summary": "Pydantic response model reporting total and available CPU, memory, and GPU resources with an overall utilization percentage.",
+      "tags": ["data-model", "type-definition"],
+      "complexity": "simple"
+    },
+    {
+      "id": "class:ray_serve_cai/management/models/responses.py:ClusterStatus",
+      "type": "class",
+      "name": "ClusterStatus",
+      "filePath": "ray_serve_cai/management/models/responses.py",
+      "lineRange": [62, 69],
+      "summary": "Pydantic response model summarising Ray cluster health — healthy flag, node counts, application count, and resource summary.",
+      "tags": ["data-model", "type-definition"],
+      "complexity": "simple"
+    },
+    {
+      "id": "class:ray_serve_cai/management/models/responses.py:ClusterInfo",
+      "type": "class",
+      "name": "ClusterInfo",
+      "filePath": "ray_serve_cai/management/models/responses.py",
+      "lineRange": [72, 79],
+      "summary": "Pydantic response model carrying Ray cluster connection info — head address, dashboard URL, management API URL, Ray version, and cluster name.",
+      "tags": ["data-model", "type-definition"],
+      "complexity": "simple"
+    }
+  ],
+  "edges": [
+    {
+      "source": "file:ray_serve_cai/management/api/__init__.py",
+      "target": "file:ray_serve_cai/management/api/applications.py",
+      "type": "imports",
+      "direction": "forward",
+      "weight": 0.7
+    },
+    {
+      "source": "file:ray_serve_cai/management/api/__init__.py",
+      "target": "file:ray_serve_cai/management/api/cluster.py",
+      "type": "imports",
+      "direction": "forward",
+      "weight": 0.7
+    },
+    {
+      "source": "file:ray_serve_cai/management/api/__init__.py",
+      "target": "file:ray_serve_cai/management/api/cml_apps.py",
+      "type": "imports",
+      "direction": "forward",
+      "weight": 0.7
+    },
+    {
+      "source": "file:ray_serve_cai/management/api/__init__.py",
+      "target": "file:ray_serve_cai/management/api/engines.py",
+      "type": "imports",
+      "direction": "forward",
+      "weight": 0.7
+    },
+    {
+      "source": "file:ray_serve_cai/management/api/__init__.py",
+      "target": "file:ray_serve_cai/management/api/environments.py",
+      "type": "imports",
+      "direction": "forward",
+      "weight": 0.7
+    },
+    {
+      "source": "file:ray_serve_cai/management/api/__init__.py",
+      "target": "file:ray_serve_cai/management/api/metrics.py",
+      "type": "imports",
+      "direction": "forward",
+      "weight": 0.7
+    },
+    {
+      "source": "file:ray_serve_cai/management/api/__init__.py",
+      "target": "file:ray_serve_cai/management/api/resources.py",
+      "type": "imports",
+      "direction": "forward",
+      "weight": 0.7
+    },
+    {
+      "source": "file:ray_serve_cai/management/api/applications.py",
+      "target": "file:ray_serve_cai/management/models/requests.py",
+      "type": "imports",
+      "direction": "forward",
+      "weight": 0.7
+    },
+    {
+      "source": "file:ray_serve_cai/management/api/applications.py",
+      "target": "file:ray_serve_cai/management/models/responses.py",
+      "type": "imports",
+      "direction": "forward",
+      "weight": 0.7
+    },
+    {
+      "source": "file:ray_serve_cai/management/api/applications.py",
+      "target": "file:ray_serve_cai/management/services/coordinator.py",
+      "type": "imports",
+      "direction": "forward",
+      "weight": 0.7
+    },
+    {
+      "source": "file:ray_serve_cai/management/api/cluster.py",
+      "target": "file:ray_serve_cai/management/models/responses.py",
+      "type": "imports",
+      "direction": "forward",
+      "weight": 0.7
+    },
+    {
+      "source": "file:ray_serve_cai/management/api/cluster.py",
+      "target": "file:ray_serve_cai/management/services/coordinator.py",
+      "type": "imports",
+      "direction": "forward",
+      "weight": 0.7
+    },
+    {
+      "source": "file:ray_serve_cai/management/api/cml_apps.py",
+      "target": "file:ray_serve_cai/management/models/requests.py",
+      "type": "imports",
+      "direction": "forward",
+      "weight": 0.7
+    },
+    {
+      "source": "file:ray_serve_cai/management/api/cml_apps.py",
+      "target": "file:ray_serve_cai/management/services/coordinator.py",
+      "type": "imports",
+      "direction": "forward",
+      "weight": 0.7
+    },
+    {
+      "source": "file:ray_serve_cai/management/api/resources.py",
+      "target": "file:ray_serve_cai/management/models/requests.py",
+      "type": "imports",
+      "direction": "forward",
+      "weight": 0.7
+    },
+    {
+      "source": "file:ray_serve_cai/management/api/resources.py",
+      "target": "file:ray_serve_cai/management/models/responses.py",
+      "type": "imports",
+      "direction": "forward",
+      "weight": 0.7
+    },
+    {
+      "source": "file:ray_serve_cai/management/api/resources.py",
+      "target": "file:ray_serve_cai/management/services/coordinator.py",
+      "type": "imports",
+      "direction": "forward",
+      "weight": 0.7
+    },
+    {
+      "source": "file:ray_serve_cai/management/models/__init__.py",
+      "target": "file:ray_serve_cai/management/models/requests.py",
+      "type": "imports",
+      "direction": "forward",
+      "weight": 0.7
+    },
+    {
+      "source": "file:ray_serve_cai/management/models/__init__.py",
+      "target": "file:ray_serve_cai/management/models/responses.py",
+      "type": "imports",
+      "direction": "forward",
+      "weight": 0.7
+    },
+    {
+      "source": "file:ray_serve_cai/management/api/applications.py",
+      "target": "function:ray_serve_cai/management/api/applications.py:deploy_application",
+      "type": "contains",
+      "direction": "forward",
+      "weight": 1.0
+    },
+    {
+      "source": "file:ray_serve_cai/management/api/applications.py",
+      "target": "function:ray_serve_cai/management/api/applications.py:delete_application",
+      "type": "contains",
+      "direction": "forward",
+      "weight": 1.0
+    },
+    {
+      "source": "file:ray_serve_cai/management/api/applications.py",
+      "target": "function:ray_serve_cai/management/api/applications.py:list_applications",
+      "type": "contains",
+      "direction": "forward",
+      "weight": 1.0
+    },
+    {
+      "source": "file:ray_serve_cai/management/api/applications.py",
+      "target": "function:ray_serve_cai/management/api/applications.py:get_application",
+      "type": "contains",
+      "direction": "forward",
+      "weight": 1.0
+    },
+    {
+      "source": "file:ray_serve_cai/management/api/applications.py",
+      "target": "function:ray_serve_cai/management/api/applications.py:deploy_application",
+      "type": "exports",
+      "direction": "forward",
+      "weight": 0.8
+    },
+    {
+      "source": "file:ray_serve_cai/management/api/applications.py",
+      "target": "function:ray_serve_cai/management/api/applications.py:delete_application",
+      "type": "exports",
+      "direction": "forward",
+      "weight": 0.8
+    },
+    {
+      "source": "file:ray_serve_cai/management/api/applications.py",
+      "target": "function:ray_serve_cai/management/api/applications.py:list_applications",
+      "type": "exports",
+      "direction": "forward",
+      "weight": 0.8
+    },
+    {
+      "source": "file:ray_serve_cai/management/api/applications.py",
+      "target": "function:ray_serve_cai/management/api/applications.py:get_application",
+      "type": "exports",
+      "direction": "forward",
+      "weight": 0.8
+    },
+    {
+      "source": "file:ray_serve_cai/management/api/cluster.py",
+      "target": "function:ray_serve_cai/management/api/cluster.py:get_cluster_status",
+      "type": "contains",
+      "direction": "forward",
+      "weight": 1.0
+    },
+    {
+      "source": "file:ray_serve_cai/management/api/cluster.py",
+      "target": "function:ray_serve_cai/management/api/cluster.py:get_cluster_info",
+      "type": "contains",
+      "direction": "forward",
+      "weight": 1.0
+    },
+    {
+      "source": "file:ray_serve_cai/management/api/cluster.py",
+      "target": "function:ray_serve_cai/management/api/cluster.py:get_gcs_address",
+      "type": "contains",
+      "direction": "forward",
+      "weight": 1.0
+    },
+    {
+      "source": "file:ray_serve_cai/management/api/cluster.py",
+      "target": "function:ray_serve_cai/management/api/cluster.py:get_cluster_status",
+      "type": "exports",
+      "direction": "forward",
+      "weight": 0.8
+    },
+    {
+      "source": "file:ray_serve_cai/management/api/cluster.py",
+      "target": "function:ray_serve_cai/management/api/cluster.py:get_cluster_info",
+      "type": "exports",
+      "direction": "forward",
+      "weight": 0.8
+    },
+    {
+      "source": "file:ray_serve_cai/management/api/cluster.py",
+      "target": "function:ray_serve_cai/management/api/cluster.py:get_gcs_address",
+      "type": "exports",
+      "direction": "forward",
+      "weight": 0.8
+    },
+    {
+      "source": "file:ray_serve_cai/management/api/cml_apps.py",
+      "target": "function:ray_serve_cai/management/api/cml_apps.py:launch_cai_application",
+      "type": "contains",
+      "direction": "forward",
+      "weight": 1.0
+    },
+    {
+      "source": "file:ray_serve_cai/management/api/cml_apps.py",
+      "target": "function:ray_serve_cai/management/api/cml_apps.py:remove_cai_application",
+      "type": "contains",
+      "direction": "forward",
+      "weight": 1.0
+    },
+    {
+      "source": "file:ray_serve_cai/management/api/cml_apps.py",
+      "target": "function:ray_serve_cai/management/api/cml_apps.py:launch_cai_application",
+      "type": "exports",
+      "direction": "forward",
+      "weight": 0.8
+    },
+    {
+      "source": "file:ray_serve_cai/management/api/cml_apps.py",
+      "target": "function:ray_serve_cai/management/api/cml_apps.py:remove_cai_application",
+      "type": "exports",
+      "direction": "forward",
+      "weight": 0.8
+    },
+    {
+      "source": "file:ray_serve_cai/management/api/metrics.py",
+      "target": "function:ray_serve_cai/management/api/metrics.py:_fetch_metrics",
+      "type": "contains",
+      "direction": "forward",
+      "weight": 1.0
+    },
+    {
+      "source": "file:ray_serve_cai/management/api/metrics.py",
+      "target": "function:ray_serve_cai/management/api/metrics.py:head_metrics",
+      "type": "contains",
+      "direction": "forward",
+      "weight": 1.0
+    },
+    {
+      "source": "file:ray_serve_cai/management/api/metrics.py",
+      "target": "function:ray_serve_cai/management/api/metrics.py:all_metrics",
+      "type": "contains",
+      "direction": "forward",
+      "weight": 1.0
+    },
+    {
+      "source": "file:ray_serve_cai/management/api/metrics.py",
+      "target": "function:ray_serve_cai/management/api/metrics.py:app_metrics",
+      "type": "contains",
+      "direction": "forward",
+      "weight": 1.0
+    },
+    {
+      "source": "file:ray_serve_cai/management/api/metrics.py",
+      "target": "function:ray_serve_cai/management/api/metrics.py:metrics_discovery",
+      "type": "contains",
+      "direction": "forward",
+      "weight": 1.0
+    },
+    {
+      "source": "file:ray_serve_cai/management/api/metrics.py",
+      "target": "function:ray_serve_cai/management/api/metrics.py:head_metrics",
+      "type": "exports",
+      "direction": "forward",
+      "weight": 0.8
+    },
+    {
+      "source": "file:ray_serve_cai/management/api/metrics.py",
+      "target": "function:ray_serve_cai/management/api/metrics.py:all_metrics",
+      "type": "exports",
+      "direction": "forward",
+      "weight": 0.8
+    },
+    {
+      "source": "file:ray_serve_cai/management/api/metrics.py",
+      "target": "function:ray_serve_cai/management/api/metrics.py:app_metrics",
+      "type": "exports",
+      "direction": "forward",
+      "weight": 0.8
+    },
+    {
+      "source": "file:ray_serve_cai/management/api/metrics.py",
+      "target": "function:ray_serve_cai/management/api/metrics.py:metrics_discovery",
+      "type": "exports",
+      "direction": "forward",
+      "weight": 0.8
+    },
+    {
+      "source": "file:ray_serve_cai/management/api/resources.py",
+      "target": "function:ray_serve_cai/management/api/resources.py:add_node",
+      "type": "contains",
+      "direction": "forward",
+      "weight": 1.0
+    },
+    {
+      "source": "file:ray_serve_cai/management/api/resources.py",
+      "target": "function:ray_serve_cai/management/api/resources.py:get_resource_allocation",
+      "type": "contains",
+      "direction": "forward",
+      "weight": 1.0
+    },
+    {
+      "source": "file:ray_serve_cai/management/api/resources.py",
+      "target": "function:ray_serve_cai/management/api/resources.py:remove_node",
+      "type": "contains",
+      "direction": "forward",
+      "weight": 1.0
+    },
+    {
+      "source": "file:ray_serve_cai/management/api/resources.py",
+      "target": "function:ray_serve_cai/management/api/resources.py:list_nodes",
+      "type": "contains",
+      "direction": "forward",
+      "weight": 1.0
+    },
+    {
+      "source": "file:ray_serve_cai/management/api/resources.py",
+      "target": "function:ray_serve_cai/management/api/resources.py:list_workers",
+      "type": "contains",
+      "direction": "forward",
+      "weight": 1.0
+    },
+    {
+      "source": "file:ray_serve_cai/management/api/resources.py",
+      "target": "function:ray_serve_cai/management/api/resources.py:get_capacity",
+      "type": "contains",
+      "direction": "forward",
+      "weight": 1.0
+    },
+    {
+      "source": "file:ray_serve_cai/management/api/resources.py",
+      "target": "function:ray_serve_cai/management/api/resources.py:add_node",
+      "type": "exports",
+      "direction": "forward",
+      "weight": 0.8
+    },
+    {
+      "source": "file:ray_serve_cai/management/api/resources.py",
+      "target": "function:ray_serve_cai/management/api/resources.py:get_resource_allocation",
+      "type": "exports",
+      "direction": "forward",
+      "weight": 0.8
+    },
+    {
+      "source": "file:ray_serve_cai/management/api/resources.py",
+      "target": "function:ray_serve_cai/management/api/resources.py:remove_node",
+      "type": "exports",
+      "direction": "forward",
+      "weight": 0.8
+    },
+    {
+      "source": "file:ray_serve_cai/management/api/resources.py",
+      "target": "function:ray_serve_cai/management/api/resources.py:list_nodes",
+      "type": "exports",
+      "direction": "forward",
+      "weight": 0.8
+    },
+    {
+      "source": "file:ray_serve_cai/management/api/resources.py",
+      "target": "function:ray_serve_cai/management/api/resources.py:list_workers",
+      "type": "exports",
+      "direction": "forward",
+      "weight": 0.8
+    },
+    {
+      "source": "file:ray_serve_cai/management/api/resources.py",
+      "target": "function:ray_serve_cai/management/api/resources.py:get_capacity",
+      "type": "exports",
+      "direction": "forward",
+      "weight": 0.8
+    },
+    {
+      "source": "file:ray_serve_cai/management/models/requests.py",
+      "target": "class:ray_serve_cai/management/models/requests.py:AddNodeRequest",
+      "type": "contains",
+      "direction": "forward",
+      "weight": 1.0
+    },
+    {
+      "source": "file:ray_serve_cai/management/models/requests.py",
+      "target": "class:ray_serve_cai/management/models/requests.py:LaunchCaiApplicationRequest",
+      "type": "contains",
+      "direction": "forward",
+      "weight": 1.0
+    },
+    {
+      "source": "file:ray_serve_cai/management/models/requests.py",
+      "target": "class:ray_serve_cai/management/models/requests.py:SchedulingConfig",
+      "type": "contains",
+      "direction": "forward",
+      "weight": 1.0
+    },
+    {
+      "source": "file:ray_serve_cai/management/models/requests.py",
+      "target": "class:ray_serve_cai/management/models/requests.py:DeployApplicationRequest",
+      "type": "contains",
+      "direction": "forward",
+      "weight": 1.0
+    },
+    {
+      "source": "file:ray_serve_cai/management/models/requests.py",
+      "target": "class:ray_serve_cai/management/models/requests.py:AddNodeRequest",
+      "type": "exports",
+      "direction": "forward",
+      "weight": 0.8
+    },
+    {
+      "source": "file:ray_serve_cai/management/models/requests.py",
+      "target": "class:ray_serve_cai/management/models/requests.py:LaunchCaiApplicationRequest",
+      "type": "exports",
+      "direction": "forward",
+      "weight": 0.8
+    },
+    {
+      "source": "file:ray_serve_cai/management/models/requests.py",
+      "target": "class:ray_serve_cai/management/models/requests.py:SchedulingConfig",
+      "type": "exports",
+      "direction": "forward",
+      "weight": 0.8
+    },
+    {
+      "source": "file:ray_serve_cai/management/models/requests.py",
+      "target": "class:ray_serve_cai/management/models/requests.py:DeployApplicationRequest",
+      "type": "exports",
+      "direction": "forward",
+      "weight": 0.8
+    },
+    {
+      "source": "file:ray_serve_cai/management/models/responses.py",
+      "target": "class:ray_serve_cai/management/models/responses.py:NodeInfo",
+      "type": "contains",
+      "direction": "forward",
+      "weight": 1.0
+    },
+    {
+      "source": "file:ray_serve_cai/management/models/responses.py",
+      "target": "class:ray_serve_cai/management/models/responses.py:NodesListResponse",
+      "type": "contains",
+      "direction": "forward",
+      "weight": 1.0
+    },
+    {
+      "source": "file:ray_serve_cai/management/models/responses.py",
+      "target": "class:ray_serve_cai/management/models/responses.py:ApplicationInfo",
+      "type": "contains",
+      "direction": "forward",
+      "weight": 1.0
+    },
+    {
+      "source": "file:ray_serve_cai/management/models/responses.py",
+      "target": "class:ray_serve_cai/management/models/responses.py:ApplicationsListResponse",
+      "type": "contains",
+      "direction": "forward",
+      "weight": 1.0
+    },
+    {
+      "source": "file:ray_serve_cai/management/models/responses.py",
+      "target": "class:ray_serve_cai/management/models/responses.py:ResourceCapacity",
+      "type": "contains",
+      "direction": "forward",
+      "weight": 1.0
+    },
+    {
+      "source": "file:ray_serve_cai/management/models/responses.py",
+      "target": "class:ray_serve_cai/management/models/responses.py:ClusterStatus",
+      "type": "contains",
+      "direction": "forward",
+      "weight": 1.0
+    },
+    {
+      "source": "file:ray_serve_cai/management/models/responses.py",
+      "target": "class:ray_serve_cai/management/models/responses.py:ClusterInfo",
+      "type": "contains",
+      "direction": "forward",
+      "weight": 1.0
+    },
+    {
+      "source": "file:ray_serve_cai/management/models/responses.py",
+      "target": "class:ray_serve_cai/management/models/responses.py:NodeInfo",
+      "type": "exports",
+      "direction": "forward",
+      "weight": 0.8
+    },
+    {
+      "source": "file:ray_serve_cai/management/models/responses.py",
+      "target": "class:ray_serve_cai/management/models/responses.py:NodesListResponse",
+      "type": "exports",
+      "direction": "forward",
+      "weight": 0.8
+    },
+    {
+      "source": "file:ray_serve_cai/management/models/responses.py",
+      "target": "class:ray_serve_cai/management/models/responses.py:ApplicationInfo",
+      "type": "exports",
+      "direction": "forward",
+      "weight": 0.8
+    },
+    {
+      "source": "file:ray_serve_cai/management/models/responses.py",
+      "target": "class:ray_serve_cai/management/models/responses.py:ApplicationsListResponse",
+      "type": "exports",
+      "direction": "forward",
+      "weight": 0.8
+    },
+    {
+      "source": "file:ray_serve_cai/management/models/responses.py",
+      "target": "class:ray_serve_cai/management/models/responses.py:ResourceCapacity",
+      "type": "exports",
+      "direction": "forward",
+      "weight": 0.8
+    },
+    {
+      "source": "file:ray_serve_cai/management/models/responses.py",
+      "target": "class:ray_serve_cai/management/models/responses.py:ClusterStatus",
+      "type": "exports",
+      "direction": "forward",
+      "weight": 0.8
+    },
+    {
+      "source": "file:ray_serve_cai/management/models/responses.py",
+      "target": "class:ray_serve_cai/management/models/responses.py:ClusterInfo",
+      "type": "exports",
+      "direction": "forward",
+      "weight": 0.8
+    }
+  ]
+}

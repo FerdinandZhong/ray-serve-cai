@@ -1,0 +1,21 @@
+{
+  "projectRoot": "/Users/zhongqishuai/Projects/cldr_projects/ray-serve-cai",
+  "batchFiles": [
+    {"path": "ray_serve_cai/management/api/engines.py", "language": "python", "sizeLines": 126, "fileCategory": "code"},
+    {"path": "ray_serve_cai/management/api/environments.py", "language": "python", "sizeLines": 86, "fileCategory": "code"},
+    {"path": "ray_serve_cai/management/services/__init__.py", "language": "python", "sizeLines": 6, "fileCategory": "code"},
+    {"path": "ray_serve_cai/management/services/coordinator.py", "language": "python", "sizeLines": 351, "fileCategory": "code"},
+    {"path": "ray_serve_cai/management/services/cml_client.py", "language": "python", "sizeLines": 151, "fileCategory": "code"},
+    {"path": "ray_serve_cai/management/app.py", "language": "python", "sizeLines": 91, "fileCategory": "code"},
+    {"path": "ray_serve_cai/management/__init__.py", "language": "python", "sizeLines": 6, "fileCategory": "code"}
+  ],
+  "batchImportData": {
+    "ray_serve_cai/management/api/engines.py": ["ray_serve_cai/management/models/requests.py","ray_serve_cai/management/models/responses.py","ray_serve_cai/management/services/coordinator.py"],
+    "ray_serve_cai/management/api/environments.py": ["ray_serve_cai/management/models/requests.py","ray_serve_cai/management/services/coordinator.py"],
+    "ray_serve_cai/management/services/__init__.py": ["ray_serve_cai/management/services/coordinator.py"],
+    "ray_serve_cai/management/services/coordinator.py": ["ray_serve_cai/ray_service.py","ray_serve_cai/management/services/cml_client.py"],
+    "ray_serve_cai/management/services/cml_client.py": [],
+    "ray_serve_cai/management/app.py": ["ray_serve_cai/management/api/__init__.py","ray_serve_cai/management/models/__init__.py"],
+    "ray_serve_cai/management/__init__.py": []
+  }
+}

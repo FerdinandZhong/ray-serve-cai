@@ -1,0 +1,10 @@
+{
+  "projectRoot": "/Users/zhongqishuai/Projects/cldr_projects/ray-serve-cai",
+  "batchFiles": [
+    {"path": "pyproject.toml", "language": "toml", "sizeLines": 0, "fileCategory": "config"},
+    {"path": "ray_serve_cai/management/services/resource_map.py", "language": "python", "sizeLines": 0, "fileCategory": "code"},
+    {"path": "ray_serve_cai/management/services/validate_venv.py", "language": "python", "sizeLines": 0, "fileCategory": "code"},
+    {"path": "ray_serve_cai/management/services/venv_utils.py", "language": "python", "sizeLines": 0, "fileCategory": "code"}
+  ],
+  "batchImportData": {}
+}

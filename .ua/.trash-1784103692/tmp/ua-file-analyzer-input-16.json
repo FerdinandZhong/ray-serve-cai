@@ -1,0 +1,9 @@
+{
+  "projectRoot": "/Users/zhongqishuai/Projects/cldr_projects/ray-serve-cai",
+  "batchFiles": [
+    {"path": "ray_serve_cai/__init__.py", "language": "python", "sizeLines": 0, "fileCategory": "code"},
+    {"path": "scripts/run_management_api.sh", "language": "shell", "sizeLines": 0, "fileCategory": "script"},
+    {"path": "cai_integration/cluster_config.yaml", "language": "yaml", "sizeLines": 0, "fileCategory": "config"}
+  ],
+  "batchImportData": {}
+}

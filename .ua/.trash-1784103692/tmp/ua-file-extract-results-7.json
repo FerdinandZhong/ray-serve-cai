@@ -1,0 +1,1588 @@
+{
+  "scriptCompleted": true,
+  "filesAnalyzed": 2,
+  "filesSkipped": [],
+  "results": [
+    {
+      "path": "tests/test_cluster_deployment.py",
+      "language": "python",
+      "fileCategory": "code",
+      "totalLines": 257,
+      "nonEmptyLines": 209,
+      "functions": [
+        {
+          "name": "main",
+          "startLine": 199,
+          "endLine": 253,
+          "params": []
+        }
+      ],
+      "classes": [
+        {
+          "name": "RayClusterTester",
+          "startLine": 37,
+          "endLine": 196,
+          "methods": [
+            "__init__",
+            "connect_to_cluster",
+            "test_cluster_status",
+            "test_simple_task",
+            "run_all_tests",
+            "cleanup"
+          ],
+          "properties": []
+        }
+      ],
+      "exports": [
+        {
+          "name": "RayClusterTester",
+          "line": 37,
+          "isDefault": false
+        },
+        {
+          "name": "main",
+          "line": 199,
+          "isDefault": false
+        }
+      ],
+      "callGraph": [
+        {
+          "caller": "__init__",
+          "callee": "print",
+          "lineNumber": 51
+        },
+        {
+          "caller": "__init__",
+          "callee": "print",
+          "lineNumber": 52
+        },
+        {
+          "caller": "__init__",
+          "callee": "print",
+          "lineNumber": 53
+        },
+        {
+          "caller": "__init__",
+          "callee": "print",
+          "lineNumber": 54
+        },
+        {
+          "caller": "__init__",
+          "callee": "print",
+          "lineNumber": 55
+        },
+        {
+          "caller": "__init__",
+          "callee": "print",
+          "lineNumber": 56
+        },
+        {
+          "caller": "__init__",
+          "callee": "print",
+          "lineNumber": 57
+        },
+        {
+          "caller": "connect_to_cluster",
+          "callee": "print",
+          "lineNumber": 65
+        },
+        {
+          "caller": "connect_to_cluster",
+          "callee": "print",
+          "lineNumber": 66
+        },
+        {
+          "caller": "connect_to_cluster",
+          "callee": "print",
+          "lineNumber": 67
+        },
+        {
+          "caller": "connect_to_cluster",
+          "callee": "print",
+          "lineNumber": 68
+        },
+        {
+          "caller": "connect_to_cluster",
+          "callee": "time.time",
+          "lineNumber": 70
+        },
+        {
+          "caller": "connect_to_cluster",
+          "callee": "time.time",
+          "lineNumber": 72
+        },
+        {
+          "caller": "connect_to_cluster",
+          "callee": "int",
+          "lineNumber": 73
+        },
+        {
+          "caller": "connect_to_cluster",
+          "callee": "time.time",
+          "lineNumber": 73
+        },
+        {
+          "caller": "connect_to_cluster",
+          "callee": "print",
+          "lineNumber": 76
+        },
+        {
+          "caller": "connect_to_cluster",
+          "callee": "ray.init",
+          "lineNumber": 78
+        },
+        {
+          "caller": "connect_to_cluster",
+          "callee": "print",
+          "lineNumber": 84
+        },
+        {
+          "caller": "connect_to_cluster",
+          "callee": "print",
+          "lineNumber": 91
+        },
+        {
+          "caller": "connect_to_cluster",
+          "callee": "time.sleep",
+          "lineNumber": 92
+        },
+        {
+          "caller": "connect_to_cluster",
+          "callee": "print",
+          "lineNumber": 94
+        },
+        {
+          "caller": "connect_to_cluster",
+          "callee": "time.sleep",
+          "lineNumber": 95
+        },
+        {
+          "caller": "connect_to_cluster",
+          "callee": "print",
+          "lineNumber": 97
+        },
+        {
+          "caller": "connect_to_cluster",
+          "callee": "print",
+          "lineNumber": 98
+        },
+        {
+          "caller": "test_cluster_status",
+          "callee": "print",
+          "lineNumber": 107
+        },
+        {
+          "caller": "test_cluster_status",
+          "callee": "print",
+          "lineNumber": 108
+        },
+        {
+          "caller": "test_cluster_status",
+          "callee": "print",
+          "lineNumber": 109
+        },
+        {
+          "caller": "test_cluster_status",
+          "callee": "print",
+          "lineNumber": 110
+        },
+        {
+          "caller": "test_cluster_status",
+          "callee": "ray.cluster_resources",
+          "lineNumber": 113
+        },
+        {
+          "caller": "test_cluster_status",
+          "callee": "print",
+          "lineNumber": 114
+        },
+        {
+          "caller": "test_cluster_status",
+          "callee": "print",
+          "lineNumber": 115
+        },
+        {
+          "caller": "test_cluster_status",
+          "callee": "info.get",
+          "lineNumber": 115
+        },
+        {
+          "caller": "test_cluster_status",
+          "callee": "print",
+          "lineNumber": 116
+        },
+        {
+          "caller": "test_cluster_status",
+          "callee": "info.get",
+          "lineNumber": 116
+        },
+        {
+          "caller": "test_cluster_status",
+          "callee": "print",
+          "lineNumber": 117
+        },
+        {
+          "caller": "test_cluster_status",
+          "callee": "info.get",
+          "lineNumber": 117
+        },
+        {
+          "caller": "test_cluster_status",
+          "callee": "print",
+          "lineNumber": 118
+        },
+        {
+          "caller": "test_cluster_status",
+          "callee": "ray.runtime_context",
+          "lineNumber": 121
+        },
+        {
+          "caller": "test_cluster_status",
+          "callee": "print",
+          "lineNumber": 122
+        },
+        {
+          "caller": "test_cluster_status",
+          "callee": "print",
+          "lineNumber": 123
+        },
+        {
+          "caller": "test_cluster_status",
+          "callee": "print",
+          "lineNumber": 124
+        },
+        {
+          "caller": "test_cluster_status",
+          "callee": "print",
+          "lineNumber": 125
+        },
+        {
+          "caller": "test_cluster_status",
+          "callee": "print",
+          "lineNumber": 130
+        },
+        {
+          "caller": "test_simple_task",
+          "callee": "print",
+          "lineNumber": 139
+        },
+        {
+          "caller": "test_simple_task",
+          "callee": "print",
+          "lineNumber": 140
+        },
+        {
+          "caller": "test_simple_task",
+          "callee": "print",
+          "lineNumber": 141
+        },
+        {
+          "caller": "test_simple_task",
+          "callee": "print",
+          "lineNumber": 142
+        },
+        {
+          "caller": "test_simple_task",
+          "callee": "print",
+          "lineNumber": 149
+        },
+        {
+          "caller": "test_simple_task",
+          "callee": "test_task.remote",
+          "lineNumber": 150
+        },
+        {
+          "caller": "test_simple_task",
+          "callee": "ray.get",
+          "lineNumber": 151
+        },
+        {
+          "caller": "test_simple_task",
+          "callee": "print",
+          "lineNumber": 152
+        },
+        {
+          "caller": "test_simple_task",
+          "callee": "print",
+          "lineNumber": 153
+        },
+        {
+          "caller": "test_simple_task",
+          "callee": "print",
+          "lineNumber": 157
+        },
+        {
+          "caller": "run_all_tests",
+          "callee": "print",
+          "lineNumber": 166
+        },
+        {
+          "caller": "run_all_tests",
+          "callee": "self.connect_to_cluster",
+          "lineNumber": 169
+        },
+        {
+          "caller": "run_all_tests",
+          "callee": "print",
+          "lineNumber": 170
+        },
+        {
+          "caller": "run_all_tests",
+          "callee": "self.test_cluster_status",
+          "lineNumber": 174
+        },
+        {
+          "caller": "run_all_tests",
+          "callee": "print",
+          "lineNumber": 175
+        },
+        {
+          "caller": "run_all_tests",
+          "callee": "self.test_simple_task",
+          "lineNumber": 179
+        },
+        {
+          "caller": "run_all_tests",
+          "callee": "print",
+          "lineNumber": 180
+        },
+        {
+          "caller": "run_all_tests",
+          "callee": "print",
+          "lineNumber": 183
+        },
+        {
+          "caller": "run_all_tests",
+          "callee": "print",
+          "lineNumber": 184
+        },
+        {
+          "caller": "run_all_tests",
+          "callee": "print",
+          "lineNumber": 185
+        },
+        {
+          "caller": "run_all_tests",
+          "callee": "print",
+          "lineNumber": 186
+        },
+        {
+          "caller": "cleanup",
+          "callee": "ray.is_initialized",
+          "lineNumber": 193
+        },
+        {
+          "caller": "cleanup",
+          "callee": "ray.shutdown",
+          "lineNumber": 194
+        },
+        {
+          "caller": "cleanup",
+          "callee": "print",
+          "lineNumber": 196
+        },
+        {
+          "caller": "main",
+          "callee": "argparse.ArgumentParser",
+          "lineNumber": 201
+        },
+        {
+          "caller": "main",
+          "callee": "parser.add_argument",
+          "lineNumber": 221
+        },
+        {
+          "caller": "main",
+          "callee": "os.environ.get",
+          "lineNumber": 224
+        },
+        {
+          "caller": "main",
+          "callee": "parser.add_argument",
+          "lineNumber": 227
+        },
+        {
+          "caller": "main",
+          "callee": "parser.parse_args",
+          "lineNumber": 234
+        },
+        {
+          "caller": "main",
+          "callee": "RayClusterTester",
+          "lineNumber": 238
+        },
+        {
+          "caller": "main",
+          "callee": "tester.run_all_tests",
+          "lineNumber": 242
+        },
+        {
+          "caller": "main",
+          "callee": "sys.exit",
+          "lineNumber": 243
+        },
+        {
+          "caller": "main",
+          "callee": "print",
+          "lineNumber": 247
+        },
+        {
+          "caller": "main",
+          "callee": "str",
+          "lineNumber": 247
+        },
+        {
+          "caller": "main",
+          "callee": "traceback.print_exc",
+          "lineNumber": 249
+        },
+        {
+          "caller": "main",
+          "callee": "sys.exit",
+          "lineNumber": 250
+        },
+        {
+          "caller": "main",
+          "callee": "tester.cleanup",
+          "lineNumber": 253
+        }
+      ],
+      "metrics": {
+        "importCount": 0,
+        "exportCount": 2,
+        "functionCount": 1,
+        "classCount": 1
+      }
+    },
+    {
+      "path": "tests/test_e2e_deployment.py",
+      "language": "python",
+      "fileCategory": "code",
+      "totalLines": 649,
+      "nonEmptyLines": 546,
+      "functions": [
+        {
+          "name": "main",
+          "startLine": 551,
+          "endLine": 645,
+          "params": []
+        }
+      ],
+      "classes": [
+        {
+          "name": "E2EDeploymentTester",
+          "startLine": 45,
+          "endLine": 548,
+          "methods": [
+            "__init__",
+            "make_request",
+            "test_cml_connection",
+            "search_or_create_project",
+            "wait_for_git_clone",
+            "_create_launcher_scripts",
+            "test_cluster_creation",
+            "test_cluster_status",
+            "test_cluster_cleanup",
+            "run_all_tests"
+          ],
+          "properties": []
+        }
+      ],
+      "exports": [
+        {
+          "name": "E2EDeploymentTester",
+          "line": 45,
+          "isDefault": false
+        },
+        {
+          "name": "main",
+          "line": 551,
+          "isDefault": false
+        }
+      ],
+      "callGraph": [
+        {
+          "caller": "__init__",
+          "callee": "os.environ.get",
+          "lineNumber": 50
+        },
+        {
+          "caller": "__init__",
+          "callee": "os.environ.get",
+          "lineNumber": 51
+        },
+        {
+          "caller": "__init__",
+          "callee": "os.environ.get",
+          "lineNumber": 52
+        },
+        {
+          "caller": "__init__",
+          "callee": "os.environ.get",
+          "lineNumber": 53
+        },
+        {
+          "caller": "__init__",
+          "callee": "os.environ.get",
+          "lineNumber": 53
+        },
+        {
+          "caller": "__init__",
+          "callee": "hasattr",
+          "lineNumber": 57
+        },
+        {
+          "caller": "__init__",
+          "callee": "print",
+          "lineNumber": 59
+        },
+        {
+          "caller": "__init__",
+          "callee": "print",
+          "lineNumber": 60
+        },
+        {
+          "caller": "__init__",
+          "callee": "print",
+          "lineNumber": 61
+        },
+        {
+          "caller": "__init__",
+          "callee": "print",
+          "lineNumber": 62
+        },
+        {
+          "caller": "__init__",
+          "callee": "print",
+          "lineNumber": 63
+        },
+        {
+          "caller": "__init__",
+          "callee": "print",
+          "lineNumber": 64
+        },
+        {
+          "caller": "__init__",
+          "callee": "print",
+          "lineNumber": 66
+        },
+        {
+          "caller": "__init__",
+          "callee": "all",
+          "lineNumber": 68
+        },
+        {
+          "caller": "__init__",
+          "callee": "print",
+          "lineNumber": 69
+        },
+        {
+          "caller": "__init__",
+          "callee": "print",
+          "lineNumber": 70
+        },
+        {
+          "caller": "__init__",
+          "callee": "print",
+          "lineNumber": 71
+        },
+        {
+          "caller": "__init__",
+          "callee": "SystemExit",
+          "lineNumber": 72
+        },
+        {
+          "caller": "__init__",
+          "callee": "self.cml_host.rstrip",
+          "lineNumber": 74
+        },
+        {
+          "caller": "__init__",
+          "callee": "self.cml_api_key.strip",
+          "lineNumber": 78
+        },
+        {
+          "caller": "__init__",
+          "callee": "print",
+          "lineNumber": 81
+        },
+        {
+          "caller": "make_request",
+          "callee": "endpoint.lstrip",
+          "lineNumber": 91
+        },
+        {
+          "caller": "make_request",
+          "callee": "requests.request",
+          "lineNumber": 94
+        },
+        {
+          "caller": "make_request",
+          "callee": "response.json",
+          "lineNumber": 105
+        },
+        {
+          "caller": "make_request",
+          "callee": "print",
+          "lineNumber": 108
+        },
+        {
+          "caller": "make_request",
+          "callee": "print",
+          "lineNumber": 112
+        },
+        {
+          "caller": "test_cml_connection",
+          "callee": "print",
+          "lineNumber": 117
+        },
+        {
+          "caller": "test_cml_connection",
+          "callee": "print",
+          "lineNumber": 118
+        },
+        {
+          "caller": "test_cml_connection",
+          "callee": "print",
+          "lineNumber": 119
+        },
+        {
+          "caller": "test_cml_connection",
+          "callee": "print",
+          "lineNumber": 120
+        },
+        {
+          "caller": "test_cml_connection",
+          "callee": "print",
+          "lineNumber": 121
+        },
+        {
+          "caller": "test_cml_connection",
+          "callee": "self.make_request",
+          "lineNumber": 123
+        },
+        {
+          "caller": "test_cml_connection",
+          "callee": "print",
+          "lineNumber": 126
+        },
+        {
+          "caller": "test_cml_connection",
+          "callee": "print",
+          "lineNumber": 129
+        },
+        {
+          "caller": "search_or_create_project",
+          "callee": "print",
+          "lineNumber": 134
+        },
+        {
+          "caller": "search_or_create_project",
+          "callee": "print",
+          "lineNumber": 135
+        },
+        {
+          "caller": "search_or_create_project",
+          "callee": "self.make_request",
+          "lineNumber": 139
+        },
+        {
+          "caller": "search_or_create_project",
+          "callee": "result.get",
+          "lineNumber": 144
+        },
+        {
+          "caller": "search_or_create_project",
+          "callee": "projects[0].get",
+          "lineNumber": 146
+        },
+        {
+          "caller": "search_or_create_project",
+          "callee": "print",
+          "lineNumber": 147
+        },
+        {
+          "caller": "search_or_create_project",
+          "callee": "print",
+          "lineNumber": 148
+        },
+        {
+          "caller": "search_or_create_project",
+          "callee": "projects[0].get",
+          "lineNumber": 148
+        },
+        {
+          "caller": "search_or_create_project",
+          "callee": "print",
+          "lineNumber": 154
+        },
+        {
+          "caller": "search_or_create_project",
+          "callee": "print",
+          "lineNumber": 155
+        },
+        {
+          "caller": "search_or_create_project",
+          "callee": "print",
+          "lineNumber": 156
+        },
+        {
+          "caller": "search_or_create_project",
+          "callee": "print",
+          "lineNumber": 159
+        },
+        {
+          "caller": "search_or_create_project",
+          "callee": "print",
+          "lineNumber": 160
+        },
+        {
+          "caller": "search_or_create_project",
+          "callee": "print",
+          "lineNumber": 164
+        },
+        {
+          "caller": "search_or_create_project",
+          "callee": "print",
+          "lineNumber": 166
+        },
+        {
+          "caller": "search_or_create_project",
+          "callee": "self.github_repo.lower",
+          "lineNumber": 167
+        },
+        {
+          "caller": "search_or_create_project",
+          "callee": "print",
+          "lineNumber": 168
+        },
+        {
+          "caller": "search_or_create_project",
+          "callee": "print",
+          "lineNumber": 181
+        },
+        {
+          "caller": "search_or_create_project",
+          "callee": "print",
+          "lineNumber": 183
+        },
+        {
+          "caller": "search_or_create_project",
+          "callee": "json.dumps",
+          "lineNumber": 183
+        },
+        {
+          "caller": "search_or_create_project",
+          "callee": "self.make_request",
+          "lineNumber": 185
+        },
+        {
+          "caller": "search_or_create_project",
+          "callee": "print",
+          "lineNumber": 188
+        },
+        {
+          "caller": "search_or_create_project",
+          "callee": "print",
+          "lineNumber": 190
+        },
+        {
+          "caller": "search_or_create_project",
+          "callee": "json.dumps",
+          "lineNumber": 190
+        },
+        {
+          "caller": "search_or_create_project",
+          "callee": "result.get",
+          "lineNumber": 192
+        },
+        {
+          "caller": "search_or_create_project",
+          "callee": "print",
+          "lineNumber": 194
+        },
+        {
+          "caller": "search_or_create_project",
+          "callee": "print",
+          "lineNumber": 195
+        },
+        {
+          "caller": "search_or_create_project",
+          "callee": "print",
+          "lineNumber": 196
+        },
+        {
+          "caller": "search_or_create_project",
+          "callee": "print",
+          "lineNumber": 200
+        },
+        {
+          "caller": "search_or_create_project",
+          "callee": "print",
+          "lineNumber": 201
+        },
+        {
+          "caller": "search_or_create_project",
+          "callee": "print",
+          "lineNumber": 202
+        },
+        {
+          "caller": "search_or_create_project",
+          "callee": "print",
+          "lineNumber": 205
+        },
+        {
+          "caller": "search_or_create_project",
+          "callee": "print",
+          "lineNumber": 206
+        },
+        {
+          "caller": "search_or_create_project",
+          "callee": "print",
+          "lineNumber": 207
+        },
+        {
+          "caller": "search_or_create_project",
+          "callee": "print",
+          "lineNumber": 208
+        },
+        {
+          "caller": "search_or_create_project",
+          "callee": "print",
+          "lineNumber": 209
+        },
+        {
+          "caller": "search_or_create_project",
+          "callee": "print",
+          "lineNumber": 210
+        },
+        {
+          "caller": "search_or_create_project",
+          "callee": "print",
+          "lineNumber": 211
+        },
+        {
+          "caller": "search_or_create_project",
+          "callee": "print",
+          "lineNumber": 212
+        },
+        {
+          "caller": "search_or_create_project",
+          "callee": "print",
+          "lineNumber": 213
+        },
+        {
+          "caller": "wait_for_git_clone",
+          "callee": "print",
+          "lineNumber": 221
+        },
+        {
+          "caller": "wait_for_git_clone",
+          "callee": "print",
+          "lineNumber": 222
+        },
+        {
+          "caller": "wait_for_git_clone",
+          "callee": "time.time",
+          "lineNumber": 224
+        },
+        {
+          "caller": "wait_for_git_clone",
+          "callee": "time.time",
+          "lineNumber": 228
+        },
+        {
+          "caller": "wait_for_git_clone",
+          "callee": "self.make_request",
+          "lineNumber": 229
+        },
+        {
+          "caller": "wait_for_git_clone",
+          "callee": "result.get(\"status\", \"unknown\").lower",
+          "lineNumber": 233
+        },
+        {
+          "caller": "wait_for_git_clone",
+          "callee": "result.get",
+          "lineNumber": 233
+        },
+        {
+          "caller": "wait_for_git_clone",
+          "callee": "int",
+          "lineNumber": 237
+        },
+        {
+          "caller": "wait_for_git_clone",
+          "callee": "time.time",
+          "lineNumber": 237
+        },
+        {
+          "caller": "wait_for_git_clone",
+          "callee": "print",
+          "lineNumber": 238
+        },
+        {
+          "caller": "wait_for_git_clone",
+          "callee": "print",
+          "lineNumber": 242
+        },
+        {
+          "caller": "wait_for_git_clone",
+          "callee": "print",
+          "lineNumber": 243
+        },
+        {
+          "caller": "wait_for_git_clone",
+          "callee": "time.sleep",
+          "lineNumber": 244
+        },
+        {
+          "caller": "wait_for_git_clone",
+          "callee": "print",
+          "lineNumber": 247
+        },
+        {
+          "caller": "wait_for_git_clone",
+          "callee": "result.get",
+          "lineNumber": 249
+        },
+        {
+          "caller": "wait_for_git_clone",
+          "callee": "print",
+          "lineNumber": 250
+        },
+        {
+          "caller": "wait_for_git_clone",
+          "callee": "print",
+          "lineNumber": 253
+        },
+        {
+          "caller": "wait_for_git_clone",
+          "callee": "error_msg.lower",
+          "lineNumber": 255
+        },
+        {
+          "caller": "wait_for_git_clone",
+          "callee": "print",
+          "lineNumber": 256
+        },
+        {
+          "caller": "wait_for_git_clone",
+          "callee": "print",
+          "lineNumber": 257
+        },
+        {
+          "caller": "wait_for_git_clone",
+          "callee": "error_msg.lower",
+          "lineNumber": 258
+        },
+        {
+          "caller": "wait_for_git_clone",
+          "callee": "error_msg.lower",
+          "lineNumber": 258
+        },
+        {
+          "caller": "wait_for_git_clone",
+          "callee": "print",
+          "lineNumber": 259
+        },
+        {
+          "caller": "wait_for_git_clone",
+          "callee": "error_msg.lower",
+          "lineNumber": 260
+        },
+        {
+          "caller": "wait_for_git_clone",
+          "callee": "error_msg.lower",
+          "lineNumber": 260
+        },
+        {
+          "caller": "wait_for_git_clone",
+          "callee": "print",
+          "lineNumber": 261
+        },
+        {
+          "caller": "wait_for_git_clone",
+          "callee": "print",
+          "lineNumber": 262
+        },
+        {
+          "caller": "wait_for_git_clone",
+          "callee": "time.sleep",
+          "lineNumber": 265
+        },
+        {
+          "caller": "wait_for_git_clone",
+          "callee": "int",
+          "lineNumber": 267
+        },
+        {
+          "caller": "wait_for_git_clone",
+          "callee": "time.time",
+          "lineNumber": 267
+        },
+        {
+          "caller": "wait_for_git_clone",
+          "callee": "print",
+          "lineNumber": 268
+        },
+        {
+          "caller": "wait_for_git_clone",
+          "callee": "print",
+          "lineNumber": 269
+        },
+        {
+          "caller": "_create_launcher_scripts",
+          "callee": "Path",
+          "lineNumber": 278
+        },
+        {
+          "caller": "_create_launcher_scripts",
+          "callee": "head_script_path.write_text",
+          "lineNumber": 361
+        },
+        {
+          "caller": "_create_launcher_scripts",
+          "callee": "worker_script_path.write_text",
+          "lineNumber": 362
+        },
+        {
+          "caller": "_create_launcher_scripts",
+          "callee": "os.chmod",
+          "lineNumber": 365
+        },
+        {
+          "caller": "_create_launcher_scripts",
+          "callee": "os.chmod",
+          "lineNumber": 366
+        },
+        {
+          "caller": "_create_launcher_scripts",
+          "callee": "print",
+          "lineNumber": 368
+        },
+        {
+          "caller": "_create_launcher_scripts",
+          "callee": "print",
+          "lineNumber": 369
+        },
+        {
+          "caller": "_create_launcher_scripts",
+          "callee": "print",
+          "lineNumber": 370
+        },
+        {
+          "caller": "_create_launcher_scripts",
+          "callee": "str",
+          "lineNumber": 372
+        },
+        {
+          "caller": "_create_launcher_scripts",
+          "callee": "str",
+          "lineNumber": 372
+        },
+        {
+          "caller": "test_cluster_creation",
+          "callee": "print",
+          "lineNumber": 376
+        },
+        {
+          "caller": "test_cluster_creation",
+          "callee": "print",
+          "lineNumber": 377
+        },
+        {
+          "caller": "test_cluster_creation",
+          "callee": "print",
+          "lineNumber": 378
+        },
+        {
+          "caller": "test_cluster_creation",
+          "callee": "print",
+          "lineNumber": 379
+        },
+        {
+          "caller": "test_cluster_creation",
+          "callee": "print",
+          "lineNumber": 380
+        },
+        {
+          "caller": "test_cluster_creation",
+          "callee": "print",
+          "lineNumber": 383
+        },
+        {
+          "caller": "test_cluster_creation",
+          "callee": "print",
+          "lineNumber": 388
+        },
+        {
+          "caller": "test_cluster_creation",
+          "callee": "CAIClusterManager",
+          "lineNumber": 389
+        },
+        {
+          "caller": "test_cluster_creation",
+          "callee": "print",
+          "lineNumber": 395
+        },
+        {
+          "caller": "test_cluster_creation",
+          "callee": "print",
+          "lineNumber": 398
+        },
+        {
+          "caller": "test_cluster_creation",
+          "callee": "print",
+          "lineNumber": 399
+        },
+        {
+          "caller": "test_cluster_creation",
+          "callee": "self._create_launcher_scripts",
+          "lineNumber": 400
+        },
+        {
+          "caller": "test_cluster_creation",
+          "callee": "print",
+          "lineNumber": 403
+        },
+        {
+          "caller": "test_cluster_creation",
+          "callee": "print",
+          "lineNumber": 404
+        },
+        {
+          "caller": "test_cluster_creation",
+          "callee": "print",
+          "lineNumber": 405
+        },
+        {
+          "caller": "test_cluster_creation",
+          "callee": "print",
+          "lineNumber": 406
+        },
+        {
+          "caller": "test_cluster_creation",
+          "callee": "print",
+          "lineNumber": 407
+        },
+        {
+          "caller": "test_cluster_creation",
+          "callee": "print",
+          "lineNumber": 408
+        },
+        {
+          "caller": "test_cluster_creation",
+          "callee": "print",
+          "lineNumber": 409
+        },
+        {
+          "caller": "test_cluster_creation",
+          "callee": "manager.start_cluster",
+          "lineNumber": 411
+        },
+        {
+          "caller": "test_cluster_creation",
+          "callee": "print",
+          "lineNumber": 425
+        },
+        {
+          "caller": "test_cluster_creation",
+          "callee": "print",
+          "lineNumber": 426
+        },
+        {
+          "caller": "test_cluster_creation",
+          "callee": "print",
+          "lineNumber": 427
+        },
+        {
+          "caller": "test_cluster_creation",
+          "callee": "print",
+          "lineNumber": 428
+        },
+        {
+          "caller": "test_cluster_creation",
+          "callee": "print",
+          "lineNumber": 429
+        },
+        {
+          "caller": "test_cluster_creation",
+          "callee": "print",
+          "lineNumber": 431
+        },
+        {
+          "caller": "test_cluster_creation",
+          "callee": "enumerate",
+          "lineNumber": 432
+        },
+        {
+          "caller": "test_cluster_creation",
+          "callee": "print",
+          "lineNumber": 433
+        },
+        {
+          "caller": "test_cluster_creation",
+          "callee": "print",
+          "lineNumber": 435
+        },
+        {
+          "caller": "test_cluster_creation",
+          "callee": "print",
+          "lineNumber": 441
+        },
+        {
+          "caller": "test_cluster_creation",
+          "callee": "traceback.print_exc",
+          "lineNumber": 443
+        },
+        {
+          "caller": "test_cluster_status",
+          "callee": "print",
+          "lineNumber": 448
+        },
+        {
+          "caller": "test_cluster_status",
+          "callee": "print",
+          "lineNumber": 449
+        },
+        {
+          "caller": "test_cluster_status",
+          "callee": "self.manager.get_status",
+          "lineNumber": 452
+        },
+        {
+          "caller": "test_cluster_status",
+          "callee": "print",
+          "lineNumber": 453
+        },
+        {
+          "caller": "test_cluster_status",
+          "callee": "print",
+          "lineNumber": 454
+        },
+        {
+          "caller": "test_cluster_status",
+          "callee": "print",
+          "lineNumber": 456
+        },
+        {
+          "caller": "test_cluster_status",
+          "callee": "print",
+          "lineNumber": 457
+        },
+        {
+          "caller": "test_cluster_status",
+          "callee": "print",
+          "lineNumber": 458
+        },
+        {
+          "caller": "test_cluster_status",
+          "callee": "print",
+          "lineNumber": 459
+        },
+        {
+          "caller": "test_cluster_status",
+          "callee": "print",
+          "lineNumber": 460
+        },
+        {
+          "caller": "test_cluster_status",
+          "callee": "len",
+          "lineNumber": 460
+        },
+        {
+          "caller": "test_cluster_status",
+          "callee": "enumerate",
+          "lineNumber": 461
+        },
+        {
+          "caller": "test_cluster_status",
+          "callee": "print",
+          "lineNumber": 462
+        },
+        {
+          "caller": "test_cluster_status",
+          "callee": "print",
+          "lineNumber": 463
+        },
+        {
+          "caller": "test_cluster_status",
+          "callee": "print",
+          "lineNumber": 466
+        },
+        {
+          "caller": "test_cluster_cleanup",
+          "callee": "print",
+          "lineNumber": 471
+        },
+        {
+          "caller": "test_cluster_cleanup",
+          "callee": "print",
+          "lineNumber": 472
+        },
+        {
+          "caller": "test_cluster_cleanup",
+          "callee": "print",
+          "lineNumber": 475
+        },
+        {
+          "caller": "test_cluster_cleanup",
+          "callee": "self.manager.stop_cluster",
+          "lineNumber": 476
+        },
+        {
+          "caller": "test_cluster_cleanup",
+          "callee": "print",
+          "lineNumber": 479
+        },
+        {
+          "caller": "test_cluster_cleanup",
+          "callee": "result.get",
+          "lineNumber": 480
+        },
+        {
+          "caller": "test_cluster_cleanup",
+          "callee": "print",
+          "lineNumber": 481
+        },
+        {
+          "caller": "test_cluster_cleanup",
+          "callee": "print",
+          "lineNumber": 483
+        },
+        {
+          "caller": "test_cluster_cleanup",
+          "callee": "print",
+          "lineNumber": 484
+        },
+        {
+          "caller": "test_cluster_cleanup",
+          "callee": "print",
+          "lineNumber": 487
+        },
+        {
+          "caller": "test_cluster_cleanup",
+          "callee": "print",
+          "lineNumber": 491
+        },
+        {
+          "caller": "run_all_tests",
+          "callee": "print",
+          "lineNumber": 500
+        },
+        {
+          "caller": "run_all_tests",
+          "callee": "self.test_cml_connection",
+          "lineNumber": 503
+        },
+        {
+          "caller": "run_all_tests",
+          "callee": "print",
+          "lineNumber": 504
+        },
+        {
+          "caller": "run_all_tests",
+          "callee": "self.search_or_create_project",
+          "lineNumber": 507
+        },
+        {
+          "caller": "run_all_tests",
+          "callee": "print",
+          "lineNumber": 510
+        },
+        {
+          "caller": "run_all_tests",
+          "callee": "self.wait_for_git_clone",
+          "lineNumber": 513
+        },
+        {
+          "caller": "run_all_tests",
+          "callee": "print",
+          "lineNumber": 514
+        },
+        {
+          "caller": "run_all_tests",
+          "callee": "self.test_cluster_creation",
+          "lineNumber": 518
+        },
+        {
+          "caller": "run_all_tests",
+          "callee": "print",
+          "lineNumber": 519
+        },
+        {
+          "caller": "run_all_tests",
+          "callee": "self.test_cluster_status",
+          "lineNumber": 523
+        },
+        {
+          "caller": "run_all_tests",
+          "callee": "print",
+          "lineNumber": 527
+        },
+        {
+          "caller": "run_all_tests",
+          "callee": "print",
+          "lineNumber": 528
+        },
+        {
+          "caller": "run_all_tests",
+          "callee": "time.sleep",
+          "lineNumber": 529
+        },
+        {
+          "caller": "run_all_tests",
+          "callee": "self.test_cluster_cleanup",
+          "lineNumber": 533
+        },
+        {
+          "caller": "run_all_tests",
+          "callee": "print",
+          "lineNumber": 535
+        },
+        {
+          "caller": "run_all_tests",
+          "callee": "print",
+          "lineNumber": 537
+        },
+        {
+          "caller": "run_all_tests",
+          "callee": "print",
+          "lineNumber": 538
+        },
+        {
+          "caller": "run_all_tests",
+          "callee": "print",
+          "lineNumber": 539
+        },
+        {
+          "caller": "run_all_tests",
+          "callee": "print",
+          "lineNumber": 541
+        },
+        {
+          "caller": "run_all_tests",
+          "callee": "print",
+          "lineNumber": 542
+        },
+        {
+          "caller": "run_all_tests",
+          "callee": "print",
+          "lineNumber": 544
+        },
+        {
+          "caller": "run_all_tests",
+          "callee": "print",
+          "lineNumber": 545
+        },
+        {
+          "caller": "run_all_tests",
+          "callee": "print",
+          "lineNumber": 546
+        },
+        {
+          "caller": "main",
+          "callee": "argparse.ArgumentParser",
+          "lineNumber": 553
+        },
+        {
+          "caller": "main",
+          "callee": "parser.add_argument",
+          "lineNumber": 575
+        },
+        {
+          "caller": "main",
+          "callee": "parser.add_argument",
+          "lineNumber": 581
+        },
+        {
+          "caller": "main",
+          "callee": "parser.add_argument",
+          "lineNumber": 587
+        },
+        {
+          "caller": "main",
+          "callee": "parser.add_argument",
+          "lineNumber": 593
+        },
+        {
+          "caller": "main",
+          "callee": "parser.add_argument",
+          "lineNumber": 599
+        },
+        {
+          "caller": "main",
+          "callee": "parser.add_argument",
+          "lineNumber": 605
+        },
+        {
+          "caller": "main",
+          "callee": "parser.add_argument",
+          "lineNumber": 611
+        },
+        {
+          "caller": "main",
+          "callee": "parser.add_argument",
+          "lineNumber": 616
+        },
+        {
+          "caller": "main",
+          "callee": "parser.add_argument",
+          "lineNumber": 621
+        },
+        {
+          "caller": "main",
+          "callee": "parser.add_argument",
+          "lineNumber": 627
+        },
+        {
+          "caller": "main",
+          "callee": "parser.parse_args",
+          "lineNumber": 633
+        },
+        {
+          "caller": "main",
+          "callee": "E2EDeploymentTester",
+          "lineNumber": 636
+        },
+        {
+          "caller": "main",
+          "callee": "tester.run_all_tests",
+          "lineNumber": 637
+        },
+        {
+          "caller": "main",
+          "callee": "sys.exit",
+          "lineNumber": 638
+        },
+        {
+          "caller": "main",
+          "callee": "print",
+          "lineNumber": 642
+        },
+        {
+          "caller": "main",
+          "callee": "str",
+          "lineNumber": 642
+        },
+        {
+          "caller": "main",
+          "callee": "traceback.print_exc",
+          "lineNumber": 644
+        },
+        {
+          "caller": "main",
+          "callee": "sys.exit",
+          "lineNumber": 645
+        }
+      ],
+      "metrics": {
+        "importCount": 0,
+        "exportCount": 2,
+        "functionCount": 1,
+        "classCount": 1
+      }
+    }
+  ]
+}

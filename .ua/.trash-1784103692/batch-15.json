@@ -1,0 +1,166 @@
+{
+  "nodes": [
+    {
+      "id": "file:ray_serve_cai/engines/base.py",
+      "type": "file",
+      "name": "base.py",
+      "filePath": "ray_serve_cai/engines/base.py",
+      "summary": "Defines the engine interface contracts as Python Protocol classes: LLMEngineProtocol (chat/completion/list_models/health_check), ConfigBuilderProtocol (build/validate/defaults), DeploymentFactoryProtocol (create_deployment), and EngineComponents (data container for registry entries).",
+      "tags": ["type-definition", "service", "factory"],
+      "complexity": "moderate",
+      "languageNotes": "Uses Python Protocol (structural subtyping) rather than ABC for duck-typing compatibility; EngineComponents is a plain data container holding the three component objects for a registered engine type."
+    },
+    {
+      "id": "file:ray_serve_cai/engines/venv_utils.py",
+      "type": "file",
+      "name": "venv_utils.py",
+      "filePath": "ray_serve_cai/engines/venv_utils.py",
+      "summary": "Shared venv utility functions used by all engine deployment factories: validate_venv_name() (regex-based name validation), venv_dir_for() (path resolver), and resolve_venv_path() (looks up venv from engine config, verifies existence, falls back to default).",
+      "tags": ["utility", "validation"],
+      "complexity": "simple"
+    },
+    {
+      "id": "file:ray_serve_cai/engines/engine_utils.py",
+      "type": "file",
+      "name": "engine_utils.py",
+      "filePath": "ray_serve_cai/engines/engine_utils.py",
+      "summary": "FastAPI app builder utilities for engine deployments: create_engine_app() (creates a FastAPI app with route-prefix stripping middleware), mount_health() (adds a /health endpoint), and mount_metrics() (mounts a Prometheus ASGI metrics endpoint).",
+      "tags": ["utility", "service", "middleware"],
+      "complexity": "simple"
+    },
+    {
+      "id": "file:ray_serve_cai/engines/mcps/__init__.py",
+      "type": "file",
+      "name": "__init__.py",
+      "filePath": "ray_serve_cai/engines/mcps/__init__.py",
+      "summary": "Empty package initializer for the mcps (Model Context Protocol servers) subpackage.",
+      "tags": ["barrel", "entry-point"],
+      "complexity": "simple"
+    },
+    {
+      "id": "file:ray_serve_cai/engines/mcps/weather_tools.py",
+      "type": "file",
+      "name": "weather_tools.py",
+      "filePath": "ray_serve_cai/engines/mcps/weather_tools.py",
+      "summary": "Example FastMCP tool module providing get_alerts() and get_forecast() MCP tools that fetch weather data from the NOAA National Weather Service API, intended as a reference implementation for custom MCP server deployment.",
+      "tags": ["service", "utility"],
+      "complexity": "simple"
+    },
+    {
+      "id": "class:ray_serve_cai/engines/base.py:LLMEngineProtocol",
+      "type": "class",
+      "name": "LLMEngineProtocol",
+      "filePath": "ray_serve_cai/engines/base.py",
+      "lineRange": [35, 144],
+      "summary": "Protocol defining the interface all LLM engine Ray Serve deployments must satisfy: engine_type property, chat_completion, completion, list_models, health_check, and ASGI __call__.",
+      "tags": ["type-definition", "service"],
+      "complexity": "moderate"
+    },
+    {
+      "id": "class:ray_serve_cai/engines/base.py:EngineComponents",
+      "type": "class",
+      "name": "EngineComponents",
+      "filePath": "ray_serve_cai/engines/base.py",
+      "lineRange": [241, 277],
+      "summary": "Data container holding the three component objects for a registered engine type: an engine class, a config builder, and a deployment factory, stored in the EngineRegistry.",
+      "tags": ["data-model", "factory"],
+      "complexity": "simple"
+    },
+    {
+      "id": "function:ray_serve_cai/engines/venv_utils.py:resolve_venv_path",
+      "type": "function",
+      "name": "resolve_venv_path",
+      "filePath": "ray_serve_cai/engines/venv_utils.py",
+      "lineRange": [54, 85],
+      "summary": "Resolves the venv directory path from engine config (venv_name key), validates it exists, and falls back to a default name — used by all engine deployment factories before launching the Ray actor.",
+      "tags": ["utility", "validation"],
+      "complexity": "simple"
+    }
+  ],
+  "edges": [
+    {
+      "source": "file:ray_serve_cai/engines/base.py",
+      "target": "class:ray_serve_cai/engines/base.py:LLMEngineProtocol",
+      "type": "contains",
+      "direction": "forward",
+      "weight": 1.0
+    },
+    {
+      "source": "file:ray_serve_cai/engines/base.py",
+      "target": "class:ray_serve_cai/engines/base.py:EngineComponents",
+      "type": "contains",
+      "direction": "forward",
+      "weight": 1.0
+    },
+    {
+      "source": "file:ray_serve_cai/engines/base.py",
+      "target": "class:ray_serve_cai/engines/base.py:LLMEngineProtocol",
+      "type": "exports",
+      "direction": "forward",
+      "weight": 0.8
+    },
+    {
+      "source": "file:ray_serve_cai/engines/base.py",
+      "target": "class:ray_serve_cai/engines/base.py:EngineComponents",
+      "type": "exports",
+      "direction": "forward",
+      "weight": 0.8
+    },
+    {
+      "source": "file:ray_serve_cai/engines/venv_utils.py",
+      "target": "function:ray_serve_cai/engines/venv_utils.py:resolve_venv_path",
+      "type": "contains",
+      "direction": "forward",
+      "weight": 1.0
+    },
+    {
+      "source": "file:ray_serve_cai/engines/venv_utils.py",
+      "target": "function:ray_serve_cai/engines/venv_utils.py:resolve_venv_path",
+      "type": "exports",
+      "direction": "forward",
+      "weight": 0.8
+    },
+    {
+      "source": "file:ray_serve_cai/engines/registry.py",
+      "target": "file:ray_serve_cai/engines/base.py",
+      "type": "depends_on",
+      "direction": "forward",
+      "weight": 0.6
+    },
+    {
+      "source": "file:ray_serve_cai/engines/vllm_config.py",
+      "target": "file:ray_serve_cai/engines/venv_utils.py",
+      "type": "depends_on",
+      "direction": "forward",
+      "weight": 0.6
+    },
+    {
+      "source": "file:ray_serve_cai/engines/sglang_config.py",
+      "target": "file:ray_serve_cai/engines/venv_utils.py",
+      "type": "depends_on",
+      "direction": "forward",
+      "weight": 0.6
+    },
+    {
+      "source": "file:ray_serve_cai/engines/litellm_config.py",
+      "target": "file:ray_serve_cai/engines/venv_utils.py",
+      "type": "depends_on",
+      "direction": "forward",
+      "weight": 0.6
+    },
+    {
+      "source": "file:ray_serve_cai/engines/mcp_config.py",
+      "target": "file:ray_serve_cai/engines/venv_utils.py",
+      "type": "depends_on",
+      "direction": "forward",
+      "weight": 0.6
+    },
+    {
+      "source": "file:ray_serve_cai/engines/mcps/weather_tools.py",
+      "target": "file:ray_serve_cai/engines/mcp_engine.py",
+      "type": "related",
+      "direction": "forward",
+      "weight": 0.5
+    }
+  ]
+}

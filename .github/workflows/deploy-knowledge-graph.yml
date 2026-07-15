@@ -1,0 +1,51 @@
+name: Deploy Knowledge Graph Dashboard
+
+# Deploys the pre-built dashboard + knowledge-graph.json to GitHub Pages.
+# The dashboard bundle (.ua/dashboard-dist/) is built locally via:
+#   cd ~/.claude/plugins/cache/understand-anything/.../packages/dashboard
+#   VITE_DEMO_MODE=true \
+#   VITE_GRAPH_URL="https://ferdinandzhong.github.io/ray-serve-cai/knowledge-graph.json" \
+#   pnpm exec vite build --config vite.config.demo.ts \
+#     --base "/ray-serve-cai/" --outDir <repo>/.ua/dashboard-dist --emptyOutDir
+# Then commit both .ua/dashboard-dist/ and .ua/knowledge-graph.json.
+# This workflow just deploys whatever is committed — no build step on CI.
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - '.ua/knowledge-graph.json'
+      - '.ua/dashboard-dist/**'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  pages: write
+  id-token: write
+
+concurrency:
+  group: pages
+  cancel-in-progress: false
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Copy knowledge graph into dashboard dist
+        run: |
+          cp .ua/knowledge-graph.json .ua/dashboard-dist/knowledge-graph.json
+          touch .ua/dashboard-dist/.nojekyll
+
+      - uses: actions/configure-pages@v5
+
+      - uses: actions/upload-pages-artifact@v3
+        with:
+          path: .ua/dashboard-dist
+
+      - id: deployment
+        uses: actions/deploy-pages@v4

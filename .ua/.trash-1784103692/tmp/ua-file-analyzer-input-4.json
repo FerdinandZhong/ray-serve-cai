@@ -1,0 +1,17 @@
+{
+  "projectRoot": "/Users/zhongqishuai/Projects/cldr_projects/ray-serve-cai",
+  "batchFiles": [
+    {"path": "cai_integration/setup_environment.py", "language": "python", "sizeLines": 166, "fileCategory": "code"},
+    {"path": "cai_integration/setup_vllm_env.py", "language": "python", "sizeLines": 109, "fileCategory": "code"},
+    {"path": "cai_integration/__init__.py", "language": "python", "sizeLines": 45, "fileCategory": "code"},
+    {"path": "cai_integration/resource_map.py", "language": "python", "sizeLines": 195, "fileCategory": "code"},
+    {"path": "cai_integration/validate_venv.py", "language": "python", "sizeLines": 61, "fileCategory": "code"}
+  ],
+  "batchImportData": {
+    "cai_integration/setup_environment.py": [],
+    "cai_integration/setup_vllm_env.py": [],
+    "cai_integration/__init__.py": [],
+    "cai_integration/resource_map.py": [],
+    "cai_integration/validate_venv.py": []
+  }
+}

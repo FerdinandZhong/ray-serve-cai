@@ -1,0 +1,1099 @@
+{
+  "scriptCompleted": true,
+  "filesAnalyzed": 2,
+  "filesSkipped": [
+    "cai_integration/__init__.py",
+    "cai_integration/resource_map.py",
+    "cai_integration/validate_venv.py"
+  ],
+  "results": [
+    {
+      "path": "cai_integration/setup_environment.py",
+      "language": "python",
+      "fileCategory": "code",
+      "totalLines": 535,
+      "nonEmptyLines": 448,
+      "functions": [
+        {
+          "name": "run_command",
+          "startLine": 20,
+          "endLine": 41,
+          "params": [
+            "cmd",
+            "cwd"
+          ]
+        },
+        {
+          "name": "is_venv_ready",
+          "startLine": 44,
+          "endLine": 59,
+          "params": [
+            "venv_dir"
+          ]
+        },
+        {
+          "name": "install_nginx",
+          "startLine": 62,
+          "endLine": 185,
+          "params": []
+        },
+        {
+          "name": "venv_ray_version",
+          "startLine": 194,
+          "endLine": 198,
+          "params": [
+            "venv_dir"
+          ]
+        },
+        {
+          "name": "_pin_ray_to_base",
+          "startLine": 201,
+          "endLine": 222,
+          "params": [
+            "packages",
+            "base_version"
+          ]
+        },
+        {
+          "name": "_base_pkg_version",
+          "startLine": 225,
+          "endLine": 232,
+          "params": [
+            "pkg_name"
+          ]
+        },
+        {
+          "name": "_pin_pkgs_to_base",
+          "startLine": 235,
+          "endLine": 267,
+          "params": [
+            "packages",
+            "pkg_names"
+          ]
+        },
+        {
+          "name": "setup_engine_venv",
+          "startLine": 270,
+          "endLine": 340,
+          "params": [
+            "engine",
+            "packages",
+            "venv_base",
+            "python"
+          ]
+        },
+        {
+          "name": "main",
+          "startLine": 370,
+          "endLine": 531,
+          "params": []
+        }
+      ],
+      "exports": [
+        {
+          "name": "run_command",
+          "line": 20,
+          "isDefault": false
+        },
+        {
+          "name": "is_venv_ready",
+          "line": 44,
+          "isDefault": false
+        },
+        {
+          "name": "install_nginx",
+          "line": 62,
+          "isDefault": false
+        },
+        {
+          "name": "venv_ray_version",
+          "line": 194,
+          "isDefault": false
+        },
+        {
+          "name": "_pin_ray_to_base",
+          "line": 201,
+          "isDefault": false
+        },
+        {
+          "name": "_base_pkg_version",
+          "line": 225,
+          "isDefault": false
+        },
+        {
+          "name": "_pin_pkgs_to_base",
+          "line": 235,
+          "isDefault": false
+        },
+        {
+          "name": "setup_engine_venv",
+          "line": 270,
+          "isDefault": false
+        },
+        {
+          "name": "main",
+          "line": 370,
+          "isDefault": false
+        }
+      ],
+      "callGraph": [
+        {
+          "caller": "run_command",
+          "callee": "print",
+          "lineNumber": 22
+        },
+        {
+          "caller": "run_command",
+          "callee": "subprocess.run",
+          "lineNumber": 24
+        },
+        {
+          "caller": "run_command",
+          "callee": "print",
+          "lineNumber": 33
+        },
+        {
+          "caller": "run_command",
+          "callee": "print",
+          "lineNumber": 36
+        },
+        {
+          "caller": "run_command",
+          "callee": "print",
+          "lineNumber": 38
+        },
+        {
+          "caller": "run_command",
+          "callee": "print",
+          "lineNumber": 40
+        },
+        {
+          "caller": "is_venv_ready",
+          "callee": "os.path.exists",
+          "lineNumber": 46
+        },
+        {
+          "caller": "is_venv_ready",
+          "callee": "os.path.join",
+          "lineNumber": 50
+        },
+        {
+          "caller": "is_venv_ready",
+          "callee": "os.path.exists",
+          "lineNumber": 51
+        },
+        {
+          "caller": "is_venv_ready",
+          "callee": "os.path.join",
+          "lineNumber": 55
+        },
+        {
+          "caller": "is_venv_ready",
+          "callee": "os.path.exists",
+          "lineNumber": 56
+        },
+        {
+          "caller": "install_nginx",
+          "callee": "print",
+          "lineNumber": 72
+        },
+        {
+          "caller": "install_nginx",
+          "callee": "Path.home",
+          "lineNumber": 74
+        },
+        {
+          "caller": "install_nginx",
+          "callee": "str",
+          "lineNumber": 75
+        },
+        {
+          "caller": "install_nginx",
+          "callee": "os.makedirs",
+          "lineNumber": 77
+        },
+        {
+          "caller": "install_nginx",
+          "callee": "str",
+          "lineNumber": 77
+        },
+        {
+          "caller": "install_nginx",
+          "callee": "os.path.exists",
+          "lineNumber": 82
+        },
+        {
+          "caller": "install_nginx",
+          "callee": "subprocess.run",
+          "lineNumber": 83
+        },
+        {
+          "caller": "install_nginx",
+          "callee": "print",
+          "lineNumber": 87
+        },
+        {
+          "caller": "install_nginx",
+          "callee": "result.stderr.strip",
+          "lineNumber": 87
+        },
+        {
+          "caller": "install_nginx",
+          "callee": "print",
+          "lineNumber": 89
+        },
+        {
+          "caller": "install_nginx",
+          "callee": "os.remove",
+          "lineNumber": 90
+        },
+        {
+          "caller": "install_nginx",
+          "callee": "subprocess.run",
+          "lineNumber": 95
+        },
+        {
+          "caller": "install_nginx",
+          "callee": "result.stdout.strip",
+          "lineNumber": 99
+        },
+        {
+          "caller": "install_nginx",
+          "callee": "print",
+          "lineNumber": 100
+        },
+        {
+          "caller": "install_nginx",
+          "callee": "os.symlink",
+          "lineNumber": 102
+        },
+        {
+          "caller": "install_nginx",
+          "callee": "print",
+          "lineNumber": 103
+        },
+        {
+          "caller": "install_nginx",
+          "callee": "print",
+          "lineNumber": 106
+        },
+        {
+          "caller": "install_nginx",
+          "callee": "os.environ.get",
+          "lineNumber": 114
+        },
+        {
+          "caller": "install_nginx",
+          "callee": "os.environ.get",
+          "lineNumber": 115
+        },
+        {
+          "caller": "install_nginx",
+          "callee": "str",
+          "lineNumber": 119
+        },
+        {
+          "caller": "install_nginx",
+          "callee": "print",
+          "lineNumber": 121
+        },
+        {
+          "caller": "install_nginx",
+          "callee": "tempfile.TemporaryDirectory",
+          "lineNumber": 124
+        },
+        {
+          "caller": "install_nginx",
+          "callee": "os.path.join",
+          "lineNumber": 125
+        },
+        {
+          "caller": "install_nginx",
+          "callee": "print",
+          "lineNumber": 126
+        },
+        {
+          "caller": "install_nginx",
+          "callee": "run_command",
+          "lineNumber": 127
+        },
+        {
+          "caller": "install_nginx",
+          "callee": "print",
+          "lineNumber": 128
+        },
+        {
+          "caller": "install_nginx",
+          "callee": "print",
+          "lineNumber": 131
+        },
+        {
+          "caller": "install_nginx",
+          "callee": "tarfile.open",
+          "lineNumber": 132
+        },
+        {
+          "caller": "install_nginx",
+          "callee": "tar.extractall",
+          "lineNumber": 133
+        },
+        {
+          "caller": "install_nginx",
+          "callee": "os.path.join",
+          "lineNumber": 135
+        },
+        {
+          "caller": "install_nginx",
+          "callee": "os.path.isdir",
+          "lineNumber": 136
+        },
+        {
+          "caller": "install_nginx",
+          "callee": "print",
+          "lineNumber": 137
+        },
+        {
+          "caller": "install_nginx",
+          "callee": "\" \".join",
+          "lineNumber": 142
+        },
+        {
+          "caller": "install_nginx",
+          "callee": "print",
+          "lineNumber": 158
+        },
+        {
+          "caller": "install_nginx",
+          "callee": "run_command",
+          "lineNumber": 159
+        },
+        {
+          "caller": "install_nginx",
+          "callee": "print",
+          "lineNumber": 160
+        },
+        {
+          "caller": "install_nginx",
+          "callee": "os.cpu_count",
+          "lineNumber": 163
+        },
+        {
+          "caller": "install_nginx",
+          "callee": "print",
+          "lineNumber": 164
+        },
+        {
+          "caller": "install_nginx",
+          "callee": "run_command",
+          "lineNumber": 165
+        },
+        {
+          "caller": "install_nginx",
+          "callee": "print",
+          "lineNumber": 166
+        },
+        {
+          "caller": "install_nginx",
+          "callee": "run_command",
+          "lineNumber": 169
+        },
+        {
+          "caller": "install_nginx",
+          "callee": "print",
+          "lineNumber": 170
+        },
+        {
+          "caller": "install_nginx",
+          "callee": "subprocess.run",
+          "lineNumber": 173
+        },
+        {
+          "caller": "install_nginx",
+          "callee": "print",
+          "lineNumber": 175
+        },
+        {
+          "caller": "install_nginx",
+          "callee": "result.stderr.strip",
+          "lineNumber": 175
+        },
+        {
+          "caller": "install_nginx",
+          "callee": "print",
+          "lineNumber": 178
+        },
+        {
+          "caller": "install_nginx",
+          "callee": "print",
+          "lineNumber": 183
+        },
+        {
+          "caller": "install_nginx",
+          "callee": "traceback.print_exc",
+          "lineNumber": 184
+        },
+        {
+          "caller": "venv_ray_version",
+          "callee": "subprocess.run",
+          "lineNumber": 197
+        },
+        {
+          "caller": "venv_ray_version",
+          "callee": "result.stdout.strip",
+          "lineNumber": 198
+        },
+        {
+          "caller": "_pin_ray_to_base",
+          "callee": "print",
+          "lineNumber": 212
+        },
+        {
+          "caller": "_pin_ray_to_base",
+          "callee": "re.match",
+          "lineNumber": 216
+        },
+        {
+          "caller": "_pin_ray_to_base",
+          "callee": "pkg.strip",
+          "lineNumber": 216
+        },
+        {
+          "caller": "_pin_ray_to_base",
+          "callee": "m.group",
+          "lineNumber": 218
+        },
+        {
+          "caller": "_pin_ray_to_base",
+          "callee": "pinned.append",
+          "lineNumber": 219
+        },
+        {
+          "caller": "_pin_ray_to_base",
+          "callee": "pinned.append",
+          "lineNumber": 221
+        },
+        {
+          "caller": "_base_pkg_version",
+          "callee": "subprocess.run",
+          "lineNumber": 231
+        },
+        {
+          "caller": "_base_pkg_version",
+          "callee": "result.stdout.strip",
+          "lineNumber": 232
+        },
+        {
+          "caller": "_pin_pkgs_to_base",
+          "callee": "_base_pkg_version",
+          "lineNumber": 245
+        },
+        {
+          "caller": "_pin_pkgs_to_base",
+          "callee": "print",
+          "lineNumber": 249
+        },
+        {
+          "caller": "_pin_pkgs_to_base",
+          "callee": "versions.items",
+          "lineNumber": 257
+        },
+        {
+          "caller": "_pin_pkgs_to_base",
+          "callee": "re.match",
+          "lineNumber": 259
+        },
+        {
+          "caller": "_pin_pkgs_to_base",
+          "callee": "re.escape",
+          "lineNumber": 259
+        },
+        {
+          "caller": "_pin_pkgs_to_base",
+          "callee": "pkg.strip",
+          "lineNumber": 259
+        },
+        {
+          "caller": "_pin_pkgs_to_base",
+          "callee": "m.group",
+          "lineNumber": 261
+        },
+        {
+          "caller": "_pin_pkgs_to_base",
+          "callee": "pinned.append",
+          "lineNumber": 262
+        },
+        {
+          "caller": "_pin_pkgs_to_base",
+          "callee": "pinned.append",
+          "lineNumber": 266
+        },
+        {
+          "caller": "setup_engine_venv",
+          "callee": "is_venv_ready",
+          "lineNumber": 290
+        },
+        {
+          "caller": "setup_engine_venv",
+          "callee": "print",
+          "lineNumber": 291
+        },
+        {
+          "caller": "setup_engine_venv",
+          "callee": "print",
+          "lineNumber": 295
+        },
+        {
+          "caller": "setup_engine_venv",
+          "callee": "open",
+          "lineNumber": 296
+        },
+        {
+          "caller": "setup_engine_venv",
+          "callee": "fcntl.flock",
+          "lineNumber": 298
+        },
+        {
+          "caller": "setup_engine_venv",
+          "callee": "is_venv_ready",
+          "lineNumber": 299
+        },
+        {
+          "caller": "setup_engine_venv",
+          "callee": "print",
+          "lineNumber": 300
+        },
+        {
+          "caller": "setup_engine_venv",
+          "callee": "run_command",
+          "lineNumber": 303
+        },
+        {
+          "caller": "setup_engine_venv",
+          "callee": "f\"uv venv {python_flag} {venv_dir}\".strip",
+          "lineNumber": 303
+        },
+        {
+          "caller": "setup_engine_venv",
+          "callee": "print",
+          "lineNumber": 304
+        },
+        {
+          "caller": "setup_engine_venv",
+          "callee": "venv_ray_version",
+          "lineNumber": 309
+        },
+        {
+          "caller": "setup_engine_venv",
+          "callee": "_pin_ray_to_base",
+          "lineNumber": 310
+        },
+        {
+          "caller": "setup_engine_venv",
+          "callee": "_pin_pkgs_to_base",
+          "lineNumber": 314
+        },
+        {
+          "caller": "setup_engine_venv",
+          "callee": "run_command",
+          "lineNumber": 318
+        },
+        {
+          "caller": "setup_engine_venv",
+          "callee": "print",
+          "lineNumber": 319
+        },
+        {
+          "caller": "setup_engine_venv",
+          "callee": "is_venv_ready",
+          "lineNumber": 321
+        },
+        {
+          "caller": "setup_engine_venv",
+          "callee": "print",
+          "lineNumber": 323
+        },
+        {
+          "caller": "setup_engine_venv",
+          "callee": "venv_ray_version",
+          "lineNumber": 327
+        },
+        {
+          "caller": "setup_engine_venv",
+          "callee": "print",
+          "lineNumber": 329
+        },
+        {
+          "caller": "setup_engine_venv",
+          "callee": "print",
+          "lineNumber": 336
+        },
+        {
+          "caller": "setup_engine_venv",
+          "callee": "fcntl.flock",
+          "lineNumber": 339
+        },
+        {
+          "caller": "setup_engine_venv",
+          "callee": "lock_fd.close",
+          "lineNumber": 340
+        },
+        {
+          "caller": "main",
+          "callee": "argparse.ArgumentParser",
+          "lineNumber": 373
+        },
+        {
+          "caller": "main",
+          "callee": "parser.add_argument",
+          "lineNumber": 374
+        },
+        {
+          "caller": "main",
+          "callee": "parser.parse_known_args",
+          "lineNumber": 379
+        },
+        {
+          "caller": "main",
+          "callee": "os.environ.get(\"SETUP_FORCE_RECREATE\", \"\").strip",
+          "lineNumber": 381
+        },
+        {
+          "caller": "main",
+          "callee": "os.environ.get",
+          "lineNumber": 381
+        },
+        {
+          "caller": "main",
+          "callee": "print",
+          "lineNumber": 383
+        },
+        {
+          "caller": "main",
+          "callee": "print",
+          "lineNumber": 384
+        },
+        {
+          "caller": "main",
+          "callee": "print",
+          "lineNumber": 385
+        },
+        {
+          "caller": "main",
+          "callee": "os.chdir",
+          "lineNumber": 388
+        },
+        {
+          "caller": "main",
+          "callee": "print",
+          "lineNumber": 389
+        },
+        {
+          "caller": "main",
+          "callee": "os.getcwd",
+          "lineNumber": 389
+        },
+        {
+          "caller": "main",
+          "callee": "install_nginx",
+          "lineNumber": 392
+        },
+        {
+          "caller": "main",
+          "callee": "os.path.exists",
+          "lineNumber": 396
+        },
+        {
+          "caller": "main",
+          "callee": "print",
+          "lineNumber": 397
+        },
+        {
+          "caller": "main",
+          "callee": "run_command",
+          "lineNumber": 398
+        },
+        {
+          "caller": "main",
+          "callee": "is_venv_ready",
+          "lineNumber": 401
+        },
+        {
+          "caller": "main",
+          "callee": "print",
+          "lineNumber": 402
+        },
+        {
+          "caller": "main",
+          "callee": "print",
+          "lineNumber": 403
+        },
+        {
+          "caller": "main",
+          "callee": "subprocess.run",
+          "lineNumber": 407
+        },
+        {
+          "caller": "main",
+          "callee": "print",
+          "lineNumber": 410
+        },
+        {
+          "caller": "main",
+          "callee": "result.stdout.strip",
+          "lineNumber": 410
+        },
+        {
+          "caller": "main",
+          "callee": "print",
+          "lineNumber": 411
+        },
+        {
+          "caller": "main",
+          "callee": "print",
+          "lineNumber": 412
+        },
+        {
+          "caller": "main",
+          "callee": "print",
+          "lineNumber": 413
+        },
+        {
+          "caller": "main",
+          "callee": "print",
+          "lineNumber": 416
+        },
+        {
+          "caller": "main",
+          "callee": "print",
+          "lineNumber": 419
+        },
+        {
+          "caller": "main",
+          "callee": "run_command",
+          "lineNumber": 420
+        },
+        {
+          "caller": "main",
+          "callee": "print",
+          "lineNumber": 421
+        },
+        {
+          "caller": "main",
+          "callee": "sys.exit",
+          "lineNumber": 422
+        },
+        {
+          "caller": "main",
+          "callee": "print",
+          "lineNumber": 425
+        },
+        {
+          "caller": "main",
+          "callee": "run_command",
+          "lineNumber": 426
+        },
+        {
+          "caller": "main",
+          "callee": "print",
+          "lineNumber": 427
+        },
+        {
+          "caller": "main",
+          "callee": "sys.exit",
+          "lineNumber": 428
+        },
+        {
+          "caller": "main",
+          "callee": "print",
+          "lineNumber": 431
+        },
+        {
+          "caller": "main",
+          "callee": "os.path.exists",
+          "lineNumber": 432
+        },
+        {
+          "caller": "main",
+          "callee": "print",
+          "lineNumber": 433
+        },
+        {
+          "caller": "main",
+          "callee": "run_command",
+          "lineNumber": 434
+        },
+        {
+          "caller": "main",
+          "callee": "run_command",
+          "lineNumber": 436
+        },
+        {
+          "caller": "main",
+          "callee": "print",
+          "lineNumber": 437
+        },
+        {
+          "caller": "main",
+          "callee": "sys.exit",
+          "lineNumber": 438
+        },
+        {
+          "caller": "main",
+          "callee": "print",
+          "lineNumber": 440
+        },
+        {
+          "caller": "main",
+          "callee": "print",
+          "lineNumber": 443
+        },
+        {
+          "caller": "main",
+          "callee": "print",
+          "lineNumber": 451
+        },
+        {
+          "caller": "main",
+          "callee": "run_command",
+          "lineNumber": 452
+        },
+        {
+          "caller": "main",
+          "callee": "print",
+          "lineNumber": 453
+        },
+        {
+          "caller": "main",
+          "callee": "print",
+          "lineNumber": 455
+        },
+        {
+          "caller": "main",
+          "callee": "print",
+          "lineNumber": 472
+        },
+        {
+          "caller": "main",
+          "callee": "run_command",
+          "lineNumber": 473
+        },
+        {
+          "caller": "main",
+          "callee": "print",
+          "lineNumber": 474
+        },
+        {
+          "caller": "main",
+          "callee": "print",
+          "lineNumber": 481
+        },
+        {
+          "caller": "main",
+          "callee": "run_command",
+          "lineNumber": 488
+        },
+        {
+          "caller": "main",
+          "callee": "print",
+          "lineNumber": 489
+        },
+        {
+          "caller": "main",
+          "callee": "pkg.split",
+          "lineNumber": 489
+        },
+        {
+          "caller": "main",
+          "callee": "print",
+          "lineNumber": 491
+        },
+        {
+          "caller": "main",
+          "callee": "print",
+          "lineNumber": 494
+        },
+        {
+          "caller": "main",
+          "callee": "subprocess.run",
+          "lineNumber": 496
+        },
+        {
+          "caller": "main",
+          "callee": "print",
+          "lineNumber": 499
+        },
+        {
+          "caller": "main",
+          "callee": "result.stdout.strip",
+          "lineNumber": 499
+        },
+        {
+          "caller": "main",
+          "callee": "print",
+          "lineNumber": 501
+        },
+        {
+          "caller": "main",
+          "callee": "sys.exit",
+          "lineNumber": 502
+        },
+        {
+          "caller": "main",
+          "callee": "print",
+          "lineNumber": 505
+        },
+        {
+          "caller": "main",
+          "callee": "subprocess.run",
+          "lineNumber": 517
+        },
+        {
+          "caller": "main",
+          "callee": "print",
+          "lineNumber": 520
+        },
+        {
+          "caller": "main",
+          "callee": "result.stdout.strip",
+          "lineNumber": 520
+        },
+        {
+          "caller": "main",
+          "callee": "print",
+          "lineNumber": 522
+        },
+        {
+          "caller": "main",
+          "callee": "print",
+          "lineNumber": 524
+        },
+        {
+          "caller": "main",
+          "callee": "print",
+          "lineNumber": 525
+        },
+        {
+          "caller": "main",
+          "callee": "print",
+          "lineNumber": 526
+        },
+        {
+          "caller": "main",
+          "callee": "print",
+          "lineNumber": 527
+        },
+        {
+          "caller": "main",
+          "callee": "print",
+          "lineNumber": 528
+        },
+        {
+          "caller": "main",
+          "callee": "print",
+          "lineNumber": 529
+        },
+        {
+          "caller": "main",
+          "callee": "print",
+          "lineNumber": 530
+        },
+        {
+          "caller": "main",
+          "callee": "print",
+          "lineNumber": 531
+        }
+      ],
+      "metrics": {
+        "importCount": 0,
+        "exportCount": 9,
+        "functionCount": 9,
+        "classCount": 0
+      }
+    },
+    {
+      "path": "cai_integration/setup_vllm_env.py",
+      "language": "python",
+      "fileCategory": "code",
+      "totalLines": 57,
+      "nonEmptyLines": 44,
+      "functions": [
+        {
+          "name": "main",
+          "startLine": 30,
+          "endLine": 53,
+          "params": []
+        }
+      ],
+      "exports": [
+        {
+          "name": "main",
+          "line": 30,
+          "isDefault": false
+        }
+      ],
+      "callGraph": [
+        {
+          "caller": "main",
+          "callee": "print",
+          "lineNumber": 31
+        },
+        {
+          "caller": "main",
+          "callee": "print",
+          "lineNumber": 32
+        },
+        {
+          "caller": "main",
+          "callee": "print",
+          "lineNumber": 33
+        },
+        {
+          "caller": "main",
+          "callee": "setup_engine_venv",
+          "lineNumber": 35
+        },
+        {
+          "caller": "main",
+          "callee": "print",
+          "lineNumber": 38
+        },
+        {
+          "caller": "main",
+          "callee": "sys.exit",
+          "lineNumber": 39
+        },
+        {
+          "caller": "main",
+          "callee": "subprocess.run",
+          "lineNumber": 44
+        },
+        {
+          "caller": "main",
+          "callee": "print",
+          "lineNumber": 50
+        },
+        {
+          "caller": "main",
+          "callee": "result.stdout.strip",
+          "lineNumber": 50
+        },
+        {
+          "caller": "main",
+          "callee": "print",
+          "lineNumber": 52
+        },
+        {
+          "caller": "main",
+          "callee": "sys.exit",
+          "lineNumber": 53
+        }
+      ],
+      "metrics": {
+        "importCount": 0,
+        "exportCount": 1,
+        "functionCount": 1,
+        "classCount": 0
+      }
+    }
+  ]
+}

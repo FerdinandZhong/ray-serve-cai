@@ -1,0 +1,429 @@
+{
+  "scriptCompleted": true,
+  "directoryGroups": {
+    "ray_serve_cai": [
+      "file:ray_serve_cai/management/api/__init__.py",
+      "file:ray_serve_cai/management/api/applications.py",
+      "file:ray_serve_cai/management/api/cluster.py",
+      "file:ray_serve_cai/management/api/cml_apps.py",
+      "file:ray_serve_cai/management/api/metrics.py",
+      "file:ray_serve_cai/management/api/resources.py",
+      "file:ray_serve_cai/management/api/environments.py",
+      "file:ray_serve_cai/management/api/engines.py",
+      "file:ray_serve_cai/management/models/__init__.py",
+      "file:ray_serve_cai/management/models/requests.py",
+      "file:ray_serve_cai/management/models/responses.py",
+      "file:ray_serve_cai/management/app.py",
+      "file:ray_serve_cai/management/__init__.py",
+      "file:ray_serve_cai/management/services/__init__.py",
+      "file:ray_serve_cai/management/services/coordinator.py",
+      "file:ray_serve_cai/management/services/cai_service.py",
+      "file:ray_serve_cai/management/services/ray_service.py",
+      "file:ray_serve_cai/management/services/resource_map.py",
+      "file:ray_serve_cai/management/services/cml_client.py",
+      "file:ray_serve_cai/utils/logging.py",
+      "file:ray_serve_cai/__init__.py",
+      "file:ray_serve_cai/cai_cluster.py",
+      "file:ray_serve_cai/ray_backend.py",
+      "file:ray_serve_cai/launch_cluster.py",
+      "file:ray_serve_cai/engines/__init__.py",
+      "file:ray_serve_cai/engines/base.py",
+      "file:ray_serve_cai/engines/registry.py",
+      "file:ray_serve_cai/engines/engine_utils.py",
+      "file:ray_serve_cai/engines/venv_utils.py",
+      "file:ray_serve_cai/engines/vllm_engine.py",
+      "file:ray_serve_cai/engines/vllm_config.py",
+      "file:ray_serve_cai/engines/sglang_engine.py",
+      "file:ray_serve_cai/engines/sglang_config.py",
+      "file:ray_serve_cai/engines/litellm_engine.py",
+      "file:ray_serve_cai/engines/litellm_config.py",
+      "file:ray_serve_cai/engines/yolo_engine.py",
+      "file:ray_serve_cai/engines/yolo_config.py",
+      "file:ray_serve_cai/engines/mcp_engine.py",
+      "file:ray_serve_cai/engines/mcp_config.py",
+      "file:ray_serve_cai/engines/mcps/__init__.py",
+      "file:ray_serve_cai/engines/mcps/weather_tools.py",
+      "file:ray_serve_cai/configs/local_basic.yaml",
+      "file:ray_serve_cai/configs/local_cpu.yaml",
+      "file:ray_serve_cai/configs/local_gpu.yaml",
+      "file:ray_serve_cai/configs/multi_node_example.yaml"
+    ],
+    "cai_integration": [
+      "file:cai_integration/setup_environment.py",
+      "file:cai_integration/setup_vllm_env.py",
+      "file:cai_integration/setup_litellm_env.py",
+      "file:cai_integration/launch_ray_cluster.py",
+      "file:cai_integration/create_jobs.py",
+      "file:cai_integration/launch_ray_cluster_job.py",
+      "file:cai_integration/setup_project.py",
+      "file:cai_integration/trigger_jobs.py",
+      "file:cai_integration/test_cluster_deployment_job.py",
+      "file:cai_integration/test_list_applications.py",
+      "file:cai_integration/templates/ray_head_launcher.py.j2",
+      "file:cai_integration/templates/ray_worker_launcher.py.j2",
+      "file:cai_integration/jobs_config.yaml",
+      "file:cai_integration/launch_ray_cluster.sh",
+      "file:cai_integration/quick_start.sh",
+      "file:cai_integration/test_cluster.sh"
+    ],
+    "examples": [
+      "file:examples/cai_cluster_example.py",
+      "file:examples/custom_engine_template/my_engine.py"
+    ],
+    "tests": [
+      "file:tests/test_e2e_deployment.py",
+      "file:tests/test_cluster_deployment.py",
+      "file:tests/README.md",
+      "file:tests/TESTING_GUIDE.md",
+      "file:tests/run_test.sh"
+    ],
+    "configs": [
+      "file:configs/ray_cluster_config.yaml"
+    ],
+    ".github": [
+      "file:.github/workflows/deploy-ray-cluster.yml"
+    ],
+    "root": [
+      "file:pyproject.toml",
+      "document:README.md",
+      "document:QUICK_REFERENCE.md",
+      "document:LAUNCH_MODEL_GUIDE.md",
+      "document:VERIFICATION_isolated_env.md",
+      "file:.git_sync.py"
+    ],
+    "scripts": [
+      "file:scripts/deploy_qwen3_model.py"
+    ],
+    "benchmark_scripts": [
+      "file:benchmark_scripts/launch_yolo_standalone.py",
+      "file:benchmark_scripts/run_yolo_server.py",
+      "file:benchmark_scripts/yolo_api_server.py"
+    ],
+    "demo_configs": [
+      "file:demo_configs/nginx_architecture.html",
+      "file:demo_configs/vllm_executor_backend.html"
+    ],
+    "docs": [
+      "document:docs/ARCHITECTURE.md",
+      "document:docs/CLUSTER_SETUP.md",
+      "document:docs/DEPLOYMENT_ARCHITECTURE.md",
+      "document:docs/ISOLATED_ENV_DESIGN.md",
+      "document:docs/NGINX_PROXY_DESIGN.md",
+      "document:docs/QUICKSTART.md"
+    ]
+  },
+  "nodeTypeGroups": {
+    "file": [
+      "file:ray_serve_cai/management/api/__init__.py",
+      "file:ray_serve_cai/management/api/applications.py",
+      "file:ray_serve_cai/management/api/cluster.py",
+      "file:ray_serve_cai/management/api/cml_apps.py",
+      "file:ray_serve_cai/management/api/metrics.py",
+      "file:ray_serve_cai/management/api/resources.py",
+      "file:ray_serve_cai/management/api/environments.py",
+      "file:ray_serve_cai/management/api/engines.py",
+      "file:ray_serve_cai/management/models/__init__.py",
+      "file:ray_serve_cai/management/models/requests.py",
+      "file:ray_serve_cai/management/models/responses.py",
+      "file:ray_serve_cai/management/app.py",
+      "file:ray_serve_cai/management/__init__.py",
+      "file:ray_serve_cai/management/services/__init__.py",
+      "file:ray_serve_cai/management/services/coordinator.py",
+      "file:ray_serve_cai/management/services/cai_service.py",
+      "file:ray_serve_cai/management/services/ray_service.py",
+      "file:ray_serve_cai/management/services/resource_map.py",
+      "file:ray_serve_cai/management/services/cml_client.py",
+      "file:ray_serve_cai/utils/logging.py",
+      "file:ray_serve_cai/__init__.py",
+      "file:ray_serve_cai/cai_cluster.py",
+      "file:ray_serve_cai/ray_backend.py",
+      "file:ray_serve_cai/launch_cluster.py",
+      "file:ray_serve_cai/engines/__init__.py",
+      "file:ray_serve_cai/engines/base.py",
+      "file:ray_serve_cai/engines/registry.py",
+      "file:ray_serve_cai/engines/engine_utils.py",
+      "file:ray_serve_cai/engines/venv_utils.py",
+      "file:ray_serve_cai/engines/vllm_engine.py",
+      "file:ray_serve_cai/engines/vllm_config.py",
+      "file:ray_serve_cai/engines/sglang_engine.py",
+      "file:ray_serve_cai/engines/sglang_config.py",
+      "file:ray_serve_cai/engines/litellm_engine.py",
+      "file:ray_serve_cai/engines/litellm_config.py",
+      "file:ray_serve_cai/engines/yolo_engine.py",
+      "file:ray_serve_cai/engines/yolo_config.py",
+      "file:ray_serve_cai/engines/mcp_engine.py",
+      "file:ray_serve_cai/engines/mcp_config.py",
+      "file:ray_serve_cai/engines/mcps/__init__.py",
+      "file:ray_serve_cai/engines/mcps/weather_tools.py",
+      "file:cai_integration/setup_environment.py",
+      "file:cai_integration/setup_vllm_env.py",
+      "file:cai_integration/setup_litellm_env.py",
+      "file:cai_integration/launch_ray_cluster.py",
+      "file:examples/cai_cluster_example.py",
+      "file:tests/test_e2e_deployment.py",
+      "file:cai_integration/create_jobs.py",
+      "file:cai_integration/launch_ray_cluster_job.py",
+      "file:cai_integration/setup_project.py",
+      "file:cai_integration/trigger_jobs.py",
+      "file:cai_integration/test_cluster_deployment_job.py",
+      "file:cai_integration/test_list_applications.py",
+      "file:cai_integration/templates/ray_head_launcher.py.j2",
+      "file:cai_integration/templates/ray_worker_launcher.py.j2",
+      "file:.github/workflows/deploy-ray-cluster.yml",
+      "file:tests/test_cluster_deployment.py",
+      "file:scripts/deploy_qwen3_model.py",
+      "file:examples/custom_engine_template/my_engine.py",
+      "file:.git_sync.py",
+      "file:benchmark_scripts/launch_yolo_standalone.py",
+      "file:benchmark_scripts/run_yolo_server.py",
+      "file:benchmark_scripts/yolo_api_server.py",
+      "file:demo_configs/nginx_architecture.html",
+      "file:demo_configs/vllm_executor_backend.html",
+      "file:cai_integration/launch_ray_cluster.sh",
+      "file:cai_integration/quick_start.sh",
+      "file:cai_integration/test_cluster.sh",
+      "file:tests/run_test.sh"
+    ],
+    "config": [
+      "file:configs/ray_cluster_config.yaml",
+      "file:pyproject.toml",
+      "file:cai_integration/jobs_config.yaml",
+      "file:ray_serve_cai/configs/local_basic.yaml",
+      "file:ray_serve_cai/configs/local_cpu.yaml",
+      "file:ray_serve_cai/configs/local_gpu.yaml",
+      "file:ray_serve_cai/configs/multi_node_example.yaml"
+    ],
+    "document": [
+      "document:README.md",
+      "document:QUICK_REFERENCE.md",
+      "document:LAUNCH_MODEL_GUIDE.md",
+      "document:VERIFICATION_isolated_env.md",
+      "document:docs/ARCHITECTURE.md",
+      "document:docs/CLUSTER_SETUP.md",
+      "document:docs/DEPLOYMENT_ARCHITECTURE.md",
+      "document:docs/ISOLATED_ENV_DESIGN.md",
+      "document:docs/NGINX_PROXY_DESIGN.md",
+      "document:docs/QUICKSTART.md",
+      "file:tests/README.md",
+      "file:tests/TESTING_GUIDE.md"
+    ]
+  },
+  "crossCategoryEdges": [
+    {
+      "fromType": "file",
+      "toType": "file",
+      "edgeType": "imports",
+      "count": 42
+    }
+  ],
+  "interGroupImports": [
+    {
+      "from": "examples",
+      "to": "ray_serve_cai",
+      "count": 3
+    },
+    {
+      "from": "cai_integration",
+      "to": "ray_serve_cai",
+      "count": 1
+    },
+    {
+      "from": "tests",
+      "to": "ray_serve_cai",
+      "count": 1
+    }
+  ],
+  "intraGroupDensity": {
+    "ray_serve_cai": {
+      "internalEdges": 35,
+      "totalEdges": 75,
+      "density": 0.467
+    },
+    "cai_integration": {
+      "internalEdges": 2,
+      "totalEdges": 5,
+      "density": 0.4
+    },
+    "examples": {
+      "internalEdges": 0,
+      "totalEdges": 3,
+      "density": 0
+    },
+    "tests": {
+      "internalEdges": 0,
+      "totalEdges": 1,
+      "density": 0
+    },
+    "configs": {
+      "internalEdges": 0,
+      "totalEdges": 0,
+      "density": 0
+    },
+    ".github": {
+      "internalEdges": 0,
+      "totalEdges": 0,
+      "density": 0
+    },
+    "root": {
+      "internalEdges": 0,
+      "totalEdges": 0,
+      "density": 0
+    },
+    "scripts": {
+      "internalEdges": 0,
+      "totalEdges": 0,
+      "density": 0
+    },
+    "benchmark_scripts": {
+      "internalEdges": 0,
+      "totalEdges": 0,
+      "density": 0
+    },
+    "demo_configs": {
+      "internalEdges": 0,
+      "totalEdges": 0,
+      "density": 0
+    },
+    "docs": {
+      "internalEdges": 0,
+      "totalEdges": 0,
+      "density": 0
+    }
+  },
+  "patternMatches": {
+    "ray_serve_cai": "unknown",
+    "cai_integration": "unknown",
+    "examples": "examples",
+    "tests": "test",
+    "configs": "config",
+    ".github": "ci-cd",
+    "root": "unknown",
+    "scripts": "scripts",
+    "benchmark_scripts": "test",
+    "demo_configs": "config",
+    "docs": "documentation"
+  },
+  "deploymentTopology": {
+    "hasDockerfile": false,
+    "hasCompose": false,
+    "hasK8s": false,
+    "hasTerraform": false,
+    "hasCI": true,
+    "infraFiles": [
+      ".github/workflows/deploy-ray-cluster.yml"
+    ]
+  },
+  "dataPipeline": {
+    "schemaFiles": [],
+    "migrationFiles": [],
+    "dataModelFiles": [
+      "ray_serve_cai/management/models/__init__.py",
+      "ray_serve_cai/management/models/requests.py",
+      "ray_serve_cai/management/models/responses.py",
+      "ray_serve_cai/management/services/resource_map.py"
+    ],
+    "apiHandlerFiles": [
+      "ray_serve_cai/management/api/__init__.py",
+      "ray_serve_cai/management/api/applications.py",
+      "ray_serve_cai/management/api/cluster.py",
+      "ray_serve_cai/management/api/cml_apps.py",
+      "ray_serve_cai/management/api/metrics.py",
+      "ray_serve_cai/management/api/resources.py",
+      "ray_serve_cai/management/api/environments.py",
+      "ray_serve_cai/management/api/engines.py",
+      "ray_serve_cai/management/services/cml_client.py"
+    ]
+  },
+  "docCoverage": {
+    "groupsWithDocs": 5,
+    "totalGroups": 11,
+    "coverageRatio": 0.45,
+    "undocumentedGroups": [
+      "ray_serve_cai",
+      "cai_integration",
+      "configs",
+      ".github",
+      "scripts",
+      "benchmark_scripts"
+    ]
+  },
+  "dependencyDirection": [
+    {
+      "dependent": "cai_integration",
+      "dependsOn": "ray_serve_cai"
+    },
+    {
+      "dependent": "examples",
+      "dependsOn": "ray_serve_cai"
+    },
+    {
+      "dependent": "tests",
+      "dependsOn": "ray_serve_cai"
+    }
+  ],
+  "fileStats": {
+    "totalFileNodes": 88,
+    "filesPerGroup": {
+      "ray_serve_cai": 45,
+      "cai_integration": 16,
+      "examples": 2,
+      "tests": 5,
+      "configs": 1,
+      ".github": 1,
+      "root": 6,
+      "scripts": 1,
+      "benchmark_scripts": 3,
+      "demo_configs": 2,
+      "docs": 6
+    },
+    "nodeTypeCounts": {
+      "file": 69,
+      "config": 7,
+      "document": 12
+    }
+  },
+  "fileFanIn": {
+    "file:ray_serve_cai/management/services/coordinator.py": 5,
+    "file:ray_serve_cai/management/models/requests.py": 4,
+    "file:ray_serve_cai/management/models/responses.py": 4,
+    "file:ray_serve_cai/cai_cluster.py": 4,
+    "file:ray_serve_cai/engines/base.py": 3,
+    "file:ray_serve_cai/management/services/cai_service.py": 2,
+    "file:ray_serve_cai/management/services/ray_service.py": 2,
+    "file:ray_serve_cai/engines/registry.py": 2,
+    "file:cai_integration/setup_environment.py": 2,
+    "file:ray_serve_cai/management/api/__init__.py": 1,
+    "file:ray_serve_cai/management/api/applications.py": 1,
+    "file:ray_serve_cai/management/api/cluster.py": 1,
+    "file:ray_serve_cai/management/api/cml_apps.py": 1,
+    "file:ray_serve_cai/management/api/metrics.py": 1,
+    "file:ray_serve_cai/management/api/resources.py": 1,
+    "file:ray_serve_cai/management/api/environments.py": 1,
+    "file:ray_serve_cai/management/api/engines.py": 1,
+    "file:ray_serve_cai/management/services/__init__.py": 1,
+    "file:ray_serve_cai/management/services/resource_map.py": 1,
+    "file:ray_serve_cai/utils/logging.py": 1
+  },
+  "fileFanOut": {
+    "file:ray_serve_cai/management/api/__init__.py": 7,
+    "file:ray_serve_cai/management/api/applications.py": 3,
+    "file:ray_serve_cai/management/api/resources.py": 3,
+    "file:ray_serve_cai/management/app.py": 3,
+    "file:ray_serve_cai/management/services/__init__.py": 3,
+    "file:ray_serve_cai/management/services/coordinator.py": 3,
+    "file:ray_serve_cai/management/api/cluster.py": 2,
+    "file:ray_serve_cai/management/api/cml_apps.py": 2,
+    "file:ray_serve_cai/management/models/__init__.py": 2,
+    "file:ray_serve_cai/__init__.py": 2,
+    "file:ray_serve_cai/engines/__init__.py": 2,
+    "file:examples/custom_engine_template/my_engine.py": 2,
+    "file:ray_serve_cai/management/api/engines.py": 1,
+    "file:ray_serve_cai/management/services/cai_service.py": 1,
+    "file:ray_serve_cai/engines/registry.py": 1,
+    "file:cai_integration/setup_vllm_env.py": 1,
+    "file:cai_integration/setup_litellm_env.py": 1,
+    "file:cai_integration/launch_ray_cluster.py": 1,
+    "file:examples/cai_cluster_example.py": 1,
+    "file:tests/test_e2e_deployment.py": 1
+  }
+}

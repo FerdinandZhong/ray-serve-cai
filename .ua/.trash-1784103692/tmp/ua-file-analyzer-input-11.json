@@ -1,0 +1,10 @@
+{
+  "projectRoot": "/Users/zhongqishuai/Projects/cldr_projects/ray-serve-cai",
+  "batchFiles": [
+    {"path": "ray_serve_cai/management/services/setup_logging.py", "language": "python", "sizeLines": 0, "fileCategory": "code"},
+    {"path": "ray_serve_cai/management/services/cai_cluster_manager.py", "language": "python", "sizeLines": 0, "fileCategory": "code"},
+    {"path": "ray_serve_cai/management/services/worker_node.py", "language": "python", "sizeLines": 0, "fileCategory": "code"},
+    {"path": "ray_serve_cai/management/services/nginx_service.py", "language": "python", "sizeLines": 0, "fileCategory": "code"}
+  ],
+  "batchImportData": {}
+}

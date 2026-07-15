@@ -1,0 +1,16 @@
+{
+  "fixedSectionOk": true,
+  "nodesRecovered": 3,
+  "edgesRestored": 2,
+  "crossBatchEdgesAdded": 3,
+  "typesRemapped": 0,
+  "complexityRemapped": 0,
+  "notes": [
+    "Fixed section had no concerning patterns: zero unknown types, zero unknown complexity values, zero missing-ID nodes. The report was clean.",
+    "Dropped edges (2): both pointed to function:cai_integration/setup_vllm_env.py:main, which was present in batch-4.json as edges but had no corresponding function node. Root cause: the batch LLM produced contains/exports edges for the main() function but omitted the function node itself. Node recovered from source (cai_integration/setup_vllm_env.py lines 30-57) with accurate lineRange, summary, and complexity=simple.",
+    "Import map cross-check revealed two files entirely absent from the assembled graph: ray_serve_cai/management/services/ray_service.py and ray_serve_cai/cai_cluster.py. Both files exist on disk and are substantive (ray_service.py is 369 lines with a full RayService class; cai_cluster.py is 844 lines with CAIClusterManager, CMLAPIClient, WorkerGroupConfig). No batch analyzed them — they were missed during file scanning or batching. Stub nodes added with accurate summaries derived from reading the source files.",
+    "coordinator.py imports from .ray_service (the services-layer RayService, distinct from the top-level ray_serve_cai/ray_service.py already in the graph). Both files have a RayService class — the services-layer one is the lower-level Ray API wrapper; the top-level one is the full management-layer service. Both nodes now exist with distinct IDs.",
+    "cai_cluster.py is imported by both cai_integration/launch_ray_cluster.py and ray_serve_cai/management/services/cai_service.py. Three import edges added to represent these relationships.",
+    "11 imports edges were already recovered by the merge script's import-map linker; 3 additional cross-batch edges added here that the linker did not cover because the target nodes did not yet exist at link time."
+  ]
+}

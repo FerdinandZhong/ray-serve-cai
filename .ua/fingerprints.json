@@ -1,0 +1,6228 @@
+{
+  "version": "1.0.0",
+  "gitCommitHash": "1c02cc1e9c59415eb006b1a17c0f968e920faaf9",
+  "generatedAt": "2026-07-15T08:21:09.899Z",
+  "files": {
+    ".env.example": {
+      "filePath": ".env.example",
+      "contentHash": "6e379010591e787e9aa451ee981972f28fbf4a89552bbca9235ee5e9f396c59e",
+      "functions": [],
+      "classes": [],
+      "imports": [],
+      "exports": [],
+      "totalLines": 20,
+      "hasStructuralAnalysis": true
+    },
+    ".git_sync.py": {
+      "filePath": ".git_sync.py",
+      "contentHash": "ac12a6ef0d47448696e2d5b8432305edabbe35c2dc18b9b3ae56f7a8d3b53554",
+      "functions": [
+        {
+          "name": "run_command",
+          "params": [
+            "cmd",
+            "cwd",
+            "check"
+          ],
+          "returnType": "Tuple[bool, str, str]",
+          "exported": true,
+          "lineCount": 36
+        },
+        {
+          "name": "setup_git_config",
+          "params": [],
+          "returnType": "bool",
+          "exported": true,
+          "lineCount": 20
+        },
+        {
+          "name": "get_current_branch",
+          "params": [],
+          "returnType": "str",
+          "exported": true,
+          "lineCount": 11
+        },
+        {
+          "name": "get_remote_url",
+          "params": [],
+          "returnType": "str",
+          "exported": true,
+          "lineCount": 11
+        },
+        {
+          "name": "fetch_from_remote",
+          "params": [],
+          "returnType": "bool",
+          "exported": true,
+          "lineCount": 23
+        },
+        {
+          "name": "reset_to_remote",
+          "params": [],
+          "returnType": "bool",
+          "exported": true,
+          "lineCount": 25
+        },
+        {
+          "name": "clean_working_directory",
+          "params": [],
+          "returnType": "bool",
+          "exported": true,
+          "lineCount": 16
+        },
+        {
+          "name": "get_sync_status",
+          "params": [],
+          "returnType": "dict",
+          "exported": true,
+          "lineCount": 26
+        },
+        {
+          "name": "main",
+          "params": [],
+          "exported": true,
+          "lineCount": 58
+        }
+      ],
+      "classes": [],
+      "imports": [
+        {
+          "source": "os",
+          "specifiers": [
+            "os"
+          ]
+        },
+        {
+          "source": "subprocess",
+          "specifiers": [
+            "subprocess"
+          ]
+        },
+        {
+          "source": "sys",
+          "specifiers": [
+            "sys"
+          ]
+        },
+        {
+          "source": "typing",
+          "specifiers": [
+            "Tuple"
+          ]
+        }
+      ],
+      "exports": [
+        "run_command",
+        "setup_git_config",
+        "get_current_branch",
+        "get_remote_url",
+        "fetch_from_remote",
+        "reset_to_remote",
+        "clean_working_directory",
+        "get_sync_status",
+        "main"
+      ],
+      "totalLines": 268,
+      "hasStructuralAnalysis": true
+    },
+    ".github/workflows/deploy-ray-cluster.yml": {
+      "filePath": ".github/workflows/deploy-ray-cluster.yml",
+      "contentHash": "0c63f6ddbe9e3cb774be3498f1416cee68953cac2b0e07755f0d7198151e9171",
+      "functions": [],
+      "classes": [],
+      "imports": [],
+      "exports": [],
+      "totalLines": 169,
+      "hasStructuralAnalysis": true
+    },
+    ".ua/.understandignore": {
+      "filePath": ".ua/.understandignore",
+      "contentHash": "41e942997f82f58e85784d393206241f285ec7ffb040112c30e2293b212365e4",
+      "functions": [],
+      "classes": [],
+      "imports": [],
+      "exports": [],
+      "totalLines": 108,
+      "hasStructuralAnalysis": false
+    },
+    "benchmark_scripts/launch_yolo_standalone.py": {
+      "filePath": "benchmark_scripts/launch_yolo_standalone.py",
+      "contentHash": "c711c58d41f0fa77589fb62cbd912e8d0bd3e1e6cd8e6a3e3c987de7b25d6e0d",
+      "functions": [
+        {
+          "name": "get_cai_client",
+          "params": [
+            "api_key",
+            "domain"
+          ],
+          "returnType": "requests.Session",
+          "exported": true,
+          "lineCount": 8
+        },
+        {
+          "name": "get_project_id",
+          "params": [
+            "client",
+            "domain"
+          ],
+          "returnType": "str",
+          "exported": true,
+          "lineCount": 21
+        },
+        {
+          "name": "create_or_update_app",
+          "params": [
+            "client",
+            "domain",
+            "project_id",
+            "model_path",
+            "device",
+            "conf",
+            "iou",
+            "use_gpu",
+            "runtime"
+          ],
+          "returnType": "Dict[str, Any]",
+          "exported": true,
+          "lineCount": 55
+        },
+        {
+          "name": "main",
+          "params": [],
+          "exported": true,
+          "lineCount": 71
+        }
+      ],
+      "classes": [],
+      "imports": [
+        {
+          "source": "argparse",
+          "specifiers": [
+            "argparse"
+          ]
+        },
+        {
+          "source": "os",
+          "specifiers": [
+            "os"
+          ]
+        },
+        {
+          "source": "sys",
+          "specifiers": [
+            "sys"
+          ]
+        },
+        {
+          "source": "typing",
+          "specifiers": [
+            "Dict",
+            "Any"
+          ]
+        },
+        {
+          "source": "requests",
+          "specifiers": [
+            "requests"
+          ]
+        }
+      ],
+      "exports": [
+        "get_cai_client",
+        "get_project_id",
+        "create_or_update_app",
+        "main"
+      ],
+      "totalLines": 204,
+      "hasStructuralAnalysis": true
+    },
+    "benchmark_scripts/run_yolo_server.py": {
+      "filePath": "benchmark_scripts/run_yolo_server.py",
+      "contentHash": "a37b9431c2f7fecbbb7108aac4acbe054f1207276640e03ccf023b17dd307fee",
+      "functions": [
+        {
+          "name": "_ensure_deps",
+          "params": [],
+          "exported": true,
+          "lineCount": 13
+        }
+      ],
+      "classes": [],
+      "imports": [
+        {
+          "source": "os",
+          "specifiers": [
+            "os"
+          ]
+        },
+        {
+          "source": "subprocess",
+          "specifiers": [
+            "subprocess"
+          ]
+        },
+        {
+          "source": "sys",
+          "specifiers": [
+            "sys"
+          ]
+        }
+      ],
+      "exports": [
+        "_ensure_deps"
+      ],
+      "totalLines": 59,
+      "hasStructuralAnalysis": true
+    },
+    "benchmark_scripts/yolo_api_server.py": {
+      "filePath": "benchmark_scripts/yolo_api_server.py",
+      "contentHash": "eae646b04355782feed883bcc890500f8f2e69bd2255ed3a9d7d1024faae5ce3",
+      "functions": [
+        {
+          "name": "bbox_to_location",
+          "params": [
+            "bbox_normalized"
+          ],
+          "returnType": "str",
+          "exported": true,
+          "lineCount": 43
+        },
+        {
+          "name": "check_occlusion",
+          "params": [
+            "boxes",
+            "iou_threshold"
+          ],
+          "returnType": "bool",
+          "exported": true,
+          "lineCount": 48
+        },
+        {
+          "name": "startup_event",
+          "params": [],
+          "exported": true,
+          "lineCount": 26
+        },
+        {
+          "name": "health_check",
+          "params": [],
+          "exported": true,
+          "lineCount": 7
+        },
+        {
+          "name": "chat_completions",
+          "params": [
+            "request"
+          ],
+          "exported": true,
+          "lineCount": 56
+        },
+        {
+          "name": "detect",
+          "params": [
+            "file"
+          ],
+          "exported": true,
+          "lineCount": 25
+        },
+        {
+          "name": "main",
+          "params": [],
+          "exported": true,
+          "lineCount": 64
+        }
+      ],
+      "classes": [
+        {
+          "name": "ItemDetection",
+          "methods": [],
+          "properties": [
+            "name",
+            "confidence",
+            "location",
+            "bbox"
+          ],
+          "exported": true,
+          "lineCount": 6
+        },
+        {
+          "name": "DetectionResult",
+          "methods": [],
+          "properties": [
+            "items",
+            "total_count",
+            "has_concealed_items"
+          ],
+          "exported": true,
+          "lineCount": 5
+        },
+        {
+          "name": "ChatMessage",
+          "methods": [],
+          "properties": [
+            "role",
+            "content"
+          ],
+          "exported": true,
+          "lineCount": 4
+        },
+        {
+          "name": "ChatChoice",
+          "methods": [],
+          "properties": [
+            "index",
+            "message",
+            "finish_reason"
+          ],
+          "exported": true,
+          "lineCount": 5
+        },
+        {
+          "name": "ChatCompletionResponse",
+          "methods": [],
+          "properties": [
+            "id",
+            "object",
+            "created",
+            "model",
+            "choices"
+          ],
+          "exported": true,
+          "lineCount": 7
+        },
+        {
+          "name": "YOLODetectionEngine",
+          "methods": [
+            "__init__",
+            "_load_class_names",
+            "predict",
+            "_predict_ultralytics",
+            "_predict_onnx"
+          ],
+          "properties": [],
+          "exported": true,
+          "lineCount": 135
+        }
+      ],
+      "imports": [
+        {
+          "source": "argparse",
+          "specifiers": [
+            "argparse"
+          ]
+        },
+        {
+          "source": "json",
+          "specifiers": [
+            "json"
+          ]
+        },
+        {
+          "source": "os",
+          "specifiers": [
+            "os"
+          ]
+        },
+        {
+          "source": "pathlib",
+          "specifiers": [
+            "Path"
+          ]
+        },
+        {
+          "source": "typing",
+          "specifiers": [
+            "List",
+            "Dict",
+            "Any",
+            "Optional",
+            "Union"
+          ]
+        },
+        {
+          "source": "io",
+          "specifiers": [
+            "io"
+          ]
+        },
+        {
+          "source": "fastapi",
+          "specifiers": [
+            "FastAPI",
+            "File",
+            "UploadFile",
+            "HTTPException",
+            "Request"
+          ]
+        },
+        {
+          "source": "fastapi.responses",
+          "specifiers": [
+            "JSONResponse"
+          ]
+        },
+        {
+          "source": "pydantic",
+          "specifiers": [
+            "BaseModel",
+            "Field"
+          ]
+        },
+        {
+          "source": "uvicorn",
+          "specifiers": [
+            "uvicorn"
+          ]
+        },
+        {
+          "source": "PIL",
+          "specifiers": [
+            "Image"
+          ]
+        },
+        {
+          "source": "numpy",
+          "specifiers": [
+            "np"
+          ]
+        }
+      ],
+      "exports": [
+        "ItemDetection",
+        "DetectionResult",
+        "ChatMessage",
+        "ChatChoice",
+        "ChatCompletionResponse",
+        "bbox_to_location",
+        "check_occlusion",
+        "YOLODetectionEngine",
+        "startup_event",
+        "health_check",
+        "chat_completions",
+        "detect",
+        "main"
+      ],
+      "totalLines": 515,
+      "hasStructuralAnalysis": true
+    },
+    "cai_integration/create_jobs.py": {
+      "filePath": "cai_integration/create_jobs.py",
+      "contentHash": "7df0c67e23bf44bc40c719d1a9b66aafbcc93f6de4e8b5b2a62a3cad1843da0f",
+      "functions": [
+        {
+          "name": "main",
+          "params": [],
+          "exported": true,
+          "lineCount": 24
+        }
+      ],
+      "classes": [
+        {
+          "name": "JobManager",
+          "methods": [
+            "__init__",
+            "make_request",
+            "load_jobs_config",
+            "get_runtime_identifier",
+            "list_jobs",
+            "create_job",
+            "update_job",
+            "create_or_update_jobs",
+            "run"
+          ],
+          "properties": [],
+          "exported": true,
+          "lineCount": 235
+        }
+      ],
+      "imports": [
+        {
+          "source": "argparse",
+          "specifiers": [
+            "argparse"
+          ]
+        },
+        {
+          "source": "json",
+          "specifiers": [
+            "json"
+          ]
+        },
+        {
+          "source": "os",
+          "specifiers": [
+            "os"
+          ]
+        },
+        {
+          "source": "sys",
+          "specifiers": [
+            "sys"
+          ]
+        },
+        {
+          "source": "yaml",
+          "specifiers": [
+            "yaml"
+          ]
+        },
+        {
+          "source": "requests",
+          "specifiers": [
+            "requests"
+          ]
+        },
+        {
+          "source": "pathlib",
+          "specifiers": [
+            "Path"
+          ]
+        },
+        {
+          "source": "typing",
+          "specifiers": [
+            "Dict",
+            "Optional",
+            "Any"
+          ]
+        }
+      ],
+      "exports": [
+        "JobManager",
+        "main"
+      ],
+      "totalLines": 289,
+      "hasStructuralAnalysis": true
+    },
+    "cai_integration/jobs_config.yaml": {
+      "filePath": "cai_integration/jobs_config.yaml",
+      "contentHash": "5dd31e7f6100e4e45f54b0aabd977748868090a301da2ce493df67bd082c7183",
+      "functions": [],
+      "classes": [],
+      "imports": [],
+      "exports": [],
+      "totalLines": 58,
+      "hasStructuralAnalysis": true
+    },
+    "cai_integration/launch_ray_cluster_job.py": {
+      "filePath": "cai_integration/launch_ray_cluster_job.py",
+      "contentHash": "2fffcd905ec4c58bfed09b7243027ae88fc7c0d5238e62e241149e984efeab00",
+      "functions": [
+        {
+          "name": "main",
+          "params": [],
+          "exported": true,
+          "lineCount": 47
+        }
+      ],
+      "classes": [],
+      "imports": [
+        {
+          "source": "subprocess",
+          "specifiers": [
+            "subprocess"
+          ]
+        },
+        {
+          "source": "sys",
+          "specifiers": [
+            "sys"
+          ]
+        },
+        {
+          "source": "pathlib",
+          "specifiers": [
+            "Path"
+          ]
+        }
+      ],
+      "exports": [
+        "main"
+      ],
+      "totalLines": 78,
+      "hasStructuralAnalysis": true
+    },
+    "cai_integration/launch_ray_cluster.py": {
+      "filePath": "cai_integration/launch_ray_cluster.py",
+      "contentHash": "02adef8ccd1819264a0798e874003d5ab919e4e1b587290504c415b1c8cc3fc9",
+      "functions": [
+        {
+          "name": "create_ray_launcher_scripts",
+          "params": [
+            "worker_groups",
+            "head_address",
+            "ray_port",
+            "dashboard_port",
+            "metrics_port",
+            "mgmt_cpu",
+            "mgmt_memory_gb",
+            "proxy_health_check_period_s",
+            "proxy_health_check_timeout_s",
+            "proxy_ready_check_timeout_s",
+            "proxy_min_draining_period_s"
+          ],
+          "returnType": "tuple",
+          "exported": true,
+          "lineCount": 89
+        },
+        {
+          "name": "load_config",
+          "params": [],
+          "exported": true,
+          "lineCount": 98
+        },
+        {
+          "name": "_wait_for_management_api",
+          "params": [
+            "cluster_info",
+            "timeout"
+          ],
+          "returnType": "str",
+          "exported": true,
+          "lineCount": 41
+        },
+        {
+          "name": "main",
+          "params": [],
+          "exported": true,
+          "lineCount": 263
+        }
+      ],
+      "classes": [],
+      "imports": [
+        {
+          "source": "json",
+          "specifiers": [
+            "json"
+          ]
+        },
+        {
+          "source": "logging",
+          "specifiers": [
+            "logging"
+          ]
+        },
+        {
+          "source": "os",
+          "specifiers": [
+            "os"
+          ]
+        },
+        {
+          "source": "sys",
+          "specifiers": [
+            "sys"
+          ]
+        },
+        {
+          "source": "time",
+          "specifiers": [
+            "time"
+          ]
+        },
+        {
+          "source": "yaml",
+          "specifiers": [
+            "yaml"
+          ]
+        },
+        {
+          "source": "pathlib",
+          "specifiers": [
+            "Path"
+          ]
+        },
+        {
+          "source": "jinja2",
+          "specifiers": [
+            "Environment",
+            "FileSystemLoader"
+          ]
+        },
+        {
+          "source": "ray_serve_cai.cai_cluster",
+          "specifiers": [
+            "CAIClusterManager",
+            "WorkerGroupConfig"
+          ]
+        }
+      ],
+      "exports": [
+        "create_ray_launcher_scripts",
+        "load_config",
+        "_wait_for_management_api",
+        "main"
+      ],
+      "totalLines": 566,
+      "hasStructuralAnalysis": true
+    },
+    "cai_integration/launch_ray_cluster.sh": {
+      "filePath": "cai_integration/launch_ray_cluster.sh",
+      "contentHash": "3573eae130cbe1c97bbc71c578bbc6f9c5d88033f78cf929df56c8bcac446693",
+      "functions": [],
+      "classes": [],
+      "imports": [],
+      "exports": [],
+      "totalLines": 32,
+      "hasStructuralAnalysis": true
+    },
+    "cai_integration/quick_start.sh": {
+      "filePath": "cai_integration/quick_start.sh",
+      "contentHash": "4d1c76503fc4485a345003845726c5c7d797f39811f739695485dae047fa06f7",
+      "functions": [
+        {
+          "name": "print_banner",
+          "params": [],
+          "exported": false,
+          "lineCount": 7
+        },
+        {
+          "name": "print_help",
+          "params": [],
+          "exported": false,
+          "lineCount": 32
+        },
+        {
+          "name": "validate_environment",
+          "params": [],
+          "exported": false,
+          "lineCount": 32
+        },
+        {
+          "name": "configure_interactively",
+          "params": [],
+          "exported": false,
+          "lineCount": 55
+        },
+        {
+          "name": "deploy",
+          "params": [],
+          "exported": false,
+          "lineCount": 54
+        },
+        {
+          "name": "main",
+          "params": [],
+          "exported": false,
+          "lineCount": 63
+        }
+      ],
+      "classes": [],
+      "imports": [],
+      "exports": [],
+      "totalLines": 275,
+      "hasStructuralAnalysis": true
+    },
+    "cai_integration/README.md": {
+      "filePath": "cai_integration/README.md",
+      "contentHash": "bf69dffe4929d0ff58d3f83f29578e722cde9c42c87b4254ae7b76463078b8c1",
+      "functions": [],
+      "classes": [],
+      "imports": [],
+      "exports": [],
+      "totalLines": 467,
+      "hasStructuralAnalysis": true
+    },
+    "cai_integration/setup_environment.py": {
+      "filePath": "cai_integration/setup_environment.py",
+      "contentHash": "f003a9207137fa89e96fa8df48e6ceae9a08d1e5d249546c332f046c75a81cc9",
+      "functions": [
+        {
+          "name": "run_command",
+          "params": [
+            "cmd",
+            "cwd"
+          ],
+          "exported": true,
+          "lineCount": 22
+        },
+        {
+          "name": "is_venv_ready",
+          "params": [
+            "venv_dir"
+          ],
+          "exported": true,
+          "lineCount": 16
+        },
+        {
+          "name": "install_nginx",
+          "params": [],
+          "exported": true,
+          "lineCount": 124
+        },
+        {
+          "name": "venv_ray_version",
+          "params": [
+            "venv_dir"
+          ],
+          "returnType": "str | None",
+          "exported": true,
+          "lineCount": 5
+        },
+        {
+          "name": "_pin_ray_to_base",
+          "params": [
+            "packages",
+            "base_version"
+          ],
+          "returnType": "list",
+          "exported": true,
+          "lineCount": 22
+        },
+        {
+          "name": "_base_pkg_version",
+          "params": [
+            "pkg_name"
+          ],
+          "returnType": "str | None",
+          "exported": true,
+          "lineCount": 8
+        },
+        {
+          "name": "_pin_pkgs_to_base",
+          "params": [
+            "packages",
+            "pkg_names"
+          ],
+          "returnType": "list",
+          "exported": true,
+          "lineCount": 33
+        },
+        {
+          "name": "setup_engine_venv",
+          "params": [
+            "engine",
+            "packages",
+            "venv_base",
+            "python"
+          ],
+          "returnType": "bool",
+          "exported": true,
+          "lineCount": 71
+        },
+        {
+          "name": "main",
+          "params": [],
+          "exported": true,
+          "lineCount": 162
+        }
+      ],
+      "classes": [],
+      "imports": [
+        {
+          "source": "os",
+          "specifiers": [
+            "os"
+          ]
+        },
+        {
+          "source": "re",
+          "specifiers": [
+            "re"
+          ]
+        },
+        {
+          "source": "sys",
+          "specifiers": [
+            "sys"
+          ]
+        },
+        {
+          "source": "subprocess",
+          "specifiers": [
+            "subprocess"
+          ]
+        },
+        {
+          "source": "pathlib",
+          "specifiers": [
+            "Path"
+          ]
+        }
+      ],
+      "exports": [
+        "run_command",
+        "is_venv_ready",
+        "install_nginx",
+        "venv_ray_version",
+        "_pin_ray_to_base",
+        "_base_pkg_version",
+        "_pin_pkgs_to_base",
+        "setup_engine_venv",
+        "main"
+      ],
+      "totalLines": 536,
+      "hasStructuralAnalysis": true
+    },
+    "cai_integration/setup_litellm_env.py": {
+      "filePath": "cai_integration/setup_litellm_env.py",
+      "contentHash": "1c4fdd723d5fa324f16063b6fd6bd035605b0532b9f15c443a2b3e241bb058fd",
+      "functions": [
+        {
+          "name": "main",
+          "params": [],
+          "exported": true,
+          "lineCount": 41
+        }
+      ],
+      "classes": [],
+      "imports": [
+        {
+          "source": "argparse",
+          "specifiers": [
+            "argparse"
+          ]
+        },
+        {
+          "source": "os",
+          "specifiers": [
+            "os"
+          ]
+        },
+        {
+          "source": "shutil",
+          "specifiers": [
+            "shutil"
+          ]
+        },
+        {
+          "source": "sys",
+          "specifiers": [
+            "sys"
+          ]
+        },
+        {
+          "source": "cai_integration.setup_environment",
+          "specifiers": [
+            "setup_engine_venv"
+          ]
+        }
+      ],
+      "exports": [
+        "main"
+      ],
+      "totalLines": 80,
+      "hasStructuralAnalysis": true
+    },
+    "cai_integration/setup_project.py": {
+      "filePath": "cai_integration/setup_project.py",
+      "contentHash": "4f25b152a8dc70590bbc581185318ceed5f40209bf6be82e009c72a4e464da97",
+      "functions": [
+        {
+          "name": "main",
+          "params": [],
+          "exported": true,
+          "lineCount": 15
+        }
+      ],
+      "classes": [
+        {
+          "name": "ProjectSetup",
+          "methods": [
+            "__init__",
+            "make_request",
+            "search_projects",
+            "create_project_with_git",
+            "configure_project_resources",
+            "get_or_create_project",
+            "wait_for_git_clone",
+            "run"
+          ],
+          "properties": [],
+          "exported": true,
+          "lineCount": 214
+        }
+      ],
+      "imports": [
+        {
+          "source": "json",
+          "specifiers": [
+            "json"
+          ]
+        },
+        {
+          "source": "os",
+          "specifiers": [
+            "os"
+          ]
+        },
+        {
+          "source": "sys",
+          "specifiers": [
+            "sys"
+          ]
+        },
+        {
+          "source": "time",
+          "specifiers": [
+            "time"
+          ]
+        },
+        {
+          "source": "requests",
+          "specifiers": [
+            "requests"
+          ]
+        },
+        {
+          "source": "typing",
+          "specifiers": [
+            "Optional"
+          ]
+        }
+      ],
+      "exports": [
+        "ProjectSetup",
+        "main"
+      ],
+      "totalLines": 256,
+      "hasStructuralAnalysis": true
+    },
+    "cai_integration/setup_vllm_env.py": {
+      "filePath": "cai_integration/setup_vllm_env.py",
+      "contentHash": "da5e898618d1a449b26636bfbb9560c24b7922370a3a3a6cc6090917f7f40f28",
+      "functions": [
+        {
+          "name": "main",
+          "params": [],
+          "exported": true,
+          "lineCount": 24
+        }
+      ],
+      "classes": [],
+      "imports": [
+        {
+          "source": "os",
+          "specifiers": [
+            "os"
+          ]
+        },
+        {
+          "source": "sys",
+          "specifiers": [
+            "sys"
+          ]
+        },
+        {
+          "source": "cai_integration.setup_environment",
+          "specifiers": [
+            "setup_engine_venv"
+          ]
+        }
+      ],
+      "exports": [
+        "main"
+      ],
+      "totalLines": 58,
+      "hasStructuralAnalysis": true
+    },
+    "cai_integration/templates/ray_head_launcher.py.j2": {
+      "filePath": "cai_integration/templates/ray_head_launcher.py.j2",
+      "contentHash": "325414342280e23e10528181764d7472176ead6c084bac7dcf96271187f5608d",
+      "functions": [],
+      "classes": [],
+      "imports": [],
+      "exports": [],
+      "totalLines": 188,
+      "hasStructuralAnalysis": false
+    },
+    "cai_integration/templates/ray_worker_launcher.py.j2": {
+      "filePath": "cai_integration/templates/ray_worker_launcher.py.j2",
+      "contentHash": "0525dcc1a58645986c62ba1f3335f32ccaee285660586bf08b510ea56541f9b5",
+      "functions": [],
+      "classes": [],
+      "imports": [],
+      "exports": [],
+      "totalLines": 217,
+      "hasStructuralAnalysis": false
+    },
+    "cai_integration/test_cluster_deployment_job.py": {
+      "filePath": "cai_integration/test_cluster_deployment_job.py",
+      "contentHash": "ddc3d399fb524cccda50fd4e0efd8ec5ea5abcd1223cf0939e1d2b9dbeebe64f",
+      "functions": [
+        {
+          "name": "main",
+          "params": [],
+          "exported": true,
+          "lineCount": 41
+        }
+      ],
+      "classes": [],
+      "imports": [
+        {
+          "source": "subprocess",
+          "specifiers": [
+            "subprocess"
+          ]
+        },
+        {
+          "source": "sys",
+          "specifiers": [
+            "sys"
+          ]
+        },
+        {
+          "source": "pathlib",
+          "specifiers": [
+            "Path"
+          ]
+        }
+      ],
+      "exports": [
+        "main"
+      ],
+      "totalLines": 70,
+      "hasStructuralAnalysis": true
+    },
+    "cai_integration/test_cluster.sh": {
+      "filePath": "cai_integration/test_cluster.sh",
+      "contentHash": "53b64d88b224ad8993b27c8788de647a361f2560a3c44ac1adf43062d7843acd",
+      "functions": [],
+      "classes": [],
+      "imports": [],
+      "exports": [],
+      "totalLines": 38,
+      "hasStructuralAnalysis": true
+    },
+    "cai_integration/test_list_applications.py": {
+      "filePath": "cai_integration/test_list_applications.py",
+      "contentHash": "758b251118ffe08b66479a86fe57c5fe6d7cda94ef8d4d31de3bef45241092b1",
+      "functions": [],
+      "classes": [],
+      "imports": [
+        {
+          "source": "os",
+          "specifiers": [
+            "os"
+          ]
+        },
+        {
+          "source": "sys",
+          "specifiers": [
+            "sys"
+          ]
+        },
+        {
+          "source": "logging",
+          "specifiers": [
+            "logging"
+          ]
+        },
+        {
+          "source": "pathlib",
+          "specifiers": [
+            "Path"
+          ]
+        },
+        {
+          "source": "importlib.util",
+          "specifiers": [
+            "_ilu"
+          ]
+        }
+      ],
+      "exports": [],
+      "totalLines": 61,
+      "hasStructuralAnalysis": true
+    },
+    "cai_integration/trigger_jobs.py": {
+      "filePath": "cai_integration/trigger_jobs.py",
+      "contentHash": "bb3562c0113850f00fd08212564cc5df9e27773fbc02acbf910d390156a374fa",
+      "functions": [
+        {
+          "name": "main",
+          "params": [],
+          "exported": true,
+          "lineCount": 46
+        }
+      ],
+      "classes": [
+        {
+          "name": "JobTrigger",
+          "methods": [
+            "__init__",
+            "make_request",
+            "get_job_ids_by_name",
+            "job_succeeded_recently",
+            "trigger_job",
+            "wait_for_job_completion",
+            "_topological_order",
+            "_wait_for_new_run",
+            "run"
+          ],
+          "properties": [],
+          "exported": true,
+          "lineCount": 304
+        }
+      ],
+      "imports": [
+        {
+          "source": "argparse",
+          "specifiers": [
+            "argparse"
+          ]
+        },
+        {
+          "source": "json",
+          "specifiers": [
+            "json"
+          ]
+        },
+        {
+          "source": "os",
+          "specifiers": [
+            "os"
+          ]
+        },
+        {
+          "source": "sys",
+          "specifiers": [
+            "sys"
+          ]
+        },
+        {
+          "source": "time",
+          "specifiers": [
+            "time"
+          ]
+        },
+        {
+          "source": "requests",
+          "specifiers": [
+            "requests"
+          ]
+        },
+        {
+          "source": "typing",
+          "specifiers": [
+            "Dict",
+            "List",
+            "Optional"
+          ]
+        }
+      ],
+      "exports": [
+        "JobTrigger",
+        "main"
+      ],
+      "totalLines": 379,
+      "hasStructuralAnalysis": true
+    },
+    "cai_integration/TROUBLESHOOTING.md": {
+      "filePath": "cai_integration/TROUBLESHOOTING.md",
+      "contentHash": "8d4dd9c2e902b9914663ceef66f44592f57dd3aedfd64df2ce1f5c3de33c406c",
+      "functions": [],
+      "classes": [],
+      "imports": [],
+      "exports": [],
+      "totalLines": 373,
+      "hasStructuralAnalysis": true
+    },
+    "configs/ray_cluster_config.yaml": {
+      "filePath": "configs/ray_cluster_config.yaml",
+      "contentHash": "6cce5cf867752a8e7c55e03bcfc68f8257cb00145e460caa8e1007cad8ef0a42",
+      "functions": [],
+      "classes": [],
+      "imports": [],
+      "exports": [],
+      "totalLines": 92,
+      "hasStructuralAnalysis": true
+    },
+    "demo_configs/add_cpu_node.json": {
+      "filePath": "demo_configs/add_cpu_node.json",
+      "contentHash": "21c6abac1016c6a4f43090a97d6711b8ef7d303cac2784001ffb2a799bad6514",
+      "functions": [],
+      "classes": [],
+      "imports": [],
+      "exports": [],
+      "totalLines": 7,
+      "hasStructuralAnalysis": true
+    },
+    "demo_configs/add_l40_gpu_node.json": {
+      "filePath": "demo_configs/add_l40_gpu_node.json",
+      "contentHash": "010d9ee217ab91e7fb8d9422cdfa494664545ecf7a06e2278d47df83f60c2ae1",
+      "functions": [],
+      "classes": [],
+      "imports": [],
+      "exports": [],
+      "totalLines": 7,
+      "hasStructuralAnalysis": true
+    },
+    "demo_configs/add_litellm_node.json": {
+      "filePath": "demo_configs/add_litellm_node.json",
+      "contentHash": "7ed34a656a4ba293082eaf07ad4b118d7d818b3c0d5af2421df02354ae149a7f",
+      "functions": [],
+      "classes": [],
+      "imports": [],
+      "exports": [],
+      "totalLines": 7,
+      "hasStructuralAnalysis": true
+    },
+    "demo_configs/litellm_openai.json": {
+      "filePath": "demo_configs/litellm_openai.json",
+      "contentHash": "4ec18a782cbb7d6ea509b1c13025a2c2b76e64f7fa4b089a1e33ffbd7f2b9d69",
+      "functions": [],
+      "classes": [],
+      "imports": [],
+      "exports": [],
+      "totalLines": 26,
+      "hasStructuralAnalysis": true
+    },
+    "demo_configs/nginx_architecture.html": {
+      "filePath": "demo_configs/nginx_architecture.html",
+      "contentHash": "5b5378e52891c70ad2869c402fc329757b10f51a4a602fa2d6bf83aff3daa9f9",
+      "functions": [],
+      "classes": [],
+      "imports": [],
+      "exports": [],
+      "totalLines": 324,
+      "hasStructuralAnalysis": false
+    },
+    "demo_configs/ocr_query_ui.py": {
+      "filePath": "demo_configs/ocr_query_ui.py",
+      "contentHash": "d881ccdd9386c9bfc0a0bebadfeef517545aeab796ca933ed148bcb452652a2f",
+      "functions": [
+        {
+          "name": "image_to_data_url",
+          "params": [
+            "pil_image"
+          ],
+          "returnType": "str",
+          "exported": true,
+          "lineCount": 5
+        },
+        {
+          "name": "build_endpoint_url",
+          "params": [
+            "host",
+            "route_prefix"
+          ],
+          "returnType": "str",
+          "exported": true,
+          "lineCount": 4
+        },
+        {
+          "name": "send_query",
+          "params": [
+            "host",
+            "route_prefix",
+            "model",
+            "prompt",
+            "image",
+            "max_tokens",
+            "temperature",
+            "verify_ssl"
+          ],
+          "returnType": "tuple[str, str]",
+          "exported": true,
+          "lineCount": 57
+        },
+        {
+          "name": "update_endpoint_url",
+          "params": [
+            "host",
+            "route_prefix"
+          ],
+          "returnType": "str",
+          "exported": true,
+          "lineCount": 2
+        }
+      ],
+      "classes": [],
+      "imports": [
+        {
+          "source": "base64",
+          "specifiers": [
+            "base64"
+          ]
+        },
+        {
+          "source": "io",
+          "specifiers": [
+            "io"
+          ]
+        },
+        {
+          "source": "json",
+          "specifiers": [
+            "json"
+          ]
+        },
+        {
+          "source": "os",
+          "specifiers": [
+            "os"
+          ]
+        },
+        {
+          "source": "gradio",
+          "specifiers": [
+            "gr"
+          ]
+        },
+        {
+          "source": "requests",
+          "specifiers": [
+            "requests"
+          ]
+        },
+        {
+          "source": "PIL",
+          "specifiers": [
+            "Image"
+          ]
+        }
+      ],
+      "exports": [
+        "image_to_data_url",
+        "build_endpoint_url",
+        "send_query",
+        "update_endpoint_url"
+      ],
+      "totalLines": 202,
+      "hasStructuralAnalysis": true
+    },
+    "demo_configs/paddleocr-vl.json": {
+      "filePath": "demo_configs/paddleocr-vl.json",
+      "contentHash": "1a6d932e86bfde24efa9849b9849110612b0dc3b2c6dda0d725f6d815953f1ed",
+      "functions": [],
+      "classes": [],
+      "imports": [],
+      "exports": [],
+      "totalLines": 20,
+      "hasStructuralAnalysis": true
+    },
+    "demo_configs/query_paddleocr_base64.http": {
+      "filePath": "demo_configs/query_paddleocr_base64.http",
+      "contentHash": "9db639c6a4019f65d61fe1b86d31d37c189a2fa7f97ebbb5d7f4902b09d90b02",
+      "functions": [],
+      "classes": [],
+      "imports": [],
+      "exports": [],
+      "totalLines": 29,
+      "hasStructuralAnalysis": false
+    },
+    "demo_configs/query_paddleocr.http": {
+      "filePath": "demo_configs/query_paddleocr.http",
+      "contentHash": "ef377b5335e22d2db2ccf87c5b10f3cf06059d986f0736ddbb0372fb8720adf4",
+      "functions": [],
+      "classes": [],
+      "imports": [],
+      "exports": [],
+      "totalLines": 41,
+      "hasStructuralAnalysis": false
+    },
+    "demo_configs/query_qwen3_vl.http": {
+      "filePath": "demo_configs/query_qwen3_vl.http",
+      "contentHash": "d6543cbcf5e38c1c0dd885b8b2ccea71aedad02688e9d1ac67efd958a5307c1c",
+      "functions": [],
+      "classes": [],
+      "imports": [],
+      "exports": [],
+      "totalLines": 144,
+      "hasStructuralAnalysis": false
+    },
+    "demo_configs/qwen2.5-72b-fp8-multinode.json": {
+      "filePath": "demo_configs/qwen2.5-72b-fp8-multinode.json",
+      "contentHash": "7639a014cada8998d3ee4f17c159c69a501ec3f39d82085c688d60a4226875aa",
+      "functions": [],
+      "classes": [],
+      "imports": [],
+      "exports": [],
+      "totalLines": 16,
+      "hasStructuralAnalysis": true
+    },
+    "demo_configs/qwen3-vl-2b.json": {
+      "filePath": "demo_configs/qwen3-vl-2b.json",
+      "contentHash": "68de837421ae7ac8d89722a747492a521df8642629f541b9c4b6d99b35338754",
+      "functions": [],
+      "classes": [],
+      "imports": [],
+      "exports": [],
+      "totalLines": 20,
+      "hasStructuralAnalysis": true
+    },
+    "demo_configs/qwen3-vl-4b.json": {
+      "filePath": "demo_configs/qwen3-vl-4b.json",
+      "contentHash": "916a99cad58fe4041bb2c792da6d769d259dc81f3750ce9c56c9676bc24590e0",
+      "functions": [],
+      "classes": [],
+      "imports": [],
+      "exports": [],
+      "totalLines": 19,
+      "hasStructuralAnalysis": true
+    },
+    "demo_configs/qwen3.5-2b.json": {
+      "filePath": "demo_configs/qwen3.5-2b.json",
+      "contentHash": "abad90505152cc7a9be6f9771841e6f607e37220c04fd7822ea259252493071e",
+      "functions": [],
+      "classes": [],
+      "imports": [],
+      "exports": [],
+      "totalLines": 18,
+      "hasStructuralAnalysis": true
+    },
+    "demo_configs/qwen3.5-4b.json": {
+      "filePath": "demo_configs/qwen3.5-4b.json",
+      "contentHash": "4fda7b00667cc87c65fb048320943d48c59b6723fb024e48e2b7f831193dc5c6",
+      "functions": [],
+      "classes": [],
+      "imports": [],
+      "exports": [],
+      "totalLines": 18,
+      "hasStructuralAnalysis": true
+    },
+    "demo_configs/qwen3.6-27b-fp8.json": {
+      "filePath": "demo_configs/qwen3.6-27b-fp8.json",
+      "contentHash": "5449c78f26eb9cc711ecef7be5cf6e10e5888f267705b1d6f4eff61fd8d6c653",
+      "functions": [],
+      "classes": [],
+      "imports": [],
+      "exports": [],
+      "totalLines": 18,
+      "hasStructuralAnalysis": true
+    },
+    "demo_configs/sglang_qwen3.5-2b.json": {
+      "filePath": "demo_configs/sglang_qwen3.5-2b.json",
+      "contentHash": "e86f0ad1ee837143fbbe1146ffbbb541acac7151a428a302da7157db78ce519b",
+      "functions": [],
+      "classes": [],
+      "imports": [],
+      "exports": [],
+      "totalLines": 17,
+      "hasStructuralAnalysis": true
+    },
+    "demo_configs/vllm_executor_backend.html": {
+      "filePath": "demo_configs/vllm_executor_backend.html",
+      "contentHash": "003080faf8d8e7a5900284fefebc5b65f0d654499ef31c17f3f3d0bfc30311c3",
+      "functions": [],
+      "classes": [],
+      "imports": [],
+      "exports": [],
+      "totalLines": 378,
+      "hasStructuralAnalysis": false
+    },
+    "demo_configs/vllm_multi_gpu_tp.json": {
+      "filePath": "demo_configs/vllm_multi_gpu_tp.json",
+      "contentHash": "6c2b66a940761fa0ccf01929bcf26e43805bd1eeaec625e33f9338da00372a58",
+      "functions": [],
+      "classes": [],
+      "imports": [],
+      "exports": [],
+      "totalLines": 17,
+      "hasStructuralAnalysis": true
+    },
+    "demo_configs/weather_mcp.json": {
+      "filePath": "demo_configs/weather_mcp.json",
+      "contentHash": "9c4d89ee99b37d28a149ed5bb4a7710de7c7bef3b8ab4433699f7d5e60e23ddc",
+      "functions": [],
+      "classes": [],
+      "imports": [],
+      "exports": [],
+      "totalLines": 13,
+      "hasStructuralAnalysis": true
+    },
+    "demo_configs/yolo_detection_ui.py": {
+      "filePath": "demo_configs/yolo_detection_ui.py",
+      "contentHash": "c686460370bf9ab92ef5b687763a7d2a889ab809528c5ad3294a77b06b4d6ea3",
+      "functions": [
+        {
+          "name": "_ensure_deps",
+          "params": [],
+          "exported": true,
+          "lineCount": 15
+        },
+        {
+          "name": "index",
+          "params": [],
+          "exported": true,
+          "lineCount": 3
+        },
+        {
+          "name": "detect",
+          "params": [
+            "file",
+            "api_url"
+          ],
+          "exported": true,
+          "lineCount": 27
+        }
+      ],
+      "classes": [],
+      "imports": [
+        {
+          "source": "io",
+          "specifiers": [
+            "io"
+          ]
+        },
+        {
+          "source": "os",
+          "specifiers": [
+            "os"
+          ]
+        },
+        {
+          "source": "subprocess",
+          "specifiers": [
+            "subprocess"
+          ]
+        },
+        {
+          "source": "sys",
+          "specifiers": [
+            "sys"
+          ]
+        },
+        {
+          "source": "requests",
+          "specifiers": [
+            "http_requests"
+          ]
+        },
+        {
+          "source": "uvicorn",
+          "specifiers": [
+            "uvicorn"
+          ]
+        },
+        {
+          "source": "fastapi",
+          "specifiers": [
+            "FastAPI",
+            "File",
+            "HTTPException",
+            "UploadFile"
+          ]
+        },
+        {
+          "source": "fastapi.responses",
+          "specifiers": [
+            "HTMLResponse",
+            "JSONResponse"
+          ]
+        }
+      ],
+      "exports": [
+        "_ensure_deps",
+        "index",
+        "detect"
+      ],
+      "totalLines": 663,
+      "hasStructuralAnalysis": true
+    },
+    "demo_configs/yolo.json": {
+      "filePath": "demo_configs/yolo.json",
+      "contentHash": "1d48a2b0fd1bc35011bd5bfa6b586041790fa3916f93e491c71245ed18887702",
+      "functions": [],
+      "classes": [],
+      "imports": [],
+      "exports": [],
+      "totalLines": 19,
+      "hasStructuralAnalysis": true
+    },
+    "docs/AI Gateway Vision.md": {
+      "filePath": "docs/AI Gateway Vision.md",
+      "contentHash": "cd6da931cdd356352b0d807a3930fed3efcb4d5eeb0e19c26002ca5b31f6ba57",
+      "functions": [],
+      "classes": [],
+      "imports": [],
+      "exports": [],
+      "totalLines": 179,
+      "hasStructuralAnalysis": true
+    },
+    "docs/ARCHITECTURE_DIAGRAM.md": {
+      "filePath": "docs/ARCHITECTURE_DIAGRAM.md",
+      "contentHash": "d9d1875ce4923af0610665fb3354e730b9f2d5dac04057a910b86f147c43d1f0",
+      "functions": [],
+      "classes": [],
+      "imports": [],
+      "exports": [],
+      "totalLines": 444,
+      "hasStructuralAnalysis": true
+    },
+    "docs/ARCHITECTURE.md": {
+      "filePath": "docs/ARCHITECTURE.md",
+      "contentHash": "35163e6c5852bd2f11351541f8027b521163aff3f31e6b4c869bb3f1c7ed882c",
+      "functions": [],
+      "classes": [],
+      "imports": [],
+      "exports": [],
+      "totalLines": 460,
+      "hasStructuralAnalysis": true
+    },
+    "docs/blog/figures/architecture-overview.html": {
+      "filePath": "docs/blog/figures/architecture-overview.html",
+      "contentHash": "d6574b9f3327530b73249a9900f14f39c5c4f0b0eed9bd6a08addbfd26ab6580",
+      "functions": [],
+      "classes": [],
+      "imports": [],
+      "exports": [],
+      "totalLines": 180,
+      "hasStructuralAnalysis": false
+    },
+    "docs/blog/figures/batching-comparison.html": {
+      "filePath": "docs/blog/figures/batching-comparison.html",
+      "contentHash": "b60a2c6d03a3943cbbb456522f786175d295f604a7a8de9127d03e49f4d91458",
+      "functions": [],
+      "classes": [],
+      "imports": [],
+      "exports": [],
+      "totalLines": 107,
+      "hasStructuralAnalysis": false
+    },
+    "docs/blog/figures/engine-plugin-system.html": {
+      "filePath": "docs/blog/figures/engine-plugin-system.html",
+      "contentHash": "986f200d4f8ca546ee8ec8606820641f3bb9071924ce40dd9e38e94eb2ac3e0a",
+      "functions": [],
+      "classes": [],
+      "imports": [],
+      "exports": [],
+      "totalLines": 155,
+      "hasStructuralAnalysis": false
+    },
+    "docs/blog/figures/metrics-pipeline.html": {
+      "filePath": "docs/blog/figures/metrics-pipeline.html",
+      "contentHash": "8a5c55f4e0459a9fa70f305818b26fdd79f09c8b29bf77c0ebf3ceefb2324114",
+      "functions": [],
+      "classes": [],
+      "imports": [],
+      "exports": [],
+      "totalLines": 140,
+      "hasStructuralAnalysis": false
+    },
+    "docs/blog/figures/ray_label_management.html": {
+      "filePath": "docs/blog/figures/ray_label_management.html",
+      "contentHash": "48f2bf84ec63b5de10dba591f237048ad1ccb01071e218e3c00b659f444a282a",
+      "functions": [],
+      "classes": [],
+      "imports": [],
+      "exports": [],
+      "totalLines": 647,
+      "hasStructuralAnalysis": false
+    },
+    "docs/blog/figures/request-flow.html": {
+      "filePath": "docs/blog/figures/request-flow.html",
+      "contentHash": "89685be3a0befa205d14b78dee9fccd88c7a9f9536b4711b626c3fb45273de58",
+      "functions": [],
+      "classes": [],
+      "imports": [],
+      "exports": [],
+      "totalLines": 148,
+      "hasStructuralAnalysis": false
+    },
+    "docs/blog/ray-serve-cai-deep-dive.md": {
+      "filePath": "docs/blog/ray-serve-cai-deep-dive.md",
+      "contentHash": "7a3bc8d186c17bb4eaf8daac280fcea0cf0cf3bad541b1b06e84016a57bf3eae",
+      "functions": [],
+      "classes": [],
+      "imports": [],
+      "exports": [],
+      "totalLines": 380,
+      "hasStructuralAnalysis": true
+    },
+    "docs/BUGFIXES_2026_03_29.md": {
+      "filePath": "docs/BUGFIXES_2026_03_29.md",
+      "contentHash": "110e355f9434cb2a7dbd78bcd412a57ae678bf48e99b4379f30ab6031e1fa3eb",
+      "functions": [],
+      "classes": [],
+      "imports": [],
+      "exports": [],
+      "totalLines": 145,
+      "hasStructuralAnalysis": true
+    },
+    "docs/cai_cluster_guide.md": {
+      "filePath": "docs/cai_cluster_guide.md",
+      "contentHash": "a8717f2ca63577723ac12793901f765fd767d401704ecd1506f72988b651fb7a",
+      "functions": [],
+      "classes": [],
+      "imports": [],
+      "exports": [],
+      "totalLines": 449,
+      "hasStructuralAnalysis": true
+    },
+    "docs/CHANGELOG.md": {
+      "filePath": "docs/CHANGELOG.md",
+      "contentHash": "cf7ec09c743c4b4259b81d64c58a336beb3e51f78e9223deec9e1a49496adb94",
+      "functions": [],
+      "classes": [],
+      "imports": [],
+      "exports": [],
+      "totalLines": 145,
+      "hasStructuralAnalysis": true
+    },
+    "docs/CLUSTER_SETUP.md": {
+      "filePath": "docs/CLUSTER_SETUP.md",
+      "contentHash": "a36d39a9f8bb6f71a8dd26fea70d6dfa122975f4858a7b1a529a5f48e4a02936",
+      "functions": [],
+      "classes": [],
+      "imports": [],
+      "exports": [],
+      "totalLines": 397,
+      "hasStructuralAnalysis": true
+    },
+    "docs/DEPLOYMENT_ARCHITECTURE.md": {
+      "filePath": "docs/DEPLOYMENT_ARCHITECTURE.md",
+      "contentHash": "a358f26db503d8465e9004e76a9987eb785151a39a039cdb80ab8d58921a22a8",
+      "functions": [],
+      "classes": [],
+      "imports": [],
+      "exports": [],
+      "totalLines": 323,
+      "hasStructuralAnalysis": true
+    },
+    "docs/DISAGGREGATED_SERVING_DESIGN.md": {
+      "filePath": "docs/DISAGGREGATED_SERVING_DESIGN.md",
+      "contentHash": "0cc875771e7e96f9d3413664b02d041931786f6de9a136f719ec77610e584373",
+      "functions": [],
+      "classes": [],
+      "imports": [],
+      "exports": [],
+      "totalLines": 302,
+      "hasStructuralAnalysis": true
+    },
+    "docs/INDEX.md": {
+      "filePath": "docs/INDEX.md",
+      "contentHash": "f3112339b1c408d7ba4a100fc688807ef758d0ecb76f0ac99e51a7a69a27410d",
+      "functions": [],
+      "classes": [],
+      "imports": [],
+      "exports": [],
+      "totalLines": 45,
+      "hasStructuralAnalysis": true
+    },
+    "docs/INSTALLATION.md": {
+      "filePath": "docs/INSTALLATION.md",
+      "contentHash": "5863a8ef5f21e9748a3dd44a830b3918c235e2d3d42e3a31c320dbb29bf28376",
+      "functions": [],
+      "classes": [],
+      "imports": [],
+      "exports": [],
+      "totalLines": 233,
+      "hasStructuralAnalysis": true
+    },
+    "docs/ISOLATED_ENV_DESIGN.md": {
+      "filePath": "docs/ISOLATED_ENV_DESIGN.md",
+      "contentHash": "12d199813020c790c58013b87b22efdb3fea326530169fa0f62519d7aac27c6b",
+      "functions": [],
+      "classes": [],
+      "imports": [],
+      "exports": [],
+      "totalLines": 109,
+      "hasStructuralAnalysis": true
+    },
+    "docs/NGINX_INSTALLATION.md": {
+      "filePath": "docs/NGINX_INSTALLATION.md",
+      "contentHash": "2a19f0b39bad1152187bdda034d34ff7da44f389803d40d31ade883e4e30cd00",
+      "functions": [],
+      "classes": [],
+      "imports": [],
+      "exports": [],
+      "totalLines": 203,
+      "hasStructuralAnalysis": true
+    },
+    "docs/NGINX_PROXY_DESIGN.md": {
+      "filePath": "docs/NGINX_PROXY_DESIGN.md",
+      "contentHash": "df2f1715aea3b3e4c7bc0a75b419b40cfeeef7c61ae7b33231a5e37b36c161ab",
+      "functions": [],
+      "classes": [],
+      "imports": [],
+      "exports": [],
+      "totalLines": 302,
+      "hasStructuralAnalysis": true
+    },
+    "docs/PLAN_isolated_inference_envs.md": {
+      "filePath": "docs/PLAN_isolated_inference_envs.md",
+      "contentHash": "cd22c46682a12f164d4c02e5a0116615b593f148ba15c59564ec04846adc1784",
+      "functions": [],
+      "classes": [],
+      "imports": [],
+      "exports": [],
+      "totalLines": 164,
+      "hasStructuralAnalysis": true
+    },
+    "docs/PLAN_v2_platform_features.md": {
+      "filePath": "docs/PLAN_v2_platform_features.md",
+      "contentHash": "012c32f41ab2baa02642a8560fcc28115fc8a511c0829d0ca686f98a40dfbbf8",
+      "functions": [],
+      "classes": [],
+      "imports": [],
+      "exports": [],
+      "totalLines": 390,
+      "hasStructuralAnalysis": true
+    },
+    "docs/QUICK_START_NGINX.md": {
+      "filePath": "docs/QUICK_START_NGINX.md",
+      "contentHash": "2e14123f04368a87d90e2555ac475b6b15c92cdac1cf04023cf12902485d08cc",
+      "functions": [],
+      "classes": [],
+      "imports": [],
+      "exports": [],
+      "totalLines": 209,
+      "hasStructuralAnalysis": true
+    },
+    "docs/QUICKSTART.md": {
+      "filePath": "docs/QUICKSTART.md",
+      "contentHash": "d360273c562c589e6fc1f19566eadc03537f8086a77ee7612667eddf6277fcff",
+      "functions": [],
+      "classes": [],
+      "imports": [],
+      "exports": [],
+      "totalLines": 383,
+      "hasStructuralAnalysis": true
+    },
+    "docs/README.md": {
+      "filePath": "docs/README.md",
+      "contentHash": "711ee4ea377e55a97709d8bce068df57e15691ddebb7b39b8cc1647818b7154f",
+      "functions": [],
+      "classes": [],
+      "imports": [],
+      "exports": [],
+      "totalLines": 234,
+      "hasStructuralAnalysis": true
+    },
+    "docs/REVIEW_NAVIGATION.md": {
+      "filePath": "docs/REVIEW_NAVIGATION.md",
+      "contentHash": "af901332f69d3f0361e02318960581bf4f2265c42d0678b7c91a21e436e63934",
+      "functions": [],
+      "classes": [],
+      "imports": [],
+      "exports": [],
+      "totalLines": 301,
+      "hasStructuralAnalysis": true
+    },
+    "docs/ROADMAP.md": {
+      "filePath": "docs/ROADMAP.md",
+      "contentHash": "bfa0418e5b5b8760f330bc81289ba6e810378dc611e87abfaa229e68a16039c5",
+      "functions": [],
+      "classes": [],
+      "imports": [],
+      "exports": [],
+      "totalLines": 181,
+      "hasStructuralAnalysis": true
+    },
+    "docs/STRUCTURE_REVIEW.md": {
+      "filePath": "docs/STRUCTURE_REVIEW.md",
+      "contentHash": "e1a6d8036f1505c3ca2344190004f68e5c2c63f0ee42b399d1854376e02e2163",
+      "functions": [],
+      "classes": [],
+      "imports": [],
+      "exports": [],
+      "totalLines": 588,
+      "hasStructuralAnalysis": true
+    },
+    "examples/cai_cluster_config.yaml": {
+      "filePath": "examples/cai_cluster_config.yaml",
+      "contentHash": "b9f3849b72723f1e7e4cdf518dfcf7fba7935eed2dcf880ac5198dc1e153b6ea",
+      "functions": [],
+      "classes": [],
+      "imports": [],
+      "exports": [],
+      "totalLines": 95,
+      "hasStructuralAnalysis": true
+    },
+    "examples/cai_cluster_example.py": {
+      "filePath": "examples/cai_cluster_example.py",
+      "contentHash": "22ba81602d2de0471df5b4671c3ff7b0cda99926a09a122ff89417f13de1aa53",
+      "functions": [
+        {
+          "name": "main",
+          "params": [],
+          "exported": true,
+          "lineCount": 170
+        }
+      ],
+      "classes": [],
+      "imports": [
+        {
+          "source": "asyncio",
+          "specifiers": [
+            "asyncio"
+          ]
+        },
+        {
+          "source": "os",
+          "specifiers": [
+            "os"
+          ]
+        },
+        {
+          "source": "sys",
+          "specifiers": [
+            "sys"
+          ]
+        },
+        {
+          "source": "pathlib",
+          "specifiers": [
+            "Path"
+          ]
+        },
+        {
+          "source": "ray_serve_cai.cai_cluster",
+          "specifiers": [
+            "CAIClusterManager"
+          ]
+        }
+      ],
+      "exports": [
+        "main"
+      ],
+      "totalLines": 209,
+      "hasStructuralAnalysis": true
+    },
+    "examples/custom_engine_template/my_engine.py": {
+      "filePath": "examples/custom_engine_template/my_engine.py",
+      "contentHash": "21de426d7fe9c6aed51e75095e8713979d93ac1457c2638e685ea04ad7a0f321",
+      "functions": [
+        {
+          "name": "chat",
+          "params": [
+            "request"
+          ],
+          "returnType": "JSONResponse",
+          "exported": true,
+          "lineCount": 4
+        }
+      ],
+      "classes": [
+        {
+          "name": "MyEngine",
+          "methods": [
+            "__init__",
+            "__call__"
+          ],
+          "properties": [],
+          "exported": true,
+          "lineCount": 8
+        },
+        {
+          "name": "MyEngineConfigBuilder",
+          "methods": [
+            "build_config",
+            "validate_config",
+            "get_default_config"
+          ],
+          "properties": [],
+          "exported": true,
+          "lineCount": 12
+        },
+        {
+          "name": "MyEngineDeploymentFactory",
+          "methods": [
+            "create_deployment"
+          ],
+          "properties": [],
+          "exported": true,
+          "lineCount": 21
+        }
+      ],
+      "imports": [
+        {
+          "source": "logging",
+          "specifiers": [
+            "logging"
+          ]
+        },
+        {
+          "source": "typing",
+          "specifiers": [
+            "Any",
+            "Dict",
+            "Optional",
+            "Tuple"
+          ]
+        },
+        {
+          "source": "fastapi.responses",
+          "specifiers": [
+            "JSONResponse"
+          ]
+        },
+        {
+          "source": "ray",
+          "specifiers": [
+            "serve"
+          ]
+        },
+        {
+          "source": "starlette.requests",
+          "specifiers": [
+            "Request"
+          ]
+        },
+        {
+          "source": "ray_serve_cai.engines.base",
+          "specifiers": [
+            "ConfigBuilderProtocol",
+            "DeploymentFactoryProtocol"
+          ]
+        },
+        {
+          "source": "ray_serve_cai.engines.engine_utils",
+          "specifiers": [
+            "create_engine_app",
+            "mount_health",
+            "mount_metrics"
+          ]
+        }
+      ],
+      "exports": [
+        "chat",
+        "MyEngine",
+        "MyEngineConfigBuilder",
+        "MyEngineDeploymentFactory"
+      ],
+      "totalLines": 117,
+      "hasStructuralAnalysis": true
+    },
+    "examples/deploy_and_query_model.py": {
+      "filePath": "examples/deploy_and_query_model.py",
+      "contentHash": "3e315236baf92b3f1d23f32baa0c2bc48ce2a5e27b81784f195aa079a7b69976",
+      "functions": [
+        {
+          "name": "example_1_simple_deployment",
+          "params": [],
+          "exported": true,
+          "lineCount": 43
+        },
+        {
+          "name": "example_2_streaming_response",
+          "params": [],
+          "exported": true,
+          "lineCount": 25
+        },
+        {
+          "name": "example_3_batch_queries",
+          "params": [],
+          "exported": true,
+          "lineCount": 24
+        },
+        {
+          "name": "example_4_system_prompt",
+          "params": [],
+          "exported": true,
+          "lineCount": 29
+        },
+        {
+          "name": "example_5_health_and_status",
+          "params": [],
+          "exported": true,
+          "lineCount": 29
+        },
+        {
+          "name": "main",
+          "params": [],
+          "exported": true,
+          "lineCount": 67
+        }
+      ],
+      "classes": [
+        {
+          "name": "RayServeClient",
+          "methods": [
+            "__init__",
+            "get_cluster_status",
+            "deploy_model",
+            "get_deployment_status",
+            "list_deployments",
+            "wait_for_deployment",
+            "chat_completion",
+            "completion",
+            "health_check"
+          ],
+          "properties": [],
+          "exported": true,
+          "lineCount": 168
+        }
+      ],
+      "imports": [
+        {
+          "source": "requests",
+          "specifiers": [
+            "requests"
+          ]
+        },
+        {
+          "source": "json",
+          "specifiers": [
+            "json"
+          ]
+        },
+        {
+          "source": "time",
+          "specifiers": [
+            "time"
+          ]
+        },
+        {
+          "source": "sys",
+          "specifiers": [
+            "sys"
+          ]
+        },
+        {
+          "source": "typing",
+          "specifiers": [
+            "Iterator"
+          ]
+        }
+      ],
+      "exports": [
+        "RayServeClient",
+        "example_1_simple_deployment",
+        "example_2_streaming_response",
+        "example_3_batch_queries",
+        "example_4_system_prompt",
+        "example_5_health_and_status",
+        "main"
+      ],
+      "totalLines": 427,
+      "hasStructuralAnalysis": true
+    },
+    "LAUNCH_MODEL_GUIDE.md": {
+      "filePath": "LAUNCH_MODEL_GUIDE.md",
+      "contentHash": "06f4fdf5dba2c3c7f102f7431b87c0ca3ee80f47c7dc9fecc509f98e4fed7b40",
+      "functions": [],
+      "classes": [],
+      "imports": [],
+      "exports": [],
+      "totalLines": 447,
+      "hasStructuralAnalysis": true
+    },
+    "pyproject.toml": {
+      "filePath": "pyproject.toml",
+      "contentHash": "850b6c14455edcf075242cf020dab92fe224d88f208440fdc075d252f6e3a2d8",
+      "functions": [],
+      "classes": [],
+      "imports": [],
+      "exports": [],
+      "totalLines": 194,
+      "hasStructuralAnalysis": true
+    },
+    "QUICK_REFERENCE.md": {
+      "filePath": "QUICK_REFERENCE.md",
+      "contentHash": "53b84f992bf64bccfd89eba263637c6c32526a542e3c12175ba2e975a7727351",
+      "functions": [],
+      "classes": [],
+      "imports": [],
+      "exports": [],
+      "totalLines": 290,
+      "hasStructuralAnalysis": true
+    },
+    "ray_serve_cai/__init__.py": {
+      "filePath": "ray_serve_cai/__init__.py",
+      "contentHash": "02cf1c70c99a2c094923dc89b4aa5062267240a2ab7014ccd0a4dc82713571d4",
+      "functions": [],
+      "classes": [],
+      "imports": [
+        {
+          "source": ".ray_backend",
+          "specifiers": [
+            "RayBackend",
+            "ray_backend"
+          ]
+        },
+        {
+          "source": ".engines",
+          "specifiers": [
+            "get_registry",
+            "register_engine",
+            "EngineRegistry",
+            "LLMEngineProtocol",
+            "ConfigBuilderProtocol",
+            "DeploymentFactoryProtocol"
+          ]
+        }
+      ],
+      "exports": [],
+      "totalLines": 63,
+      "hasStructuralAnalysis": true
+    },
+    "ray_serve_cai/cai_cluster.py": {
+      "filePath": "ray_serve_cai/cai_cluster.py",
+      "contentHash": "de5f7dd75a0097e70519b3c6ef2d28023802bbb3e10417a44db7333587a8143d",
+      "functions": [],
+      "classes": [
+        {
+          "name": "ApplicationInfo",
+          "methods": [],
+          "properties": [
+            "id",
+            "name",
+            "status",
+            "subdomain",
+            "metadata"
+          ],
+          "exported": true,
+          "lineCount": 7
+        },
+        {
+          "name": "WorkerGroupConfig",
+          "methods": [],
+          "properties": [
+            "name",
+            "node_type",
+            "count",
+            "cpu",
+            "memory",
+            "gpus",
+            "accelerator_type",
+            "node_label",
+            "runtime_identifier",
+            "script_path"
+          ],
+          "exported": true,
+          "lineCount": 23
+        },
+        {
+          "name": "CMLAPIClient",
+          "methods": [
+            "__init__",
+            "create_application",
+            "list_applications",
+            "get_application",
+            "delete_application",
+            "restart_application"
+          ],
+          "properties": [],
+          "exported": true,
+          "lineCount": 211
+        },
+        {
+          "name": "CAIClusterManager",
+          "methods": [
+            "__init__",
+            "start_cluster",
+            "_get_gcs_address",
+            "_wait_for_application",
+            "stop_cluster",
+            "get_status",
+            "launch_worker",
+            "stop_application",
+            "restart_application",
+            "list_applications",
+            "get_application"
+          ],
+          "properties": [],
+          "exported": true,
+          "lineCount": 549
+        }
+      ],
+      "imports": [
+        {
+          "source": "logging",
+          "specifiers": [
+            "logging"
+          ]
+        },
+        {
+          "source": "time",
+          "specifiers": [
+            "time"
+          ]
+        },
+        {
+          "source": "requests",
+          "specifiers": [
+            "requests"
+          ]
+        },
+        {
+          "source": "typing",
+          "specifiers": [
+            "Dict",
+            "Any",
+            "Optional",
+            "List"
+          ]
+        },
+        {
+          "source": "dataclasses",
+          "specifiers": [
+            "dataclass"
+          ]
+        }
+      ],
+      "exports": [
+        "ApplicationInfo",
+        "WorkerGroupConfig",
+        "CMLAPIClient",
+        "CAIClusterManager"
+      ],
+      "totalLines": 844,
+      "hasStructuralAnalysis": true
+    },
+    "ray_serve_cai/configs/local_basic.yaml": {
+      "filePath": "ray_serve_cai/configs/local_basic.yaml",
+      "contentHash": "3eaeda8fbf99038d866054053d4cf38b6ba61c0d61bcda6d22f6a0a9299e4c37",
+      "functions": [],
+      "classes": [],
+      "imports": [],
+      "exports": [],
+      "totalLines": 52,
+      "hasStructuralAnalysis": true
+    },
+    "ray_serve_cai/configs/local_cpu.yaml": {
+      "filePath": "ray_serve_cai/configs/local_cpu.yaml",
+      "contentHash": "779ec03b885018208ea796f0879c814869171dd1fe410f14be970c110e696906",
+      "functions": [],
+      "classes": [],
+      "imports": [],
+      "exports": [],
+      "totalLines": 43,
+      "hasStructuralAnalysis": true
+    },
+    "ray_serve_cai/configs/local_gpu.yaml": {
+      "filePath": "ray_serve_cai/configs/local_gpu.yaml",
+      "contentHash": "89d346ae9e55007d8b276b8505d976bbd8cda7be10d1c98d3f07eb5329af4e5f",
+      "functions": [],
+      "classes": [],
+      "imports": [],
+      "exports": [],
+      "totalLines": 52,
+      "hasStructuralAnalysis": true
+    },
+    "ray_serve_cai/configs/multi_node_example.yaml": {
+      "filePath": "ray_serve_cai/configs/multi_node_example.yaml",
+      "contentHash": "e2c560cf3948231a152a538645fe0992054cb7561f3e8844df878ea1cb50f0fb",
+      "functions": [],
+      "classes": [],
+      "imports": [],
+      "exports": [],
+      "totalLines": 81,
+      "hasStructuralAnalysis": true
+    },
+    "ray_serve_cai/configs/nginx/conf.d/server.conf.j2": {
+      "filePath": "ray_serve_cai/configs/nginx/conf.d/server.conf.j2",
+      "contentHash": "19397abdfdc975896972da02b1a10537a28b37d9730294394a8b364ec8543d7c",
+      "functions": [],
+      "classes": [],
+      "imports": [],
+      "exports": [],
+      "totalLines": 111,
+      "hasStructuralAnalysis": false
+    },
+    "ray_serve_cai/configs/nginx/conf.d/upstreams.conf.j2": {
+      "filePath": "ray_serve_cai/configs/nginx/conf.d/upstreams.conf.j2",
+      "contentHash": "c49aadf156184f64dffbfd150dde0740f78d888fba22b9ae7a9115982410987b",
+      "functions": [],
+      "classes": [],
+      "imports": [],
+      "exports": [],
+      "totalLines": 15,
+      "hasStructuralAnalysis": false
+    },
+    "ray_serve_cai/configs/nginx/nginx.conf.j2": {
+      "filePath": "ray_serve_cai/configs/nginx/nginx.conf.j2",
+      "contentHash": "8dbbc27841e689376820d40b4d2c25f6388ecac4cbaffad380f7dbead8ee33d8",
+      "functions": [],
+      "classes": [],
+      "imports": [],
+      "exports": [],
+      "totalLines": 34,
+      "hasStructuralAnalysis": false
+    },
+    "ray_serve_cai/configs/nginx/snippets/proxy_params.conf.j2": {
+      "filePath": "ray_serve_cai/configs/nginx/snippets/proxy_params.conf.j2",
+      "contentHash": "c227ff887dacf03d4de68fa7fe6636201be3555292f6f73fabde09168c537795",
+      "functions": [],
+      "classes": [],
+      "imports": [],
+      "exports": [],
+      "totalLines": 11,
+      "hasStructuralAnalysis": false
+    },
+    "ray_serve_cai/engines/__init__.py": {
+      "filePath": "ray_serve_cai/engines/__init__.py",
+      "contentHash": "08de31f7fa2f44175448e2df5c314d4361902e49ebd4ce2cb0cc3ea3eb1740e0",
+      "functions": [],
+      "classes": [],
+      "imports": [
+        {
+          "source": "logging",
+          "specifiers": [
+            "logging"
+          ]
+        },
+        {
+          "source": ".base",
+          "specifiers": [
+            "LLMEngineProtocol",
+            "ConfigBuilderProtocol",
+            "DeploymentFactoryProtocol",
+            "EngineComponents"
+          ]
+        },
+        {
+          "source": ".registry",
+          "specifiers": [
+            "get_registry",
+            "register_engine",
+            "EngineRegistry"
+          ]
+        }
+      ],
+      "exports": [],
+      "totalLines": 174,
+      "hasStructuralAnalysis": true
+    },
+    "ray_serve_cai/engines/base.py": {
+      "filePath": "ray_serve_cai/engines/base.py",
+      "contentHash": "9cd2b03305fcf3a5c7ca7f6767613359f7041f89b400c2e84a39b46ef0df0a4f",
+      "functions": [],
+      "classes": [
+        {
+          "name": "LLMEngineProtocol",
+          "methods": [
+            "engine_type",
+            "model_name",
+            "completion",
+            "chat_completion",
+            "list_models",
+            "health_check",
+            "__call__"
+          ],
+          "properties": [],
+          "exported": true,
+          "lineCount": 110
+        },
+        {
+          "name": "ConfigBuilderProtocol",
+          "methods": [
+            "build_config",
+            "validate_config",
+            "get_default_config"
+          ],
+          "properties": [],
+          "exported": true,
+          "lineCount": 51
+        },
+        {
+          "name": "DeploymentFactoryProtocol",
+          "methods": [
+            "create_deployment"
+          ],
+          "properties": [],
+          "exported": true,
+          "lineCount": 37
+        },
+        {
+          "name": "EngineComponents",
+          "methods": [
+            "__init__",
+            "__repr__"
+          ],
+          "properties": [],
+          "exported": true,
+          "lineCount": 37
+        }
+      ],
+      "imports": [
+        {
+          "source": "logging",
+          "specifiers": [
+            "logging"
+          ]
+        },
+        {
+          "source": "typing",
+          "specifiers": [
+            "Dict",
+            "Any",
+            "Optional",
+            "Protocol",
+            "runtime_checkable"
+          ]
+        },
+        {
+          "source": "starlette.requests",
+          "specifiers": [
+            "Request"
+          ]
+        },
+        {
+          "source": "starlette.responses",
+          "specifiers": [
+            "JSONResponse"
+          ]
+        },
+        {
+          "source": "ray",
+          "specifiers": [
+            "serve"
+          ]
+        }
+      ],
+      "exports": [
+        "LLMEngineProtocol",
+        "ConfigBuilderProtocol",
+        "DeploymentFactoryProtocol",
+        "EngineComponents"
+      ],
+      "totalLines": 278,
+      "hasStructuralAnalysis": true
+    },
+    "ray_serve_cai/engines/engine_utils.py": {
+      "filePath": "ray_serve_cai/engines/engine_utils.py",
+      "contentHash": "df273e3f7f4e516ad00c3889c735d1d530d210f9f703c247ef0712636156178c",
+      "functions": [
+        {
+          "name": "create_engine_app",
+          "params": [
+            "title"
+          ],
+          "returnType": "FastAPI",
+          "exported": true,
+          "lineCount": 22
+        },
+        {
+          "name": "mount_health",
+          "params": [
+            "app",
+            "engine_type",
+            "extra"
+          ],
+          "returnType": "None",
+          "exported": true,
+          "lineCount": 10
+        },
+        {
+          "name": "mount_metrics",
+          "params": [
+            "app",
+            "registry"
+          ],
+          "returnType": "None",
+          "exported": true,
+          "lineCount": 6
+        }
+      ],
+      "classes": [],
+      "imports": [
+        {
+          "source": "typing",
+          "specifiers": [
+            "Any",
+            "Dict",
+            "Optional"
+          ]
+        },
+        {
+          "source": "fastapi",
+          "specifiers": [
+            "FastAPI"
+          ]
+        },
+        {
+          "source": "starlette.types",
+          "specifiers": [
+            "Receive",
+            "Scope",
+            "Send"
+          ]
+        }
+      ],
+      "exports": [
+        "create_engine_app",
+        "mount_health",
+        "mount_metrics"
+      ],
+      "totalLines": 58,
+      "hasStructuralAnalysis": true
+    },
+    "ray_serve_cai/engines/litellm_config.py": {
+      "filePath": "ray_serve_cai/engines/litellm_config.py",
+      "contentHash": "5309137d08fd9c213720e07b18e312e276870fb839aa112a5c526380afa350bd",
+      "functions": [],
+      "classes": [
+        {
+          "name": "LiteLLMConfigBuilder",
+          "methods": [
+            "build_config",
+            "validate_config",
+            "get_default_config"
+          ],
+          "properties": [],
+          "exported": true,
+          "lineCount": 97
+        },
+        {
+          "name": "LiteLLMDeploymentFactory",
+          "methods": [
+            "create_deployment"
+          ],
+          "properties": [],
+          "exported": true,
+          "lineCount": 58
+        }
+      ],
+      "imports": [
+        {
+          "source": "logging",
+          "specifiers": [
+            "logging"
+          ]
+        },
+        {
+          "source": "typing",
+          "specifiers": [
+            "Any",
+            "Dict",
+            "Optional",
+            "Tuple"
+          ]
+        },
+        {
+          "source": "ray",
+          "specifiers": [
+            "serve"
+          ]
+        }
+      ],
+      "exports": [
+        "LiteLLMConfigBuilder",
+        "LiteLLMDeploymentFactory"
+      ],
+      "totalLines": 170,
+      "hasStructuralAnalysis": true
+    },
+    "ray_serve_cai/engines/litellm_engine.py": {
+      "filePath": "ray_serve_cai/engines/litellm_engine.py",
+      "contentHash": "ebfde82315124a1da871e4cfff521aeef4bb0ee71f7b54c0bebf12a510877801",
+      "functions": [],
+      "classes": [
+        {
+          "name": "_RoutePathMiddleware",
+          "methods": [
+            "__init__",
+            "__call__"
+          ],
+          "properties": [],
+          "exported": true,
+          "lineCount": 14
+        },
+        {
+          "name": "LiteLLMEngine",
+          "methods": [
+            "__init__",
+            "_wait_for_server",
+            "__del__",
+            "_proxy_json",
+            "_proxy_stream",
+            "chat_completion",
+            "completion",
+            "list_models",
+            "metrics",
+            "health_check",
+            "proxy_catchall"
+          ],
+          "properties": [],
+          "exported": true,
+          "lineCount": 226
+        }
+      ],
+      "imports": [
+        {
+          "source": "logging",
+          "specifiers": [
+            "logging"
+          ]
+        },
+        {
+          "source": "subprocess",
+          "specifiers": [
+            "subprocess"
+          ]
+        },
+        {
+          "source": "sys",
+          "specifiers": [
+            "sys"
+          ]
+        },
+        {
+          "source": "tempfile",
+          "specifiers": [
+            "tempfile"
+          ]
+        },
+        {
+          "source": "time",
+          "specifiers": [
+            "time"
+          ]
+        },
+        {
+          "source": "pathlib",
+          "specifiers": [
+            "Path"
+          ]
+        },
+        {
+          "source": "typing",
+          "specifiers": [
+            "Any",
+            "Dict",
+            "List",
+            "Optional"
+          ]
+        },
+        {
+          "source": "httpx",
+          "specifiers": [
+            "httpx"
+          ]
+        },
+        {
+          "source": "yaml",
+          "specifiers": [
+            "yaml"
+          ]
+        },
+        {
+          "source": "fastapi",
+          "specifiers": [
+            "FastAPI"
+          ]
+        },
+        {
+          "source": "fastapi.responses",
+          "specifiers": [
+            "JSONResponse"
+          ]
+        },
+        {
+          "source": "ray",
+          "specifiers": [
+            "serve"
+          ]
+        },
+        {
+          "source": "starlette.requests",
+          "specifiers": [
+            "Request"
+          ]
+        },
+        {
+          "source": "starlette.responses",
+          "specifiers": [
+            "Response",
+            "StreamingResponse"
+          ]
+        },
+        {
+          "source": "starlette.types",
+          "specifiers": [
+            "Receive",
+            "Scope",
+            "Send"
+          ]
+        }
+      ],
+      "exports": [
+        "_RoutePathMiddleware",
+        "LiteLLMEngine"
+      ],
+      "totalLines": 335,
+      "hasStructuralAnalysis": true
+    },
+    "ray_serve_cai/engines/mcp_config.py": {
+      "filePath": "ray_serve_cai/engines/mcp_config.py",
+      "contentHash": "c75d9d9f9074262f66cbb5ca7f6a37dadf1ddff69ba50f793ce9b144f5729ed1",
+      "functions": [],
+      "classes": [
+        {
+          "name": "MCPConfigBuilder",
+          "methods": [
+            "build_config",
+            "validate_config",
+            "get_default_config"
+          ],
+          "properties": [],
+          "exported": true,
+          "lineCount": 43
+        },
+        {
+          "name": "MCPDeploymentFactory",
+          "methods": [
+            "create_deployment"
+          ],
+          "properties": [],
+          "exported": true,
+          "lineCount": 31
+        }
+      ],
+      "imports": [
+        {
+          "source": "logging",
+          "specifiers": [
+            "logging"
+          ]
+        },
+        {
+          "source": "typing",
+          "specifiers": [
+            "Any",
+            "Dict",
+            "Optional"
+          ]
+        },
+        {
+          "source": "ray",
+          "specifiers": [
+            "serve"
+          ]
+        }
+      ],
+      "exports": [
+        "MCPConfigBuilder",
+        "MCPDeploymentFactory"
+      ],
+      "totalLines": 89,
+      "hasStructuralAnalysis": true
+    },
+    "ray_serve_cai/engines/mcp_engine.py": {
+      "filePath": "ray_serve_cai/engines/mcp_engine.py",
+      "contentHash": "5d587e2180c7bf400451ddc00e241ab38feb87895f3ee2c59fc93e5f22f6ed66",
+      "functions": [
+        {
+          "name": "_find_fastmcp",
+          "params": [
+            "module"
+          ],
+          "returnType": "Any",
+          "exported": true,
+          "lineCount": 25
+        },
+        {
+          "name": "_lifespan",
+          "params": [
+            "app"
+          ],
+          "exported": true,
+          "lineCount": 22
+        },
+        {
+          "name": "create_mcp_deployment",
+          "params": [
+            "engine_config",
+            "num_replicas",
+            "use_cpu",
+            "venv_path",
+            "scheduling_resources",
+            "scheduling_env_vars",
+            "**kwargs"
+          ],
+          "returnType": "serve.Application",
+          "exported": true,
+          "lineCount": 56
+        }
+      ],
+      "classes": [
+        {
+          "name": "_RoutePathMiddleware",
+          "methods": [
+            "__init__",
+            "__call__"
+          ],
+          "properties": [],
+          "exported": true,
+          "lineCount": 16
+        },
+        {
+          "name": "MCPEngine",
+          "methods": [
+            "__init__",
+            "engine_type",
+            "health_check"
+          ],
+          "properties": [],
+          "exported": true,
+          "lineCount": 51
+        }
+      ],
+      "imports": [
+        {
+          "source": "importlib",
+          "specifiers": [
+            "importlib"
+          ]
+        },
+        {
+          "source": "logging",
+          "specifiers": [
+            "logging"
+          ]
+        },
+        {
+          "source": "contextlib",
+          "specifiers": [
+            "asynccontextmanager"
+          ]
+        },
+        {
+          "source": "typing",
+          "specifiers": [
+            "Any",
+            "Dict",
+            "Optional"
+          ]
+        },
+        {
+          "source": "fastapi",
+          "specifiers": [
+            "FastAPI"
+          ]
+        },
+        {
+          "source": "ray",
+          "specifiers": [
+            "serve"
+          ]
+        },
+        {
+          "source": "starlette.types",
+          "specifiers": [
+            "Receive",
+            "Scope",
+            "Send"
+          ]
+        }
+      ],
+      "exports": [
+        "_find_fastmcp",
+        "_lifespan",
+        "_RoutePathMiddleware",
+        "MCPEngine",
+        "create_mcp_deployment"
+      ],
+      "totalLines": 259,
+      "hasStructuralAnalysis": true
+    },
+    "ray_serve_cai/engines/mcps/__init__.py": {
+      "filePath": "ray_serve_cai/engines/mcps/__init__.py",
+      "contentHash": "d47a081e26259f767d40e3380b2ca08eb1971aebeb63afeb5cd805450a0e9fdb",
+      "functions": [],
+      "classes": [],
+      "imports": [],
+      "exports": [],
+      "totalLines": 2,
+      "hasStructuralAnalysis": true
+    },
+    "ray_serve_cai/engines/mcps/weather_tools.py": {
+      "filePath": "ray_serve_cai/engines/mcps/weather_tools.py",
+      "contentHash": "4e931af1b67cda05f9df6d117f5458ec7404af396c74f09ac92bd46f6944e740",
+      "functions": [
+        {
+          "name": "_nws_request",
+          "params": [
+            "url"
+          ],
+          "returnType": "dict[str, Any] | None",
+          "exported": true,
+          "lineCount": 9
+        },
+        {
+          "name": "_format_alert",
+          "params": [
+            "feature"
+          ],
+          "returnType": "str",
+          "exported": true,
+          "lineCount": 9
+        },
+        {
+          "name": "get_alerts",
+          "params": [
+            "state"
+          ],
+          "returnType": "str",
+          "exported": true,
+          "lineCount": 10
+        },
+        {
+          "name": "get_forecast",
+          "params": [
+            "latitude",
+            "longitude"
+          ],
+          "returnType": "str",
+          "exported": true,
+          "lineCount": 28
+        }
+      ],
+      "classes": [],
+      "imports": [
+        {
+          "source": "typing",
+          "specifiers": [
+            "Any"
+          ]
+        },
+        {
+          "source": "httpx",
+          "specifiers": [
+            "httpx"
+          ]
+        },
+        {
+          "source": "mcp.server.fastmcp",
+          "specifiers": [
+            "FastMCP"
+          ]
+        }
+      ],
+      "exports": [
+        "_nws_request",
+        "_format_alert",
+        "get_alerts",
+        "get_forecast"
+      ],
+      "totalLines": 97,
+      "hasStructuralAnalysis": true
+    },
+    "ray_serve_cai/engines/registry.py": {
+      "filePath": "ray_serve_cai/engines/registry.py",
+      "contentHash": "8202be851239e3eef54dcf458e13ee0630fe658d6534030682ee891db9d0d6b1",
+      "functions": [
+        {
+          "name": "get_registry",
+          "params": [],
+          "returnType": "EngineRegistry",
+          "exported": true,
+          "lineCount": 13
+        },
+        {
+          "name": "register_engine",
+          "params": [
+            "engine_type",
+            "engine_class",
+            "config_builder",
+            "deployment_factory",
+            "set_as_default"
+          ],
+          "returnType": "None",
+          "exported": true,
+          "lineCount": 25
+        }
+      ],
+      "classes": [
+        {
+          "name": "EngineRegistry",
+          "methods": [
+            "__init__",
+            "register",
+            "unregister",
+            "is_registered",
+            "get_engine_components",
+            "get_config_builder",
+            "get_deployment_factory",
+            "get_engine_class",
+            "list_engines",
+            "get_default_engine",
+            "set_default_engine",
+            "__repr__"
+          ],
+          "properties": [],
+          "exported": true,
+          "lineCount": 214
+        }
+      ],
+      "imports": [
+        {
+          "source": "logging",
+          "specifiers": [
+            "logging"
+          ]
+        },
+        {
+          "source": "typing",
+          "specifiers": [
+            "Dict",
+            "Optional",
+            "List"
+          ]
+        },
+        {
+          "source": ".base",
+          "specifiers": [
+            "EngineComponents",
+            "ConfigBuilderProtocol",
+            "DeploymentFactoryProtocol"
+          ]
+        }
+      ],
+      "exports": [
+        "EngineRegistry",
+        "get_registry",
+        "register_engine"
+      ],
+      "totalLines": 298,
+      "hasStructuralAnalysis": true
+    },
+    "ray_serve_cai/engines/sglang_config.py": {
+      "filePath": "ray_serve_cai/engines/sglang_config.py",
+      "contentHash": "e529c9cb73940cf3e77b65bf23100545d9ae03eebc7e2440967e8897551f3a06",
+      "functions": [],
+      "classes": [
+        {
+          "name": "SGLangConfigBuilder",
+          "methods": [
+            "build_config",
+            "validate_config",
+            "get_default_config"
+          ],
+          "properties": [],
+          "exported": true,
+          "lineCount": 62
+        },
+        {
+          "name": "SGLangDeploymentFactory",
+          "methods": [
+            "create_deployment"
+          ],
+          "properties": [],
+          "exported": true,
+          "lineCount": 39
+        }
+      ],
+      "imports": [
+        {
+          "source": "logging",
+          "specifiers": [
+            "logging"
+          ]
+        },
+        {
+          "source": "typing",
+          "specifiers": [
+            "Any",
+            "Dict",
+            "Optional"
+          ]
+        },
+        {
+          "source": "ray",
+          "specifiers": [
+            "serve"
+          ]
+        }
+      ],
+      "exports": [
+        "SGLangConfigBuilder",
+        "SGLangDeploymentFactory"
+      ],
+      "totalLines": 116,
+      "hasStructuralAnalysis": true
+    },
+    "ray_serve_cai/engines/sglang_engine.py": {
+      "filePath": "ray_serve_cai/engines/sglang_engine.py",
+      "contentHash": "47733f4c16fbb9cb7adfd2136176bcdf1077729b3fa44584a1c178624937791a",
+      "functions": [
+        {
+          "name": "create_sglang_deployment",
+          "params": [
+            "engine_config",
+            "num_replicas",
+            "tensor_parallel_size",
+            "use_cpu",
+            "max_ongoing_requests",
+            "gpu_fraction",
+            "placement_group_bundles",
+            "placement_group_strategy",
+            "venv_path",
+            "scheduling_resources",
+            "scheduling_env_vars"
+          ],
+          "returnType": "serve.Application",
+          "exported": true,
+          "lineCount": 96
+        }
+      ],
+      "classes": [
+        {
+          "name": "_RoutePathMiddleware",
+          "methods": [
+            "__init__",
+            "__call__"
+          ],
+          "properties": [],
+          "exported": true,
+          "lineCount": 16
+        },
+        {
+          "name": "SGLangEngine",
+          "methods": [
+            "__init__",
+            "_wait_for_server",
+            "__del__",
+            "_proxy_json",
+            "_proxy_stream",
+            "chat_completion",
+            "completion",
+            "list_models",
+            "metrics",
+            "health_check"
+          ],
+          "properties": [],
+          "exported": true,
+          "lineCount": 188
+        }
+      ],
+      "imports": [
+        {
+          "source": "logging",
+          "specifiers": [
+            "logging"
+          ]
+        },
+        {
+          "source": "subprocess",
+          "specifiers": [
+            "subprocess"
+          ]
+        },
+        {
+          "source": "time",
+          "specifiers": [
+            "time"
+          ]
+        },
+        {
+          "source": "typing",
+          "specifiers": [
+            "Any",
+            "Dict",
+            "List",
+            "Optional"
+          ]
+        },
+        {
+          "source": "httpx",
+          "specifiers": [
+            "httpx"
+          ]
+        },
+        {
+          "source": "fastapi",
+          "specifiers": [
+            "FastAPI"
+          ]
+        },
+        {
+          "source": "fastapi.responses",
+          "specifiers": [
+            "JSONResponse"
+          ]
+        },
+        {
+          "source": "ray",
+          "specifiers": [
+            "serve"
+          ]
+        },
+        {
+          "source": "starlette.requests",
+          "specifiers": [
+            "Request"
+          ]
+        },
+        {
+          "source": "starlette.responses",
+          "specifiers": [
+            "Response",
+            "StreamingResponse"
+          ]
+        },
+        {
+          "source": "starlette.types",
+          "specifiers": [
+            "Receive",
+            "Scope",
+            "Send"
+          ]
+        }
+      ],
+      "exports": [
+        "_RoutePathMiddleware",
+        "SGLangEngine",
+        "create_sglang_deployment"
+      ],
+      "totalLines": 401,
+      "hasStructuralAnalysis": true
+    },
+    "ray_serve_cai/engines/venv_utils.py": {
+      "filePath": "ray_serve_cai/engines/venv_utils.py",
+      "contentHash": "01bd0d07f6f148d05d766489e909dd5d0047992a447709c48c6afd202a1fba3f",
+      "functions": [
+        {
+          "name": "validate_venv_name",
+          "params": [
+            "name"
+          ],
+          "returnType": "None",
+          "exported": true,
+          "lineCount": 7
+        },
+        {
+          "name": "venv_dir_for",
+          "params": [
+            "name"
+          ],
+          "returnType": "str",
+          "exported": true,
+          "lineCount": 4
+        },
+        {
+          "name": "resolve_venv_path",
+          "params": [
+            "engine_config",
+            "default_name"
+          ],
+          "returnType": "str | None",
+          "exported": true,
+          "lineCount": 32
+        }
+      ],
+      "classes": [],
+      "imports": [
+        {
+          "source": "logging",
+          "specifiers": [
+            "logging"
+          ]
+        },
+        {
+          "source": "re",
+          "specifiers": [
+            "re"
+          ]
+        },
+        {
+          "source": "pathlib",
+          "specifiers": [
+            "Path"
+          ]
+        }
+      ],
+      "exports": [
+        "validate_venv_name",
+        "venv_dir_for",
+        "resolve_venv_path"
+      ],
+      "totalLines": 86,
+      "hasStructuralAnalysis": true
+    },
+    "ray_serve_cai/engines/vllm_config.py": {
+      "filePath": "ray_serve_cai/engines/vllm_config.py",
+      "contentHash": "1a4c39616d10a704a8dfd28c8832183b2f3241fda6fd1327d189c61db51ba0ae",
+      "functions": [
+        {
+          "name": "build_vllm_engine_config",
+          "params": [
+            "user_config"
+          ],
+          "returnType": "Dict[str, Any]",
+          "exported": true,
+          "lineCount": 116
+        },
+        {
+          "name": "validate_vllm_config",
+          "params": [
+            "user_config"
+          ],
+          "returnType": "tuple[bool, Optional[str]]",
+          "exported": true,
+          "lineCount": 34
+        }
+      ],
+      "classes": [
+        {
+          "name": "VLLMConfigBuilder",
+          "methods": [
+            "build_config",
+            "validate_config",
+            "get_default_config"
+          ],
+          "properties": [],
+          "exported": true,
+          "lineCount": 58
+        },
+        {
+          "name": "VLLMDeploymentFactory",
+          "methods": [
+            "create_deployment"
+          ],
+          "properties": [],
+          "exported": true,
+          "lineCount": 70
+        }
+      ],
+      "imports": [
+        {
+          "source": "logging",
+          "specifiers": [
+            "logging"
+          ]
+        },
+        {
+          "source": "typing",
+          "specifiers": [
+            "Dict",
+            "Any",
+            "Optional"
+          ]
+        },
+        {
+          "source": "ray",
+          "specifiers": [
+            "serve"
+          ]
+        }
+      ],
+      "exports": [
+        "build_vllm_engine_config",
+        "validate_vllm_config",
+        "VLLMConfigBuilder",
+        "VLLMDeploymentFactory"
+      ],
+      "totalLines": 302,
+      "hasStructuralAnalysis": true
+    },
+    "ray_serve_cai/engines/vllm_engine.py": {
+      "filePath": "ray_serve_cai/engines/vllm_engine.py",
+      "contentHash": "918e8e31836f93e4bbd163894cb0bd6f4738165a587e6d73e0841fc43a5986ef",
+      "functions": [
+        {
+          "name": "_accepted_kwargs",
+          "params": [
+            "kwargs"
+          ],
+          "returnType": "dict",
+          "exported": true,
+          "lineCount": 5
+        },
+        {
+          "name": "_requires_param",
+          "params": [
+            "param"
+          ],
+          "returnType": "bool",
+          "exported": true,
+          "lineCount": 4
+        },
+        {
+          "name": "_normalize_vllm_stream_result",
+          "params": [
+            "result",
+            "op_name"
+          ],
+          "returnType": "Any",
+          "exported": true,
+          "lineCount": 55
+        },
+        {
+          "name": "_build_serving_render",
+          "params": [
+            "engine_args",
+            "model_name",
+            "chat_template"
+          ],
+          "exported": true,
+          "lineCount": 47
+        },
+        {
+          "name": "create_vllm_deployment",
+          "params": [
+            "engine_config",
+            "num_replicas",
+            "tensor_parallel_size",
+            "use_cpu",
+            "max_ongoing_requests",
+            "gpu_fraction",
+            "placement_group_bundles",
+            "placement_group_strategy",
+            "multi_node",
+            "venv_path",
+            "scheduling_resources",
+            "scheduling_env_vars"
+          ],
+          "returnType": "serve.Application",
+          "exported": true,
+          "lineCount": 215
+        }
+      ],
+      "classes": [
+        {
+          "name": "_RoutePathMiddleware",
+          "methods": [
+            "__init__",
+            "__call__"
+          ],
+          "properties": [],
+          "exported": true,
+          "lineCount": 16
+        },
+        {
+          "name": "VLLMEngine",
+          "methods": [
+            "__init__",
+            "engine_type",
+            "chat_completion",
+            "completion",
+            "list_models",
+            "health_check"
+          ],
+          "properties": [],
+          "exported": true,
+          "lineCount": 200
+        }
+      ],
+      "imports": [
+        {
+          "source": "asyncio",
+          "specifiers": [
+            "asyncio"
+          ]
+        },
+        {
+          "source": "inspect",
+          "specifiers": [
+            "inspect"
+          ]
+        },
+        {
+          "source": "logging",
+          "specifiers": [
+            "logging"
+          ]
+        },
+        {
+          "source": "typing",
+          "specifiers": [
+            "Any",
+            "Dict",
+            "List",
+            "Optional"
+          ]
+        },
+        {
+          "source": "fastapi",
+          "specifiers": [
+            "FastAPI"
+          ]
+        },
+        {
+          "source": "fastapi.responses",
+          "specifiers": [
+            "JSONResponse",
+            "Response"
+          ]
+        },
+        {
+          "source": "ray",
+          "specifiers": [
+            "serve"
+          ]
+        },
+        {
+          "source": "starlette.requests",
+          "specifiers": [
+            "Request"
+          ]
+        },
+        {
+          "source": "starlette.responses",
+          "specifiers": [
+            "StreamingResponse"
+          ]
+        },
+        {
+          "source": "starlette.types",
+          "specifiers": [
+            "Receive",
+            "Scope",
+            "Send"
+          ]
+        }
+      ],
+      "exports": [
+        "_accepted_kwargs",
+        "_requires_param",
+        "_normalize_vllm_stream_result",
+        "_build_serving_render",
+        "_RoutePathMiddleware",
+        "VLLMEngine",
+        "create_vllm_deployment"
+      ],
+      "totalLines": 710,
+      "hasStructuralAnalysis": true
+    },
+    "ray_serve_cai/engines/yolo_config.py": {
+      "filePath": "ray_serve_cai/engines/yolo_config.py",
+      "contentHash": "73ade7cdffcba99b3a1158231c8332ee19dc92b8bf2ac2e19b2294ea43297e4b",
+      "functions": [],
+      "classes": [
+        {
+          "name": "YOLOConfigBuilder",
+          "methods": [
+            "build_config",
+            "validate_config",
+            "get_default_config"
+          ],
+          "properties": [],
+          "exported": true,
+          "lineCount": 107
+        },
+        {
+          "name": "YOLODeploymentFactory",
+          "methods": [
+            "create_deployment"
+          ],
+          "properties": [],
+          "exported": true,
+          "lineCount": 95
+        }
+      ],
+      "imports": [
+        {
+          "source": "logging",
+          "specifiers": [
+            "logging"
+          ]
+        },
+        {
+          "source": "typing",
+          "specifiers": [
+            "Any",
+            "Dict",
+            "Optional"
+          ]
+        },
+        {
+          "source": "ray",
+          "specifiers": [
+            "serve"
+          ]
+        }
+      ],
+      "exports": [
+        "YOLOConfigBuilder",
+        "YOLODeploymentFactory"
+      ],
+      "totalLines": 218,
+      "hasStructuralAnalysis": true
+    },
+    "ray_serve_cai/engines/yolo_engine.py": {
+      "filePath": "ray_serve_cai/engines/yolo_engine.py",
+      "contentHash": "bbc73ae8f50194928146803a048ad1b35b060f5046c92c8a0b9d24ef9cd730b6",
+      "functions": [
+        {
+          "name": "_bbox_to_location",
+          "params": [
+            "bbox_normalised"
+          ],
+          "returnType": "str",
+          "exported": true,
+          "lineCount": 33
+        },
+        {
+          "name": "_check_occlusion",
+          "params": [
+            "boxes",
+            "threshold"
+          ],
+          "returnType": "bool",
+          "exported": true,
+          "lineCount": 37
+        },
+        {
+          "name": "make_yolo_deployment",
+          "params": [
+            "max_batch_size",
+            "batch_wait_timeout_s"
+          ],
+          "returnType": "type",
+          "exported": true,
+          "lineCount": 39
+        }
+      ],
+      "classes": [
+        {
+          "name": "_RoutePathMiddleware",
+          "methods": [
+            "__init__",
+            "__call__"
+          ],
+          "properties": [],
+          "exported": true,
+          "lineCount": 16
+        },
+        {
+          "name": "_YOLOBase",
+          "methods": [
+            "__init__",
+            "_detect_batch",
+            "_run_inference",
+            "_build_result",
+            "detect",
+            "health_check",
+            "model_info"
+          ],
+          "properties": [],
+          "exported": true,
+          "lineCount": 145
+        }
+      ],
+      "imports": [
+        {
+          "source": "io",
+          "specifiers": [
+            "io"
+          ]
+        },
+        {
+          "source": "logging",
+          "specifiers": [
+            "logging"
+          ]
+        },
+        {
+          "source": "typing",
+          "specifiers": [
+            "Any",
+            "Dict",
+            "List"
+          ]
+        },
+        {
+          "source": "fastapi",
+          "specifiers": [
+            "FastAPI",
+            "File",
+            "UploadFile"
+          ]
+        },
+        {
+          "source": "fastapi.responses",
+          "specifiers": [
+            "JSONResponse"
+          ]
+        },
+        {
+          "source": "ray",
+          "specifiers": [
+            "serve"
+          ]
+        },
+        {
+          "source": "starlette.types",
+          "specifiers": [
+            "Receive",
+            "Scope",
+            "Send"
+          ]
+        }
+      ],
+      "exports": [
+        "_bbox_to_location",
+        "_check_occlusion",
+        "_RoutePathMiddleware",
+        "_YOLOBase",
+        "make_yolo_deployment"
+      ],
+      "totalLines": 376,
+      "hasStructuralAnalysis": true
+    },
+    "ray_serve_cai/launch_cluster.py": {
+      "filePath": "ray_serve_cai/launch_cluster.py",
+      "contentHash": "d71170ebb1eb19ff0256dc20abff1e5a3e981773f857aa2bfe5d3ecd6d8d79fb",
+      "functions": [
+        {
+          "name": "main",
+          "params": [],
+          "exported": true,
+          "lineCount": 138
+        }
+      ],
+      "classes": [
+        {
+          "name": "RayClusterManager",
+          "methods": [
+            "__init__",
+            "_load_config",
+            "_run_command",
+            "start_local_cluster",
+            "stop_cluster",
+            "get_status",
+            "get_address",
+            "start_with_autoscaler",
+            "start_cai_cluster",
+            "stop_cai_cluster",
+            "get_cai_status"
+          ],
+          "properties": [],
+          "exported": true,
+          "lineCount": 424
+        }
+      ],
+      "imports": [
+        {
+          "source": "argparse",
+          "specifiers": [
+            "argparse"
+          ]
+        },
+        {
+          "source": "logging",
+          "specifiers": [
+            "logging"
+          ]
+        },
+        {
+          "source": "os",
+          "specifiers": [
+            "os"
+          ]
+        },
+        {
+          "source": "subprocess",
+          "specifiers": [
+            "subprocess"
+          ]
+        },
+        {
+          "source": "sys",
+          "specifiers": [
+            "sys"
+          ]
+        },
+        {
+          "source": "time",
+          "specifiers": [
+            "time"
+          ]
+        },
+        {
+          "source": "yaml",
+          "specifiers": [
+            "yaml"
+          ]
+        },
+        {
+          "source": "pathlib",
+          "specifiers": [
+            "Path"
+          ]
+        },
+        {
+          "source": "typing",
+          "specifiers": [
+            "Dict",
+            "Any",
+            "Optional"
+          ]
+        }
+      ],
+      "exports": [
+        "RayClusterManager",
+        "main"
+      ],
+      "totalLines": 610,
+      "hasStructuralAnalysis": true
+    },
+    "ray_serve_cai/management/__init__.py": {
+      "filePath": "ray_serve_cai/management/__init__.py",
+      "contentHash": "02c7f95dc58c1b8ca893809e816d005da63240dec00ceea1c48aa899c94ff6ea",
+      "functions": [],
+      "classes": [],
+      "imports": [],
+      "exports": [],
+      "totalLines": 4,
+      "hasStructuralAnalysis": true
+    },
+    "ray_serve_cai/management/api/__init__.py": {
+      "filePath": "ray_serve_cai/management/api/__init__.py",
+      "contentHash": "30d9abe8e10b1e386578e39ef0736cc21d60cb65125ffe7d4a45725fc564f065",
+      "functions": [],
+      "classes": [],
+      "imports": [
+        {
+          "source": ".resources",
+          "specifiers": [
+            "resources_router"
+          ]
+        },
+        {
+          "source": ".applications",
+          "specifiers": [
+            "applications_router"
+          ]
+        },
+        {
+          "source": ".cluster",
+          "specifiers": [
+            "cluster_router"
+          ]
+        },
+        {
+          "source": ".cml_apps",
+          "specifiers": [
+            "cml_apps_router"
+          ]
+        },
+        {
+          "source": ".metrics",
+          "specifiers": [
+            "metrics_router"
+          ]
+        },
+        {
+          "source": ".engines",
+          "specifiers": [
+            "engines_router"
+          ]
+        },
+        {
+          "source": ".environments",
+          "specifiers": [
+            "environments_router"
+          ]
+        }
+      ],
+      "exports": [],
+      "totalLines": 20,
+      "hasStructuralAnalysis": true
+    },
+    "ray_serve_cai/management/api/applications.py": {
+      "filePath": "ray_serve_cai/management/api/applications.py",
+      "contentHash": "0461482f2f5aa6a8a79a9b93829a8bf00e45a81b8754024081d9a7d04bb3d12d",
+      "functions": [
+        {
+          "name": "get_coordinator",
+          "params": [],
+          "returnType": "CoordinatorService",
+          "exported": true,
+          "lineCount": 4
+        },
+        {
+          "name": "deploy_model_compat",
+          "params": [],
+          "exported": true,
+          "lineCount": 10
+        },
+        {
+          "name": "deploy_application",
+          "params": [
+            "request",
+            "coordinator"
+          ],
+          "exported": true,
+          "lineCount": 76
+        },
+        {
+          "name": "delete_application",
+          "params": [
+            "app_name",
+            "coordinator"
+          ],
+          "exported": true,
+          "lineCount": 10
+        },
+        {
+          "name": "list_applications",
+          "params": [
+            "coordinator"
+          ],
+          "exported": true,
+          "lineCount": 10
+        },
+        {
+          "name": "get_application",
+          "params": [
+            "app_name",
+            "coordinator"
+          ],
+          "exported": true,
+          "lineCount": 14
+        }
+      ],
+      "classes": [],
+      "imports": [
+        {
+          "source": "fastapi",
+          "specifiers": [
+            "APIRouter",
+            "Depends",
+            "HTTPException"
+          ]
+        },
+        {
+          "source": "typing",
+          "specifiers": [
+            "Any",
+            "Dict"
+          ]
+        },
+        {
+          "source": "..models.requests",
+          "specifiers": [
+            "DeployApplicationRequest"
+          ]
+        },
+        {
+          "source": "..models.responses",
+          "specifiers": [
+            "ApplicationInfo",
+            "ApplicationsListResponse"
+          ]
+        },
+        {
+          "source": "..services.coordinator",
+          "specifiers": [
+            "CoordinatorService"
+          ]
+        }
+      ],
+      "exports": [
+        "get_coordinator",
+        "deploy_model_compat",
+        "deploy_application",
+        "delete_application",
+        "list_applications",
+        "get_application"
+      ],
+      "totalLines": 153,
+      "hasStructuralAnalysis": true
+    },
+    "ray_serve_cai/management/api/cluster.py": {
+      "filePath": "ray_serve_cai/management/api/cluster.py",
+      "contentHash": "364d47df8c7d774457aae20ac636b517d0fbeecc2266bd76210253c8d0cffa20",
+      "functions": [
+        {
+          "name": "get_coordinator",
+          "params": [],
+          "returnType": "CoordinatorService",
+          "exported": true,
+          "lineCount": 4
+        },
+        {
+          "name": "get_cluster_status",
+          "params": [
+            "coordinator"
+          ],
+          "exported": true,
+          "lineCount": 11
+        },
+        {
+          "name": "get_cluster_info",
+          "params": [
+            "coordinator"
+          ],
+          "exported": true,
+          "lineCount": 38
+        },
+        {
+          "name": "get_gcs_address",
+          "params": [],
+          "exported": true,
+          "lineCount": 22
+        }
+      ],
+      "classes": [],
+      "imports": [
+        {
+          "source": "json",
+          "specifiers": [
+            "json"
+          ]
+        },
+        {
+          "source": "os",
+          "specifiers": [
+            "os"
+          ]
+        },
+        {
+          "source": "pathlib",
+          "specifiers": [
+            "Path"
+          ]
+        },
+        {
+          "source": "fastapi",
+          "specifiers": [
+            "APIRouter",
+            "HTTPException",
+            "Depends"
+          ]
+        },
+        {
+          "source": "..models.responses",
+          "specifiers": [
+            "ClusterStatus",
+            "ClusterInfo"
+          ]
+        },
+        {
+          "source": "..services.coordinator",
+          "specifiers": [
+            "CoordinatorService"
+          ]
+        }
+      ],
+      "exports": [
+        "get_coordinator",
+        "get_cluster_status",
+        "get_cluster_info",
+        "get_gcs_address"
+      ],
+      "totalLines": 98,
+      "hasStructuralAnalysis": true
+    },
+    "ray_serve_cai/management/api/cml_apps.py": {
+      "filePath": "ray_serve_cai/management/api/cml_apps.py",
+      "contentHash": "2f689c47c8ee068564b41daa72b79c37833abe385652683a48487567ef0eb9a9",
+      "functions": [
+        {
+          "name": "get_coordinator",
+          "params": [],
+          "returnType": "CoordinatorService",
+          "exported": true,
+          "lineCount": 4
+        },
+        {
+          "name": "launch_cai_application",
+          "params": [
+            "request",
+            "coordinator"
+          ],
+          "exported": true,
+          "lineCount": 25
+        },
+        {
+          "name": "remove_cai_application",
+          "params": [
+            "app_id",
+            "coordinator"
+          ],
+          "exported": true,
+          "lineCount": 9
+        }
+      ],
+      "classes": [],
+      "imports": [
+        {
+          "source": "fastapi",
+          "specifiers": [
+            "APIRouter",
+            "HTTPException",
+            "Depends"
+          ]
+        },
+        {
+          "source": "typing",
+          "specifiers": [
+            "Dict",
+            "Any"
+          ]
+        },
+        {
+          "source": "..models.requests",
+          "specifiers": [
+            "LaunchCaiApplicationRequest"
+          ]
+        },
+        {
+          "source": "..services.coordinator",
+          "specifiers": [
+            "CoordinatorService"
+          ]
+        }
+      ],
+      "exports": [
+        "get_coordinator",
+        "launch_cai_application",
+        "remove_cai_application"
+      ],
+      "totalLines": 61,
+      "hasStructuralAnalysis": true
+    },
+    "ray_serve_cai/management/api/engines.py": {
+      "filePath": "ray_serve_cai/management/api/engines.py",
+      "contentHash": "6ede052fc7ceb6f1c7abd0d46aa4959e2b5d81378d409b10107c9f4607757c33",
+      "functions": [
+        {
+          "name": "register_engine_endpoint",
+          "params": [
+            "body",
+            "request"
+          ],
+          "returnType": "dict",
+          "exported": true,
+          "lineCount": 52
+        },
+        {
+          "name": "list_engines_endpoint",
+          "params": [],
+          "returnType": "dict",
+          "exported": true,
+          "lineCount": 4
+        }
+      ],
+      "classes": [
+        {
+          "name": "EngineRegisterRequest",
+          "methods": [],
+          "properties": [
+            "engine_type",
+            "module_path",
+            "config_builder_class",
+            "deployment_factory_class",
+            "engine_class"
+          ],
+          "exported": true,
+          "lineCount": 6
+        }
+      ],
+      "imports": [
+        {
+          "source": "importlib",
+          "specifiers": [
+            "importlib"
+          ]
+        },
+        {
+          "source": "logging",
+          "specifiers": [
+            "logging"
+          ]
+        },
+        {
+          "source": "os",
+          "specifiers": [
+            "os"
+          ]
+        },
+        {
+          "source": "typing",
+          "specifiers": [
+            "Optional"
+          ]
+        },
+        {
+          "source": "fastapi",
+          "specifiers": [
+            "APIRouter",
+            "HTTPException",
+            "Request"
+          ]
+        },
+        {
+          "source": "pydantic",
+          "specifiers": [
+            "BaseModel"
+          ]
+        },
+        {
+          "source": "...engines.registry",
+          "specifiers": [
+            "get_registry",
+            "register_engine"
+          ]
+        }
+      ],
+      "exports": [
+        "EngineRegisterRequest",
+        "register_engine_endpoint",
+        "list_engines_endpoint"
+      ],
+      "totalLines": 101,
+      "hasStructuralAnalysis": true
+    },
+    "ray_serve_cai/management/api/environments.py": {
+      "filePath": "ray_serve_cai/management/api/environments.py",
+      "contentHash": "3d9bdc371e2bcacace032dc116529972a07ee8cf2d055c1090a9d58c1a2e2f90",
+      "functions": [
+        {
+          "name": "_import_setup",
+          "params": [],
+          "exported": true,
+          "lineCount": 11
+        },
+        {
+          "name": "_is_ready",
+          "params": [
+            "name"
+          ],
+          "returnType": "bool",
+          "exported": true,
+          "lineCount": 6
+        },
+        {
+          "name": "_run_creation",
+          "params": [
+            "name",
+            "packages",
+            "python"
+          ],
+          "returnType": "None",
+          "exported": true,
+          "lineCount": 16
+        },
+        {
+          "name": "_discover_disk_venvs",
+          "params": [],
+          "returnType": "List[str]",
+          "exported": true,
+          "lineCount": 10
+        },
+        {
+          "name": "list_environments",
+          "params": [],
+          "returnType": "dict",
+          "exported": true,
+          "lineCount": 21
+        },
+        {
+          "name": "get_environment",
+          "params": [
+            "name"
+          ],
+          "returnType": "dict",
+          "exported": true,
+          "lineCount": 19
+        },
+        {
+          "name": "create_environment",
+          "params": [
+            "body"
+          ],
+          "returnType": "dict",
+          "exported": true,
+          "lineCount": 34
+        }
+      ],
+      "classes": [
+        {
+          "name": "CreateEnvironmentRequest",
+          "methods": [],
+          "properties": [
+            "name",
+            "packages",
+            "python"
+          ],
+          "exported": true,
+          "lineCount": 24
+        }
+      ],
+      "imports": [
+        {
+          "source": "logging",
+          "specifiers": [
+            "logging"
+          ]
+        },
+        {
+          "source": "os",
+          "specifiers": [
+            "os"
+          ]
+        },
+        {
+          "source": "sys",
+          "specifiers": [
+            "sys"
+          ]
+        },
+        {
+          "source": "threading",
+          "specifiers": [
+            "threading"
+          ]
+        },
+        {
+          "source": "pathlib",
+          "specifiers": [
+            "Path"
+          ]
+        },
+        {
+          "source": "typing",
+          "specifiers": [
+            "Dict",
+            "List",
+            "Optional"
+          ]
+        },
+        {
+          "source": "fastapi",
+          "specifiers": [
+            "APIRouter",
+            "HTTPException"
+          ]
+        },
+        {
+          "source": "pydantic",
+          "specifiers": [
+            "BaseModel",
+            "Field"
+          ]
+        },
+        {
+          "source": "...engines.venv_utils",
+          "specifiers": [
+            "VENV_BASE",
+            "VENV_PREFIX",
+            "validate_venv_name",
+            "venv_dir_for"
+          ]
+        }
+      ],
+      "exports": [
+        "CreateEnvironmentRequest",
+        "_import_setup",
+        "_is_ready",
+        "_run_creation",
+        "_discover_disk_venvs",
+        "list_environments",
+        "get_environment",
+        "create_environment"
+      ],
+      "totalLines": 197,
+      "hasStructuralAnalysis": true
+    },
+    "ray_serve_cai/management/api/metrics.py": {
+      "filePath": "ray_serve_cai/management/api/metrics.py",
+      "contentHash": "d64e1468e6cfcfa26bd50706ce84e1466707619130f21bb5c06b5d79a32203cf",
+      "functions": [
+        {
+          "name": "_fetch_metrics",
+          "params": [
+            "host",
+            "port",
+            "timeout",
+            "path"
+          ],
+          "returnType": "str",
+          "exported": true,
+          "lineCount": 14
+        },
+        {
+          "name": "head_metrics",
+          "params": [],
+          "exported": true,
+          "lineCount": 14
+        },
+        {
+          "name": "all_metrics",
+          "params": [],
+          "exported": true,
+          "lineCount": 50
+        },
+        {
+          "name": "app_metrics",
+          "params": [],
+          "exported": true,
+          "lineCount": 59
+        },
+        {
+          "name": "metrics_discovery",
+          "params": [],
+          "exported": true,
+          "lineCount": 24
+        }
+      ],
+      "classes": [],
+      "imports": [
+        {
+          "source": "asyncio",
+          "specifiers": [
+            "asyncio"
+          ]
+        },
+        {
+          "source": "json",
+          "specifiers": [
+            "json"
+          ]
+        },
+        {
+          "source": "logging",
+          "specifiers": [
+            "logging"
+          ]
+        },
+        {
+          "source": "os",
+          "specifiers": [
+            "os"
+          ]
+        },
+        {
+          "source": "time",
+          "specifiers": [
+            "time"
+          ]
+        },
+        {
+          "source": "pathlib",
+          "specifiers": [
+            "Path"
+          ]
+        },
+        {
+          "source": "typing",
+          "specifiers": [
+            "Optional"
+          ]
+        },
+        {
+          "source": "fastapi",
+          "specifiers": [
+            "APIRouter"
+          ]
+        },
+        {
+          "source": "fastapi.responses",
+          "specifiers": [
+            "JSONResponse",
+            "PlainTextResponse"
+          ]
+        }
+      ],
+      "exports": [
+        "_fetch_metrics",
+        "head_metrics",
+        "all_metrics",
+        "app_metrics",
+        "metrics_discovery"
+      ],
+      "totalLines": 221,
+      "hasStructuralAnalysis": true
+    },
+    "ray_serve_cai/management/api/resources.py": {
+      "filePath": "ray_serve_cai/management/api/resources.py",
+      "contentHash": "e2f68dfc8176cd068f5aae77bbe3f1659a319de98418a8e07e8ebb7d8cd1384b",
+      "functions": [
+        {
+          "name": "get_coordinator",
+          "params": [],
+          "returnType": "CoordinatorService",
+          "exported": true,
+          "lineCount": 4
+        },
+        {
+          "name": "add_node",
+          "params": [
+            "request",
+            "coordinator"
+          ],
+          "exported": true,
+          "lineCount": 19
+        },
+        {
+          "name": "get_resource_allocation",
+          "params": [
+            "coordinator"
+          ],
+          "exported": true,
+          "lineCount": 13
+        },
+        {
+          "name": "remove_node",
+          "params": [
+            "app_id",
+            "coordinator"
+          ],
+          "exported": true,
+          "lineCount": 11
+        },
+        {
+          "name": "list_nodes",
+          "params": [
+            "coordinator"
+          ],
+          "exported": true,
+          "lineCount": 15
+        },
+        {
+          "name": "list_workers",
+          "params": [
+            "coordinator"
+          ],
+          "exported": true,
+          "lineCount": 19
+        },
+        {
+          "name": "get_capacity",
+          "params": [
+            "coordinator"
+          ],
+          "exported": true,
+          "lineCount": 27
+        }
+      ],
+      "classes": [],
+      "imports": [
+        {
+          "source": "fastapi",
+          "specifiers": [
+            "APIRouter",
+            "HTTPException",
+            "Depends"
+          ]
+        },
+        {
+          "source": "typing",
+          "specifiers": [
+            "Dict",
+            "Any"
+          ]
+        },
+        {
+          "source": "..models.requests",
+          "specifiers": [
+            "AddNodeRequest"
+          ]
+        },
+        {
+          "source": "..models.responses",
+          "specifiers": [
+            "NodeInfo",
+            "NodesListResponse",
+            "ResourceCapacity"
+          ]
+        },
+        {
+          "source": "..services.coordinator",
+          "specifiers": [
+            "CoordinatorService"
+          ]
+        }
+      ],
+      "exports": [
+        "get_coordinator",
+        "add_node",
+        "get_resource_allocation",
+        "remove_node",
+        "list_nodes",
+        "list_workers",
+        "get_capacity"
+      ],
+      "totalLines": 139,
+      "hasStructuralAnalysis": true
+    },
+    "ray_serve_cai/management/app.py": {
+      "filePath": "ray_serve_cai/management/app.py",
+      "contentHash": "d6cc14617a7bf6cb555124ca102f5cf36388a145175a5bd36abb36fc202790d3",
+      "functions": [
+        {
+          "name": "lifespan",
+          "params": [
+            "app"
+          ],
+          "exported": true,
+          "lineCount": 45
+        },
+        {
+          "name": "root",
+          "params": [],
+          "exported": true,
+          "lineCount": 8
+        },
+        {
+          "name": "health_check",
+          "params": [],
+          "exported": true,
+          "lineCount": 7
+        },
+        {
+          "name": "get_coordinator_service",
+          "params": [],
+          "returnType": "CoordinatorService",
+          "exported": true,
+          "lineCount": 9
+        }
+      ],
+      "classes": [],
+      "imports": [
+        {
+          "source": "os",
+          "specifiers": [
+            "os"
+          ]
+        },
+        {
+          "source": "logging",
+          "specifiers": [
+            "logging"
+          ]
+        },
+        {
+          "source": "contextlib",
+          "specifiers": [
+            "asynccontextmanager"
+          ]
+        },
+        {
+          "source": "fastapi",
+          "specifiers": [
+            "FastAPI"
+          ]
+        },
+        {
+          "source": "fastapi.middleware.cors",
+          "specifiers": [
+            "CORSMiddleware"
+          ]
+        },
+        {
+          "source": ".api",
+          "specifiers": [
+            "resources_router",
+            "applications_router",
+            "cluster_router",
+            "cml_apps_router",
+            "metrics_router",
+            "engines_router",
+            "environments_router"
+          ]
+        },
+        {
+          "source": ".services",
+          "specifiers": [
+            "RayService",
+            "CAIService",
+            "CoordinatorService"
+          ]
+        },
+        {
+          "source": "..utils.logging",
+          "specifiers": [
+            "setup_serve_logging"
+          ]
+        }
+      ],
+      "exports": [
+        "lifespan",
+        "root",
+        "health_check",
+        "get_coordinator_service"
+      ],
+      "totalLines": 153,
+      "hasStructuralAnalysis": true
+    },
+    "ray_serve_cai/management/models/__init__.py": {
+      "filePath": "ray_serve_cai/management/models/__init__.py",
+      "contentHash": "a383fbf743b0cc31b81a76520c7984ef65ee3d0524182126b1a009ecbbc11bc1",
+      "functions": [],
+      "classes": [],
+      "imports": [
+        {
+          "source": ".requests",
+          "specifiers": [
+            "AddNodeRequest",
+            "DeployApplicationRequest"
+          ]
+        },
+        {
+          "source": ".responses",
+          "specifiers": [
+            "NodeInfo",
+            "NodesListResponse",
+            "ApplicationInfo",
+            "ApplicationsListResponse",
+            "ClusterStatus",
+            "ClusterInfo",
+            "ResourceCapacity"
+          ]
+        }
+      ],
+      "exports": [],
+      "totalLines": 25,
+      "hasStructuralAnalysis": true
+    },
+    "ray_serve_cai/management/models/requests.py": {
+      "filePath": "ray_serve_cai/management/models/requests.py",
+      "contentHash": "a693cd762d9ffd72c0c84784a1645665e9c1f9f88b59367e9f41dce8d91d0845",
+      "functions": [],
+      "classes": [
+        {
+          "name": "AddNodeRequest",
+          "methods": [],
+          "properties": [
+            "node_type",
+            "cpu",
+            "memory",
+            "gpus",
+            "runtime_identifier",
+            "node_label",
+            "ray_labels"
+          ],
+          "exported": true,
+          "lineCount": 52
+        },
+        {
+          "name": "LaunchCaiApplicationRequest",
+          "methods": [],
+          "properties": [
+            "name",
+            "script",
+            "cpu",
+            "memory",
+            "gpus",
+            "runtime_identifier",
+            "environment",
+            "bypass_authentication"
+          ],
+          "exported": true,
+          "lineCount": 32
+        },
+        {
+          "name": "SchedulingConfig",
+          "methods": [
+            "validate_env_vars"
+          ],
+          "properties": [
+            "resources",
+            "placement_group_bundles",
+            "placement_group_strategy",
+            "env_vars"
+          ],
+          "exported": true,
+          "lineCount": 96
+        },
+        {
+          "name": "DeployApplicationRequest",
+          "methods": [
+            "validate_import_path",
+            "check_discriminator",
+            "validate_autoscaling_config"
+          ],
+          "properties": [
+            "name",
+            "engine_type",
+            "import_path",
+            "route_prefix",
+            "num_replicas",
+            "autoscaling_config",
+            "scheduling",
+            "model",
+            "tensor_parallel_size",
+            "use_cpu",
+            "gpu_fraction",
+            "engine_config",
+            "multi_node",
+            "venv_name",
+            "node_type",
+            "ray_actor_options"
+          ],
+          "exported": true,
+          "lineCount": 243
+        }
+      ],
+      "imports": [
+        {
+          "source": "re",
+          "specifiers": [
+            "re"
+          ]
+        },
+        {
+          "source": "typing",
+          "specifiers": [
+            "Any",
+            "Dict",
+            "List",
+            "Literal",
+            "Optional"
+          ]
+        },
+        {
+          "source": "pydantic",
+          "specifiers": [
+            "BaseModel",
+            "ConfigDict",
+            "Field",
+            "field_validator",
+            "model_validator"
+          ]
+        }
+      ],
+      "exports": [
+        "AddNodeRequest",
+        "LaunchCaiApplicationRequest",
+        "SchedulingConfig",
+        "DeployApplicationRequest"
+      ],
+      "totalLines": 458,
+      "hasStructuralAnalysis": true
+    },
+    "ray_serve_cai/management/models/responses.py": {
+      "filePath": "ray_serve_cai/management/models/responses.py",
+      "contentHash": "46e17b6d2c78a4b5144215418cde7588516a1f6df2f44ac8516275af23bdaece",
+      "functions": [],
+      "classes": [
+        {
+          "name": "NodeInfo",
+          "methods": [],
+          "properties": [
+            "node_id",
+            "node_name",
+            "node_type",
+            "alive",
+            "resources",
+            "resources_used",
+            "pod_name",
+            "app_id",
+            "app_name",
+            "cml_status"
+          ],
+          "exported": true,
+          "lineCount": 14
+        },
+        {
+          "name": "NodesListResponse",
+          "methods": [],
+          "properties": [
+            "nodes",
+            "total_nodes",
+            "alive_nodes"
+          ],
+          "exported": true,
+          "lineCount": 6
+        },
+        {
+          "name": "ApplicationInfo",
+          "methods": [],
+          "properties": [
+            "name",
+            "status",
+            "route_prefix",
+            "num_replicas",
+            "message",
+            "last_deployed_time"
+          ],
+          "exported": true,
+          "lineCount": 9
+        },
+        {
+          "name": "ApplicationsListResponse",
+          "methods": [],
+          "properties": [
+            "applications",
+            "total_applications"
+          ],
+          "exported": true,
+          "lineCount": 5
+        },
+        {
+          "name": "ResourceCapacity",
+          "methods": [],
+          "properties": [
+            "total_cpus",
+            "available_cpus",
+            "total_memory",
+            "available_memory",
+            "total_gpus",
+            "available_gpus",
+            "utilization_percent"
+          ],
+          "exported": true,
+          "lineCount": 10
+        },
+        {
+          "name": "ClusterStatus",
+          "methods": [],
+          "properties": [
+            "healthy",
+            "total_nodes",
+            "alive_nodes",
+            "total_applications",
+            "resources"
+          ],
+          "exported": true,
+          "lineCount": 8
+        },
+        {
+          "name": "ClusterInfo",
+          "methods": [],
+          "properties": [
+            "head_address",
+            "dashboard_url",
+            "management_api_url",
+            "ray_version",
+            "cluster_name"
+          ],
+          "exported": true,
+          "lineCount": 8
+        }
+      ],
+      "imports": [
+        {
+          "source": "typing",
+          "specifiers": [
+            "Dict",
+            "List",
+            "Optional"
+          ]
+        },
+        {
+          "source": "pydantic",
+          "specifiers": [
+            "BaseModel",
+            "Field"
+          ]
+        },
+        {
+          "source": "datetime",
+          "specifiers": [
+            "datetime"
+          ]
+        }
+      ],
+      "exports": [
+        "NodeInfo",
+        "NodesListResponse",
+        "ApplicationInfo",
+        "ApplicationsListResponse",
+        "ResourceCapacity",
+        "ClusterStatus",
+        "ClusterInfo"
+      ],
+      "totalLines": 80,
+      "hasStructuralAnalysis": true
+    },
+    "ray_serve_cai/management/README.md": {
+      "filePath": "ray_serve_cai/management/README.md",
+      "contentHash": "1c15e8f74594da9623c0b8817e2e9e797a1a67ca1e2b5b9fcdb9d80a3a259599",
+      "functions": [],
+      "classes": [],
+      "imports": [],
+      "exports": [],
+      "totalLines": 335,
+      "hasStructuralAnalysis": true
+    },
+    "ray_serve_cai/management/services/__init__.py": {
+      "filePath": "ray_serve_cai/management/services/__init__.py",
+      "contentHash": "f7f9f5b33f155eacae5c7bb0ff22c301f2aea56bc1da81b51267b35edde00f31",
+      "functions": [],
+      "classes": [],
+      "imports": [
+        {
+          "source": ".ray_service",
+          "specifiers": [
+            "RayService"
+          ]
+        },
+        {
+          "source": ".cai_service",
+          "specifiers": [
+            "CAIService"
+          ]
+        },
+        {
+          "source": ".coordinator",
+          "specifiers": [
+            "CoordinatorService"
+          ]
+        }
+      ],
+      "exports": [],
+      "totalLines": 8,
+      "hasStructuralAnalysis": true
+    },
+    "ray_serve_cai/management/services/cai_service.py": {
+      "filePath": "ray_serve_cai/management/services/cai_service.py",
+      "contentHash": "28d59f932bd11d89ce06df084b8c95a0818ce27543b57411ba6d7b453174d5b3",
+      "functions": [],
+      "classes": [
+        {
+          "name": "CAIService",
+          "methods": [
+            "__init__",
+            "_load_cluster_info",
+            "_group_from_cluster_info",
+            "create_worker_node",
+            "delete_application",
+            "launch_cai_application",
+            "list_applications",
+            "get_application"
+          ],
+          "properties": [],
+          "exported": true,
+          "lineCount": 287
+        }
+      ],
+      "imports": [
+        {
+          "source": "json",
+          "specifiers": [
+            "json"
+          ]
+        },
+        {
+          "source": "os",
+          "specifiers": [
+            "os"
+          ]
+        },
+        {
+          "source": "time",
+          "specifiers": [
+            "time"
+          ]
+        },
+        {
+          "source": "pathlib",
+          "specifiers": [
+            "Path"
+          ]
+        },
+        {
+          "source": "typing",
+          "specifiers": [
+            "Dict",
+            "Any",
+            "Optional"
+          ]
+        },
+        {
+          "source": "logging",
+          "specifiers": [
+            "logging"
+          ]
+        },
+        {
+          "source": "ray_serve_cai.cai_cluster",
+          "specifiers": [
+            "CAIClusterManager",
+            "WorkerGroupConfig"
+          ]
+        }
+      ],
+      "exports": [
+        "CAIService"
+      ],
+      "totalLines": 305,
+      "hasStructuralAnalysis": true
+    },
+    "ray_serve_cai/management/services/coordinator.py": {
+      "filePath": "ray_serve_cai/management/services/coordinator.py",
+      "contentHash": "bd023034ce0bed99d60ece7a3a5d2792d0f49f290fe40b287ea17cbb115af53d",
+      "functions": [
+        {
+          "name": "_detect_node_type",
+          "params": [
+            "resources"
+          ],
+          "returnType": "str",
+          "exported": true,
+          "lineCount": 14
+        }
+      ],
+      "classes": [
+        {
+          "name": "CoordinatorService",
+          "methods": [
+            "__init__",
+            "load_state",
+            "save_state",
+            "add_node_mapping",
+            "remove_node_mapping",
+            "get_enriched_nodes",
+            "get_worker_apps",
+            "_head_app_name",
+            "get_cluster_status",
+            "add_worker_node",
+            "remove_worker_node",
+            "launch_cai_application",
+            "remove_cai_application",
+            "get_resource_map"
+          ],
+          "properties": [],
+          "exported": true,
+          "lineCount": 333
+        }
+      ],
+      "imports": [
+        {
+          "source": "json",
+          "specifiers": [
+            "json"
+          ]
+        },
+        {
+          "source": "pathlib",
+          "specifiers": [
+            "Path"
+          ]
+        },
+        {
+          "source": "typing",
+          "specifiers": [
+            "Dict",
+            "Any",
+            "List"
+          ]
+        },
+        {
+          "source": "logging",
+          "specifiers": [
+            "logging"
+          ]
+        },
+        {
+          "source": ".ray_service",
+          "specifiers": [
+            "RayService"
+          ]
+        },
+        {
+          "source": ".cai_service",
+          "specifiers": [
+            "CAIService"
+          ]
+        },
+        {
+          "source": ".resource_map",
+          "specifiers": [
+            "ResourceMap"
+          ]
+        }
+      ],
+      "exports": [
+        "_detect_node_type",
+        "CoordinatorService"
+      ],
+      "totalLines": 378,
+      "hasStructuralAnalysis": true
+    },
+    "ray_serve_cai/management/services/ray_service.py": {
+      "filePath": "ray_serve_cai/management/services/ray_service.py",
+      "contentHash": "45df69446789fc0273fe1d23ed180730c42db7dfbb48eddec55645b1f27f3d83",
+      "functions": [],
+      "classes": [
+        {
+          "name": "RayService",
+          "methods": [
+            "__init__",
+            "connect",
+            "get_nodes",
+            "get_cluster_resources",
+            "get_available_resources",
+            "deploy_application",
+            "deploy_model",
+            "delete_application",
+            "list_applications",
+            "get_application_status"
+          ],
+          "properties": [],
+          "exported": true,
+          "lineCount": 353
+        }
+      ],
+      "imports": [
+        {
+          "source": "concurrent.futures",
+          "specifiers": [
+            "concurrent.futures"
+          ]
+        },
+        {
+          "source": "logging",
+          "specifiers": [
+            "logging"
+          ]
+        },
+        {
+          "source": "typing",
+          "specifiers": [
+            "TYPE_CHECKING",
+            "Any",
+            "Dict",
+            "List",
+            "Optional"
+          ]
+        },
+        {
+          "source": "ray",
+          "specifiers": [
+            "ray"
+          ]
+        },
+        {
+          "source": "ray",
+          "specifiers": [
+            "serve"
+          ]
+        }
+      ],
+      "exports": [
+        "RayService"
+      ],
+      "totalLines": 369,
+      "hasStructuralAnalysis": true
+    },
+    "ray_serve_cai/management/services/resource_map.py": {
+      "filePath": "ray_serve_cai/management/services/resource_map.py",
+      "contentHash": "9a00254e580cf469e56e9005f9d5a3017eefec8747a007a56992f62c9eca5d22",
+      "functions": [
+        {
+          "name": "_sum_resources",
+          "params": [
+            "entries"
+          ],
+          "returnType": "Dict[str, int]",
+          "exported": true,
+          "lineCount": 7
+        }
+      ],
+      "classes": [
+        {
+          "name": "ResourceMap",
+          "methods": [
+            "__init__",
+            "_load",
+            "_save",
+            "register_worker",
+            "unregister_worker",
+            "allocate",
+            "release",
+            "sync",
+            "get_summary",
+            "validate"
+          ],
+          "properties": [],
+          "exported": true,
+          "lineCount": 196
+        }
+      ],
+      "imports": [
+        {
+          "source": "json",
+          "specifiers": [
+            "json"
+          ]
+        },
+        {
+          "source": "logging",
+          "specifiers": [
+            "logging"
+          ]
+        },
+        {
+          "source": "datetime",
+          "specifiers": [
+            "datetime",
+            "timezone"
+          ]
+        },
+        {
+          "source": "pathlib",
+          "specifiers": [
+            "Path"
+          ]
+        },
+        {
+          "source": "typing",
+          "specifiers": [
+            "Dict",
+            "Any",
+            "Optional"
+          ]
+        }
+      ],
+      "exports": [
+        "ResourceMap",
+        "_sum_resources"
+      ],
+      "totalLines": 253,
+      "hasStructuralAnalysis": true
+    },
+    "ray_serve_cai/ray_backend.py": {
+      "filePath": "ray_serve_cai/ray_backend.py",
+      "contentHash": "2acffab3ec962d5dba81555bcb31f80e757274f84a0ff48e47bb32b8c4d99536",
+      "functions": [],
+      "classes": [
+        {
+          "name": "RayBackend",
+          "methods": [
+            "__init__",
+            "_check_ray_availability",
+            "_detect_existing_ray_cluster",
+            "initialize_ray",
+            "start_model",
+            "wait_for_ready",
+            "stop_model",
+            "get_status",
+            "get_logs",
+            "shutdown",
+            "close"
+          ],
+          "properties": [],
+          "exported": true,
+          "lineCount": 572
+        }
+      ],
+      "imports": [
+        {
+          "source": "asyncio",
+          "specifiers": [
+            "asyncio"
+          ]
+        },
+        {
+          "source": "logging",
+          "specifiers": [
+            "logging"
+          ]
+        },
+        {
+          "source": "socket",
+          "specifiers": [
+            "socket"
+          ]
+        },
+        {
+          "source": "subprocess",
+          "specifiers": [
+            "subprocess"
+          ]
+        },
+        {
+          "source": "time",
+          "specifiers": [
+            "time"
+          ]
+        },
+        {
+          "source": "typing",
+          "specifiers": [
+            "Optional",
+            "Dict",
+            "Any",
+            "AsyncIterator"
+          ]
+        }
+      ],
+      "exports": [
+        "RayBackend"
+      ],
+      "totalLines": 592,
+      "hasStructuralAnalysis": true
+    },
+    "ray_serve_cai/scripts/deploy_ray_app.py": {
+      "filePath": "ray_serve_cai/scripts/deploy_ray_app.py",
+      "contentHash": "7a20bbadca25321bc8a9a35854e3cd87098e26dd1a8cbc251161181be3c9d85e",
+      "functions": [
+        {
+          "name": "main",
+          "params": [],
+          "returnType": "int",
+          "exported": true,
+          "lineCount": 77
+        }
+      ],
+      "classes": [],
+      "imports": [
+        {
+          "source": "argparse",
+          "specifiers": [
+            "argparse"
+          ]
+        },
+        {
+          "source": "importlib",
+          "specifiers": [
+            "importlib"
+          ]
+        },
+        {
+          "source": "sys",
+          "specifiers": [
+            "sys"
+          ]
+        }
+      ],
+      "exports": [
+        "main"
+      ],
+      "totalLines": 110,
+      "hasStructuralAnalysis": true
+    },
+    "ray_serve_cai/scripts/start_nginx.py": {
+      "filePath": "ray_serve_cai/scripts/start_nginx.py",
+      "contentHash": "e99e8889d946bea55f17e2ad3e9cb4a586ec8d8b49f033b5b41a064bdc1eef6e",
+      "functions": [
+        {
+          "name": "find_mime_types",
+          "params": [],
+          "returnType": "str",
+          "exported": true,
+          "lineCount": 19
+        },
+        {
+          "name": "build_context",
+          "params": [
+            "runtime_dir",
+            "static_root"
+          ],
+          "returnType": "dict",
+          "exported": true,
+          "lineCount": 50
+        },
+        {
+          "name": "render_templates",
+          "params": [
+            "runtime_dir",
+            "context"
+          ],
+          "returnType": "None",
+          "exported": true,
+          "lineCount": 22
+        },
+        {
+          "name": "create_runtime_dirs",
+          "params": [
+            "runtime_dir",
+            "static_root"
+          ],
+          "returnType": "None",
+          "exported": true,
+          "lineCount": 25
+        },
+        {
+          "name": "find_nginx",
+          "params": [],
+          "returnType": "str",
+          "exported": true,
+          "lineCount": 14
+        },
+        {
+          "name": "stop_nginx",
+          "params": [
+            "nginx_bin"
+          ],
+          "returnType": "None",
+          "exported": true,
+          "lineCount": 10
+        },
+        {
+          "name": "start_nginx",
+          "params": [
+            "nginx_bin",
+            "conf_path"
+          ],
+          "returnType": "None",
+          "exported": true,
+          "lineCount": 11
+        },
+        {
+          "name": "verify_nginx",
+          "params": [
+            "app_port",
+            "retries",
+            "delay"
+          ],
+          "returnType": "bool",
+          "exported": true,
+          "lineCount": 12
+        },
+        {
+          "name": "main",
+          "params": [],
+          "returnType": "int",
+          "exported": true,
+          "lineCount": 75
+        }
+      ],
+      "classes": [],
+      "imports": [
+        {
+          "source": "os",
+          "specifiers": [
+            "os"
+          ]
+        },
+        {
+          "source": "subprocess",
+          "specifiers": [
+            "subprocess"
+          ]
+        },
+        {
+          "source": "sys",
+          "specifiers": [
+            "sys"
+          ]
+        },
+        {
+          "source": "time",
+          "specifiers": [
+            "time"
+          ]
+        },
+        {
+          "source": "pathlib",
+          "specifiers": [
+            "Path"
+          ]
+        },
+        {
+          "source": "jinja2",
+          "specifiers": [
+            "Environment",
+            "FileSystemLoader"
+          ]
+        }
+      ],
+      "exports": [
+        "find_mime_types",
+        "build_context",
+        "render_templates",
+        "create_runtime_dirs",
+        "find_nginx",
+        "stop_nginx",
+        "start_nginx",
+        "verify_nginx",
+        "main"
+      ],
+      "totalLines": 326,
+      "hasStructuralAnalysis": true
+    },
+    "ray_serve_cai/static/index.html": {
+      "filePath": "ray_serve_cai/static/index.html",
+      "contentHash": "3c6ae7a0f867ea9a481c7e6e1db73d42c5953b683da9d6e6c7454fb569fa444d",
+      "functions": [],
+      "classes": [],
+      "imports": [],
+      "exports": [],
+      "totalLines": 209,
+      "hasStructuralAnalysis": false
+    },
+    "ray_serve_cai/utils/__init__.py": {
+      "filePath": "ray_serve_cai/utils/__init__.py",
+      "contentHash": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "functions": [],
+      "classes": [],
+      "imports": [],
+      "exports": [],
+      "totalLines": 1,
+      "hasStructuralAnalysis": true
+    },
+    "ray_serve_cai/utils/logging.py": {
+      "filePath": "ray_serve_cai/utils/logging.py",
+      "contentHash": "df0bbca8a859a2138bdb713aaa122636a6329b9e801b965447b8afbefa6d7d1a",
+      "functions": [
+        {
+          "name": "setup_serve_logging",
+          "params": [
+            "app_name"
+          ],
+          "returnType": "None",
+          "exported": true,
+          "lineCount": 53
+        }
+      ],
+      "classes": [
+        {
+          "name": "_LevelFilter",
+          "methods": [
+            "__init__",
+            "filter"
+          ],
+          "properties": [],
+          "exported": true,
+          "lineCount": 8
+        }
+      ],
+      "imports": [
+        {
+          "source": "logging",
+          "specifiers": [
+            "logging"
+          ]
+        },
+        {
+          "source": "os",
+          "specifiers": [
+            "os"
+          ]
+        },
+        {
+          "source": "pathlib",
+          "specifiers": [
+            "Path"
+          ]
+        }
+      ],
+      "exports": [
+        "_LevelFilter",
+        "setup_serve_logging"
+      ],
+      "totalLines": 92,
+      "hasStructuralAnalysis": true
+    },
+    "ray_serve_cai/worker_app.py": {
+      "filePath": "ray_serve_cai/worker_app.py",
+      "contentHash": "0bbab0028ee00d0430bc9d0cdde7d5746a673914dccbbde6e776b843ce3340d6",
+      "functions": [
+        {
+          "name": "root",
+          "params": [],
+          "exported": true,
+          "lineCount": 3
+        },
+        {
+          "name": "health",
+          "params": [],
+          "exported": true,
+          "lineCount": 2
+        },
+        {
+          "name": "info",
+          "params": [],
+          "exported": true,
+          "lineCount": 13
+        },
+        {
+          "name": "_resolve_ip",
+          "params": [],
+          "returnType": "str",
+          "exported": true,
+          "lineCount": 8
+        }
+      ],
+      "classes": [
+        {
+          "name": "_SuppressHealthProbe",
+          "methods": [
+            "filter"
+          ],
+          "properties": [],
+          "exported": true,
+          "lineCount": 8
+        }
+      ],
+      "imports": [
+        {
+          "source": "logging",
+          "specifiers": [
+            "logging"
+          ]
+        },
+        {
+          "source": "os",
+          "specifiers": [
+            "os"
+          ]
+        },
+        {
+          "source": "socket",
+          "specifiers": [
+            "socket"
+          ]
+        },
+        {
+          "source": "uvicorn",
+          "specifiers": [
+            "uvicorn"
+          ]
+        },
+        {
+          "source": "fastapi",
+          "specifiers": [
+            "FastAPI"
+          ]
+        }
+      ],
+      "exports": [
+        "root",
+        "health",
+        "info",
+        "_resolve_ip",
+        "_SuppressHealthProbe"
+      ],
+      "totalLines": 125,
+      "hasStructuralAnalysis": true
+    },
+    "README.md": {
+      "filePath": "README.md",
+      "contentHash": "e0995b955eefbc842917739a66228b6fe70daaa4c980f0000e8fb69217433a96",
+      "functions": [],
+      "classes": [],
+      "imports": [],
+      "exports": [],
+      "totalLines": 554,
+      "hasStructuralAnalysis": true
+    },
+    "scripts/deploy_qwen3_model.py": {
+      "filePath": "scripts/deploy_qwen3_model.py",
+      "contentHash": "a6bfa7e3a04b9fb7a0dda1bf6d01735a6c9b35b1d95e90e3cd45301b1ff4c892",
+      "functions": [
+        {
+          "name": "main",
+          "params": [],
+          "exported": true,
+          "lineCount": 156
+        }
+      ],
+      "classes": [
+        {
+          "name": "QwenDeployer",
+          "methods": [
+            "__init__",
+            "check_cluster_health",
+            "deploy_model",
+            "wait_for_deployment",
+            "test_model",
+            "list_models",
+            "show_info"
+          ],
+          "properties": [],
+          "exported": true,
+          "lineCount": 183
+        }
+      ],
+      "imports": [
+        {
+          "source": "requests",
+          "specifiers": [
+            "requests"
+          ]
+        },
+        {
+          "source": "argparse",
+          "specifiers": [
+            "argparse"
+          ]
+        },
+        {
+          "source": "time",
+          "specifiers": [
+            "time"
+          ]
+        },
+        {
+          "source": "json",
+          "specifiers": [
+            "json"
+          ]
+        },
+        {
+          "source": "typing",
+          "specifiers": [
+            "Dict",
+            "Any",
+            "Optional"
+          ]
+        }
+      ],
+      "exports": [
+        "QwenDeployer",
+        "main"
+      ],
+      "totalLines": 367,
+      "hasStructuralAnalysis": true
+    },
+    "tests/README.md": {
+      "filePath": "tests/README.md",
+      "contentHash": "f61effcc3dcaeabfc25ce8dd4c8409c77eb1205668ebcac68a75266cc5d611fa",
+      "functions": [],
+      "classes": [],
+      "imports": [],
+      "exports": [],
+      "totalLines": 120,
+      "hasStructuralAnalysis": true
+    },
+    "tests/run_test.sh": {
+      "filePath": "tests/run_test.sh",
+      "contentHash": "2140cd8da52aab80d30241222123ee4ffae4d587c5e3096fdfa735122cee922d",
+      "functions": [],
+      "classes": [],
+      "imports": [],
+      "exports": [],
+      "totalLines": 126,
+      "hasStructuralAnalysis": true
+    },
+    "tests/test_cluster_deployment.py": {
+      "filePath": "tests/test_cluster_deployment.py",
+      "contentHash": "0201d50524f439b3939fd27466d2ae6f7bbd14a9491ee55ebb960c1e59140948",
+      "functions": [
+        {
+          "name": "main",
+          "params": [],
+          "exported": true,
+          "lineCount": 55
+        }
+      ],
+      "classes": [
+        {
+          "name": "RayClusterTester",
+          "methods": [
+            "__init__",
+            "connect_to_cluster",
+            "test_cluster_status",
+            "test_simple_task",
+            "run_all_tests",
+            "cleanup"
+          ],
+          "properties": [],
+          "exported": true,
+          "lineCount": 160
+        }
+      ],
+      "imports": [
+        {
+          "source": "os",
+          "specifiers": [
+            "os"
+          ]
+        },
+        {
+          "source": "sys",
+          "specifiers": [
+            "sys"
+          ]
+        },
+        {
+          "source": "argparse",
+          "specifiers": [
+            "argparse"
+          ]
+        },
+        {
+          "source": "time",
+          "specifiers": [
+            "time"
+          ]
+        }
+      ],
+      "exports": [
+        "RayClusterTester",
+        "main"
+      ],
+      "totalLines": 258,
+      "hasStructuralAnalysis": true
+    },
+    "tests/test_e2e_deployment.py": {
+      "filePath": "tests/test_e2e_deployment.py",
+      "contentHash": "14ba4336fe4656b2eb74ad63192da4f54711caa9123dcd2e89a4684cac833576",
+      "functions": [
+        {
+          "name": "main",
+          "params": [],
+          "exported": true,
+          "lineCount": 95
+        }
+      ],
+      "classes": [
+        {
+          "name": "E2EDeploymentTester",
+          "methods": [
+            "__init__",
+            "make_request",
+            "test_cml_connection",
+            "search_or_create_project",
+            "wait_for_git_clone",
+            "_create_launcher_scripts",
+            "test_cluster_creation",
+            "test_cluster_status",
+            "test_cluster_cleanup",
+            "run_all_tests"
+          ],
+          "properties": [],
+          "exported": true,
+          "lineCount": 504
+        }
+      ],
+      "imports": [
+        {
+          "source": "json",
+          "specifiers": [
+            "json"
+          ]
+        },
+        {
+          "source": "os",
+          "specifiers": [
+            "os"
+          ]
+        },
+        {
+          "source": "sys",
+          "specifiers": [
+            "sys"
+          ]
+        },
+        {
+          "source": "argparse",
+          "specifiers": [
+            "argparse"
+          ]
+        },
+        {
+          "source": "time",
+          "specifiers": [
+            "time"
+          ]
+        },
+        {
+          "source": "requests",
+          "specifiers": [
+            "requests"
+          ]
+        },
+        {
+          "source": "pathlib",
+          "specifiers": [
+            "Path"
+          ]
+        },
+        {
+          "source": "typing",
+          "specifiers": [
+            "Dict",
+            "Any",
+            "Optional"
+          ]
+        },
+        {
+          "source": "ray_serve_cai.cai_cluster",
+          "specifiers": [
+            "CAIClusterManager"
+          ]
+        }
+      ],
+      "exports": [
+        "E2EDeploymentTester",
+        "main"
+      ],
+      "totalLines": 650,
+      "hasStructuralAnalysis": true
+    },
+    "tests/TESTING_GUIDE.md": {
+      "filePath": "tests/TESTING_GUIDE.md",
+      "contentHash": "c9a8bf49ccdbb7f64815773bd35947cef56321c4d436f68a21b8f1f5ece3cc7d",
+      "functions": [],
+      "classes": [],
+      "imports": [],
+      "exports": [],
+      "totalLines": 471,
+      "hasStructuralAnalysis": true
+    },
+    "VERIFICATION_isolated_env.md": {
+      "filePath": "VERIFICATION_isolated_env.md",
+      "contentHash": "2dc3619072808878d13954b2cfe9ee37ebecdb6811d1381db264b62bc47794b7",
+      "functions": [],
+      "classes": [],
+      "imports": [],
+      "exports": [],
+      "totalLines": 332,
+      "hasStructuralAnalysis": true
+    }
+  }
+}

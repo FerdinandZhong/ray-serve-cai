@@ -1,0 +1,1134 @@
+{
+  "scriptCompleted": true,
+  "filesAnalyzed": 4,
+  "filesSkipped": [],
+  "results": [
+    {
+      "path": "ray_serve_cai/engines/yolo_engine.py",
+      "language": "python",
+      "fileCategory": "code",
+      "totalLines": 375,
+      "nonEmptyLines": 305,
+      "functions": [
+        {
+          "name": "_bbox_to_location",
+          "startLine": 64,
+          "endLine": 96,
+          "params": [
+            "bbox_normalised"
+          ]
+        },
+        {
+          "name": "_check_occlusion",
+          "startLine": 99,
+          "endLine": 135,
+          "params": [
+            "boxes",
+            "threshold"
+          ]
+        },
+        {
+          "name": "make_yolo_deployment",
+          "startLine": 333,
+          "endLine": 371,
+          "params": [
+            "max_batch_size",
+            "batch_wait_timeout_s"
+          ]
+        }
+      ],
+      "classes": [
+        {
+          "name": "_RoutePathMiddleware",
+          "startLine": 143,
+          "endLine": 158,
+          "methods": [
+            "__init__",
+            "__call__"
+          ],
+          "properties": []
+        },
+        {
+          "name": "_YOLOBase",
+          "startLine": 182,
+          "endLine": 326,
+          "methods": [
+            "__init__",
+            "_detect_batch",
+            "_run_inference",
+            "_build_result",
+            "detect",
+            "health_check",
+            "model_info"
+          ],
+          "properties": []
+        }
+      ],
+      "exports": [
+        {
+          "name": "_bbox_to_location",
+          "line": 64,
+          "isDefault": false
+        },
+        {
+          "name": "_check_occlusion",
+          "line": 99,
+          "isDefault": false
+        },
+        {
+          "name": "_RoutePathMiddleware",
+          "line": 143,
+          "isDefault": false
+        },
+        {
+          "name": "_YOLOBase",
+          "line": 182,
+          "isDefault": false
+        },
+        {
+          "name": "make_yolo_deployment",
+          "line": 333,
+          "isDefault": false
+        }
+      ],
+      "callGraph": [
+        {
+          "caller": "_check_occlusion",
+          "callee": "len",
+          "lineNumber": 107
+        },
+        {
+          "caller": "_check_occlusion",
+          "callee": "range",
+          "lineNumber": 111
+        },
+        {
+          "caller": "_check_occlusion",
+          "callee": "range",
+          "lineNumber": 117
+        },
+        {
+          "caller": "_check_occlusion",
+          "callee": "max",
+          "lineNumber": 122
+        },
+        {
+          "caller": "_check_occlusion",
+          "callee": "max",
+          "lineNumber": 123
+        },
+        {
+          "caller": "_check_occlusion",
+          "callee": "min",
+          "lineNumber": 124
+        },
+        {
+          "caller": "_check_occlusion",
+          "callee": "min",
+          "lineNumber": 125
+        },
+        {
+          "caller": "__call__",
+          "callee": "scope.get",
+          "lineNumber": 151
+        },
+        {
+          "caller": "__call__",
+          "callee": "scope.get",
+          "lineNumber": 152
+        },
+        {
+          "caller": "__call__",
+          "callee": "path.startswith",
+          "lineNumber": 153
+        },
+        {
+          "caller": "__call__",
+          "callee": "len",
+          "lineNumber": 154
+        },
+        {
+          "caller": "__call__",
+          "callee": "remainder.startswith",
+          "lineNumber": 155
+        },
+        {
+          "caller": "__call__",
+          "callee": "dict",
+          "lineNumber": 156
+        },
+        {
+          "caller": "__call__",
+          "callee": "self.app",
+          "lineNumber": 158
+        },
+        {
+          "caller": "__init__",
+          "callee": "engine_config.get",
+          "lineNumber": 195
+        },
+        {
+          "caller": "__init__",
+          "callee": "engine_config.get",
+          "lineNumber": 196
+        },
+        {
+          "caller": "__init__",
+          "callee": "engine_config.get",
+          "lineNumber": 197
+        },
+        {
+          "caller": "__init__",
+          "callee": "logger.info",
+          "lineNumber": 200
+        },
+        {
+          "caller": "__init__",
+          "callee": "YOLO",
+          "lineNumber": 201
+        },
+        {
+          "caller": "__init__",
+          "callee": "self._model.to",
+          "lineNumber": 202
+        },
+        {
+          "caller": "__init__",
+          "callee": "logger.info",
+          "lineNumber": 203
+        },
+        {
+          "caller": "__init__",
+          "callee": "Counter",
+          "lineNumber": 209
+        },
+        {
+          "caller": "__init__",
+          "callee": "Histogram",
+          "lineNumber": 214
+        },
+        {
+          "caller": "__init__",
+          "callee": "Histogram",
+          "lineNumber": 219
+        },
+        {
+          "caller": "__init__",
+          "callee": "Histogram",
+          "lineNumber": 224
+        },
+        {
+          "caller": "__init__",
+          "callee": "logger.info",
+          "lineNumber": 229
+        },
+        {
+          "caller": "_run_inference",
+          "callee": "self._m_batch_size.observe",
+          "lineNumber": 247
+        },
+        {
+          "caller": "_run_inference",
+          "callee": "len",
+          "lineNumber": 247
+        },
+        {
+          "caller": "_run_inference",
+          "callee": "time.perf_counter",
+          "lineNumber": 249
+        },
+        {
+          "caller": "_run_inference",
+          "callee": "self._model",
+          "lineNumber": 250
+        },
+        {
+          "caller": "_run_inference",
+          "callee": "time.perf_counter",
+          "lineNumber": 257
+        },
+        {
+          "caller": "_run_inference",
+          "callee": "self._build_result",
+          "lineNumber": 259
+        },
+        {
+          "caller": "_run_inference",
+          "callee": "max",
+          "lineNumber": 261
+        },
+        {
+          "caller": "_run_inference",
+          "callee": "len",
+          "lineNumber": 261
+        },
+        {
+          "caller": "_run_inference",
+          "callee": "self._m_inference.observe",
+          "lineNumber": 263
+        },
+        {
+          "caller": "_run_inference",
+          "callee": "self._m_detections.observe",
+          "lineNumber": 264
+        },
+        {
+          "caller": "_build_result",
+          "callee": "int",
+          "lineNumber": 275
+        },
+        {
+          "caller": "_build_result",
+          "callee": "box.cls.item",
+          "lineNumber": 275
+        },
+        {
+          "caller": "_build_result",
+          "callee": "round",
+          "lineNumber": 276
+        },
+        {
+          "caller": "_build_result",
+          "callee": "float",
+          "lineNumber": 276
+        },
+        {
+          "caller": "_build_result",
+          "callee": "box.conf.item",
+          "lineNumber": 276
+        },
+        {
+          "caller": "_build_result",
+          "callee": "round",
+          "lineNumber": 277
+        },
+        {
+          "caller": "_build_result",
+          "callee": "box.xywhn[0].tolist",
+          "lineNumber": 277
+        },
+        {
+          "caller": "_build_result",
+          "callee": "items.append",
+          "lineNumber": 279
+        },
+        {
+          "caller": "_build_result",
+          "callee": "_bbox_to_location",
+          "lineNumber": 282
+        },
+        {
+          "caller": "_build_result",
+          "callee": "bboxes.append",
+          "lineNumber": 285
+        },
+        {
+          "caller": "_build_result",
+          "callee": "len",
+          "lineNumber": 289
+        },
+        {
+          "caller": "_build_result",
+          "callee": "_check_occlusion",
+          "lineNumber": 290
+        },
+        {
+          "caller": "detect",
+          "callee": "File",
+          "lineNumber": 298
+        },
+        {
+          "caller": "detect",
+          "callee": "file.read",
+          "lineNumber": 299
+        },
+        {
+          "caller": "detect",
+          "callee": "self._detect_batch",
+          "lineNumber": 301
+        },
+        {
+          "caller": "detect",
+          "callee": "self._m_requests.inc",
+          "lineNumber": 302
+        },
+        {
+          "caller": "detect",
+          "callee": "JSONResponse",
+          "lineNumber": 303
+        },
+        {
+          "caller": "detect",
+          "callee": "self._m_requests.inc",
+          "lineNumber": 305
+        },
+        {
+          "caller": "model_info",
+          "callee": "getattr",
+          "lineNumber": 319
+        },
+        {
+          "caller": "make_yolo_deployment",
+          "callee": "serve.ingress",
+          "lineNumber": 345
+        },
+        {
+          "caller": "make_yolo_deployment",
+          "callee": "serve.batch",
+          "lineNumber": 349
+        },
+        {
+          "caller": "_detect_batch",
+          "callee": "Image.open(io.BytesIO(b)).convert",
+          "lineNumber": 366
+        },
+        {
+          "caller": "_detect_batch",
+          "callee": "Image.open",
+          "lineNumber": 366
+        },
+        {
+          "caller": "_detect_batch",
+          "callee": "io.BytesIO",
+          "lineNumber": 366
+        },
+        {
+          "caller": "_detect_batch",
+          "callee": "self._run_inference",
+          "lineNumber": 369
+        }
+      ],
+      "metrics": {
+        "importCount": 0,
+        "exportCount": 5,
+        "functionCount": 3,
+        "classCount": 2
+      }
+    },
+    {
+      "path": "ray_serve_cai/engines/yolo_config.py",
+      "language": "python",
+      "fileCategory": "code",
+      "totalLines": 217,
+      "nonEmptyLines": 176,
+      "classes": [
+        {
+          "name": "YOLOConfigBuilder",
+          "startLine": 14,
+          "endLine": 120,
+          "methods": [
+            "build_config",
+            "validate_config",
+            "get_default_config"
+          ],
+          "properties": []
+        },
+        {
+          "name": "YOLODeploymentFactory",
+          "startLine": 123,
+          "endLine": 217,
+          "methods": [
+            "create_deployment"
+          ],
+          "properties": []
+        }
+      ],
+      "exports": [
+        {
+          "name": "YOLOConfigBuilder",
+          "line": 14,
+          "isDefault": false
+        },
+        {
+          "name": "YOLODeploymentFactory",
+          "line": 123,
+          "isDefault": false
+        }
+      ],
+      "callGraph": [
+        {
+          "caller": "build_config",
+          "callee": "self.validate_config",
+          "lineNumber": 55
+        },
+        {
+          "caller": "build_config",
+          "callee": "ValueError",
+          "lineNumber": 57
+        },
+        {
+          "caller": "build_config",
+          "callee": "user_config.get",
+          "lineNumber": 59
+        },
+        {
+          "caller": "build_config",
+          "callee": "user_config.get",
+          "lineNumber": 59
+        },
+        {
+          "caller": "build_config",
+          "callee": "user_config.get",
+          "lineNumber": 60
+        },
+        {
+          "caller": "build_config",
+          "callee": "user_config.get",
+          "lineNumber": 64
+        },
+        {
+          "caller": "build_config",
+          "callee": "user_config.get",
+          "lineNumber": 65
+        },
+        {
+          "caller": "build_config",
+          "callee": "user_config.get",
+          "lineNumber": 66
+        },
+        {
+          "caller": "build_config",
+          "callee": "int",
+          "lineNumber": 67
+        },
+        {
+          "caller": "build_config",
+          "callee": "user_config.get",
+          "lineNumber": 67
+        },
+        {
+          "caller": "build_config",
+          "callee": "float",
+          "lineNumber": 68
+        },
+        {
+          "caller": "build_config",
+          "callee": "user_config.get",
+          "lineNumber": 68
+        },
+        {
+          "caller": "build_config",
+          "callee": "int",
+          "lineNumber": 69
+        },
+        {
+          "caller": "build_config",
+          "callee": "user_config.get",
+          "lineNumber": 69
+        },
+        {
+          "caller": "build_config",
+          "callee": "int",
+          "lineNumber": 70
+        },
+        {
+          "caller": "build_config",
+          "callee": "user_config.get",
+          "lineNumber": 70
+        },
+        {
+          "caller": "build_config",
+          "callee": "user_config.get",
+          "lineNumber": 74
+        },
+        {
+          "caller": "build_config",
+          "callee": "user_config.get",
+          "lineNumber": 77
+        },
+        {
+          "caller": "build_config",
+          "callee": "logger.info",
+          "lineNumber": 80
+        },
+        {
+          "caller": "validate_config",
+          "callee": "user_config.get",
+          "lineNumber": 90
+        },
+        {
+          "caller": "validate_config",
+          "callee": "user_config.get",
+          "lineNumber": 90
+        },
+        {
+          "caller": "validate_config",
+          "callee": "user_config.get",
+          "lineNumber": 94
+        },
+        {
+          "caller": "validate_config",
+          "callee": "isinstance",
+          "lineNumber": 95
+        },
+        {
+          "caller": "validate_config",
+          "callee": "user_config.get",
+          "lineNumber": 98
+        },
+        {
+          "caller": "validate_config",
+          "callee": "isinstance",
+          "lineNumber": 99
+        },
+        {
+          "caller": "validate_config",
+          "callee": "user_config.get",
+          "lineNumber": 102
+        },
+        {
+          "caller": "validate_config",
+          "callee": "isinstance",
+          "lineNumber": 103
+        },
+        {
+          "caller": "validate_config",
+          "callee": "user_config.get",
+          "lineNumber": 106
+        },
+        {
+          "caller": "validate_config",
+          "callee": "isinstance",
+          "lineNumber": 107
+        },
+        {
+          "caller": "create_deployment",
+          "callee": "engine_config.get",
+          "lineNumber": 161
+        },
+        {
+          "caller": "create_deployment",
+          "callee": "engine_config.get",
+          "lineNumber": 162
+        },
+        {
+          "caller": "create_deployment",
+          "callee": "engine_config.get",
+          "lineNumber": 163
+        },
+        {
+          "caller": "create_deployment",
+          "callee": "engine_config.get",
+          "lineNumber": 164
+        },
+        {
+          "caller": "create_deployment",
+          "callee": "engine_config.get",
+          "lineNumber": 165
+        },
+        {
+          "caller": "create_deployment",
+          "callee": "make_yolo_deployment",
+          "lineNumber": 169
+        },
+        {
+          "caller": "create_deployment",
+          "callee": "logger.info",
+          "lineNumber": 181
+        },
+        {
+          "caller": "create_deployment",
+          "callee": "engine_config.pop",
+          "lineNumber": 184
+        },
+        {
+          "caller": "create_deployment",
+          "callee": "engine_config.pop",
+          "lineNumber": 185
+        },
+        {
+          "caller": "create_deployment",
+          "callee": "ray_actor_options[\"resources\"].update",
+          "lineNumber": 188
+        },
+        {
+          "caller": "create_deployment",
+          "callee": "logger.info",
+          "lineNumber": 189
+        },
+        {
+          "caller": "create_deployment",
+          "callee": "resolve_venv_path",
+          "lineNumber": 192
+        },
+        {
+          "caller": "create_deployment",
+          "callee": "logger.info",
+          "lineNumber": 196
+        },
+        {
+          "caller": "create_deployment",
+          "callee": "logger.info",
+          "lineNumber": 199
+        },
+        {
+          "caller": "create_deployment",
+          "callee": "list",
+          "lineNumber": 199
+        },
+        {
+          "caller": "create_deployment",
+          "callee": "scheduling_env_vars.keys",
+          "lineNumber": 199
+        },
+        {
+          "caller": "create_deployment",
+          "callee": "logger.info",
+          "lineNumber": 203
+        },
+        {
+          "caller": "create_deployment",
+          "callee": "engine_config.get",
+          "lineNumber": 210
+        },
+        {
+          "caller": "create_deployment",
+          "callee": "YOLODeployment.options(**deploy_opts).bind",
+          "lineNumber": 217
+        },
+        {
+          "caller": "create_deployment",
+          "callee": "YOLODeployment.options",
+          "lineNumber": 217
+        }
+      ],
+      "metrics": {
+        "importCount": 0,
+        "exportCount": 2,
+        "functionCount": 0,
+        "classCount": 2
+      }
+    },
+    {
+      "path": "ray_serve_cai/engines/mcp_engine.py",
+      "language": "python",
+      "fileCategory": "code",
+      "totalLines": 258,
+      "nonEmptyLines": 210,
+      "functions": [
+        {
+          "name": "_find_fastmcp",
+          "startLine": 43,
+          "endLine": 67,
+          "params": [
+            "module"
+          ]
+        },
+        {
+          "name": "_lifespan",
+          "startLine": 81,
+          "endLine": 102,
+          "params": [
+            "app"
+          ]
+        },
+        {
+          "name": "create_mcp_deployment",
+          "startLine": 203,
+          "endLine": 258,
+          "params": [
+            "engine_config",
+            "num_replicas",
+            "use_cpu",
+            "venv_path",
+            "scheduling_resources",
+            "scheduling_env_vars",
+            "**kwargs"
+          ]
+        }
+      ],
+      "classes": [
+        {
+          "name": "_RoutePathMiddleware",
+          "startLine": 105,
+          "endLine": 120,
+          "methods": [
+            "__init__",
+            "__call__"
+          ],
+          "properties": []
+        },
+        {
+          "name": "MCPEngine",
+          "startLine": 146,
+          "endLine": 196,
+          "methods": [
+            "__init__",
+            "engine_type",
+            "health_check"
+          ],
+          "properties": []
+        }
+      ],
+      "exports": [
+        {
+          "name": "_find_fastmcp",
+          "line": 43,
+          "isDefault": false
+        },
+        {
+          "name": "_lifespan",
+          "line": 80,
+          "isDefault": false
+        },
+        {
+          "name": "_RoutePathMiddleware",
+          "line": 105,
+          "isDefault": false
+        },
+        {
+          "name": "MCPEngine",
+          "line": 140,
+          "isDefault": false
+        },
+        {
+          "name": "create_mcp_deployment",
+          "line": 203,
+          "isDefault": false
+        }
+      ],
+      "callGraph": [
+        {
+          "caller": "_find_fastmcp",
+          "callee": "getattr",
+          "lineNumber": 53
+        },
+        {
+          "caller": "_find_fastmcp",
+          "callee": "isinstance",
+          "lineNumber": 54
+        },
+        {
+          "caller": "_find_fastmcp",
+          "callee": "dir",
+          "lineNumber": 58
+        },
+        {
+          "caller": "_find_fastmcp",
+          "callee": "getattr",
+          "lineNumber": 59
+        },
+        {
+          "caller": "_find_fastmcp",
+          "callee": "isinstance",
+          "lineNumber": 60
+        },
+        {
+          "caller": "_find_fastmcp",
+          "callee": "logger.info",
+          "lineNumber": 61
+        },
+        {
+          "caller": "_find_fastmcp",
+          "callee": "ValueError",
+          "lineNumber": 64
+        },
+        {
+          "caller": "_lifespan",
+          "callee": "_engine_config_store.get",
+          "lineNumber": 83
+        },
+        {
+          "caller": "_lifespan",
+          "callee": "engine_config.get",
+          "lineNumber": 84
+        },
+        {
+          "caller": "_lifespan",
+          "callee": "logger.warning",
+          "lineNumber": 87
+        },
+        {
+          "caller": "_lifespan",
+          "callee": "logger.info",
+          "lineNumber": 91
+        },
+        {
+          "caller": "_lifespan",
+          "callee": "importlib.import_module",
+          "lineNumber": 92
+        },
+        {
+          "caller": "_lifespan",
+          "callee": "_find_fastmcp",
+          "lineNumber": 93
+        },
+        {
+          "caller": "_lifespan",
+          "callee": "logger.info",
+          "lineNumber": 95
+        },
+        {
+          "caller": "_lifespan",
+          "callee": "app.mount",
+          "lineNumber": 97
+        },
+        {
+          "caller": "_lifespan",
+          "callee": "mcp_instance.streamable_http_app",
+          "lineNumber": 97
+        },
+        {
+          "caller": "_lifespan",
+          "callee": "mcp_instance.session_manager.run",
+          "lineNumber": 99
+        },
+        {
+          "caller": "_lifespan",
+          "callee": "logger.info",
+          "lineNumber": 100
+        },
+        {
+          "caller": "_lifespan",
+          "callee": "logger.info",
+          "lineNumber": 102
+        },
+        {
+          "caller": "__call__",
+          "callee": "scope.get",
+          "lineNumber": 113
+        },
+        {
+          "caller": "__call__",
+          "callee": "scope.get",
+          "lineNumber": 114
+        },
+        {
+          "caller": "__call__",
+          "callee": "path.startswith",
+          "lineNumber": 115
+        },
+        {
+          "caller": "__call__",
+          "callee": "len",
+          "lineNumber": 116
+        },
+        {
+          "caller": "__call__",
+          "callee": "remainder.startswith",
+          "lineNumber": 117
+        },
+        {
+          "caller": "__call__",
+          "callee": "dict",
+          "lineNumber": 118
+        },
+        {
+          "caller": "__call__",
+          "callee": "self.app",
+          "lineNumber": 120
+        },
+        {
+          "caller": "__init__",
+          "callee": "logger.info",
+          "lineNumber": 155
+        },
+        {
+          "caller": "__init__",
+          "callee": "engine_config.get",
+          "lineNumber": 156
+        },
+        {
+          "caller": "__init__",
+          "callee": "Counter",
+          "lineNumber": 163
+        },
+        {
+          "caller": "__init__",
+          "callee": "Histogram",
+          "lineNumber": 168
+        },
+        {
+          "caller": "__init__",
+          "callee": "Counter",
+          "lineNumber": 173
+        },
+        {
+          "caller": "__init__",
+          "callee": "Histogram",
+          "lineNumber": 178
+        },
+        {
+          "caller": "__init__",
+          "callee": "logger.info",
+          "lineNumber": 184
+        },
+        {
+          "caller": "create_mcp_deployment",
+          "callee": "engine_config.get",
+          "lineNumber": 226
+        },
+        {
+          "caller": "create_mcp_deployment",
+          "callee": "logger.info",
+          "lineNumber": 232
+        },
+        {
+          "caller": "create_mcp_deployment",
+          "callee": "logger.info",
+          "lineNumber": 235
+        },
+        {
+          "caller": "create_mcp_deployment",
+          "callee": "list",
+          "lineNumber": 235
+        },
+        {
+          "caller": "create_mcp_deployment",
+          "callee": "scheduling_env_vars.keys",
+          "lineNumber": 235
+        },
+        {
+          "caller": "create_mcp_deployment",
+          "callee": "ray_actor_options.setdefault",
+          "lineNumber": 239
+        },
+        {
+          "caller": "create_mcp_deployment",
+          "callee": "ray_actor_options[\"resources\"].update",
+          "lineNumber": 240
+        },
+        {
+          "caller": "create_mcp_deployment",
+          "callee": "logger.info",
+          "lineNumber": 241
+        },
+        {
+          "caller": "create_mcp_deployment",
+          "callee": "engine_config.get",
+          "lineNumber": 249
+        },
+        {
+          "caller": "create_mcp_deployment",
+          "callee": "opts.pop",
+          "lineNumber": 252
+        },
+        {
+          "caller": "create_mcp_deployment",
+          "callee": "logger.info",
+          "lineNumber": 254
+        },
+        {
+          "caller": "create_mcp_deployment",
+          "callee": "engine_config.get",
+          "lineNumber": 255
+        },
+        {
+          "caller": "create_mcp_deployment",
+          "callee": "MCPEngine.options",
+          "lineNumber": 257
+        },
+        {
+          "caller": "create_mcp_deployment",
+          "callee": "deployment.bind",
+          "lineNumber": 258
+        }
+      ],
+      "metrics": {
+        "importCount": 0,
+        "exportCount": 5,
+        "functionCount": 3,
+        "classCount": 2
+      }
+    },
+    {
+      "path": "ray_serve_cai/engines/mcp_config.py",
+      "language": "python",
+      "fileCategory": "code",
+      "totalLines": 88,
+      "nonEmptyLines": 68,
+      "classes": [
+        {
+          "name": "MCPConfigBuilder",
+          "startLine": 13,
+          "endLine": 55,
+          "methods": [
+            "build_config",
+            "validate_config",
+            "get_default_config"
+          ],
+          "properties": []
+        },
+        {
+          "name": "MCPDeploymentFactory",
+          "startLine": 58,
+          "endLine": 88,
+          "methods": [
+            "create_deployment"
+          ],
+          "properties": []
+        }
+      ],
+      "exports": [
+        {
+          "name": "MCPConfigBuilder",
+          "line": 13,
+          "isDefault": false
+        },
+        {
+          "name": "MCPDeploymentFactory",
+          "line": 58,
+          "isDefault": false
+        }
+      ],
+      "callGraph": [
+        {
+          "caller": "build_config",
+          "callee": "self.validate_config",
+          "lineNumber": 37
+        },
+        {
+          "caller": "build_config",
+          "callee": "ValueError",
+          "lineNumber": 39
+        },
+        {
+          "caller": "build_config",
+          "callee": "float",
+          "lineNumber": 43
+        },
+        {
+          "caller": "build_config",
+          "callee": "user_config.get",
+          "lineNumber": 43
+        },
+        {
+          "caller": "build_config",
+          "callee": "user_config.get",
+          "lineNumber": 44
+        },
+        {
+          "caller": "validate_config",
+          "callee": "user_config.get",
+          "lineNumber": 50
+        },
+        {
+          "caller": "create_deployment",
+          "callee": "resolve_venv_path",
+          "lineNumber": 76
+        },
+        {
+          "caller": "create_deployment",
+          "callee": "engine_config.pop",
+          "lineNumber": 78
+        },
+        {
+          "caller": "create_deployment",
+          "callee": "engine_config.pop",
+          "lineNumber": 79
+        },
+        {
+          "caller": "create_deployment",
+          "callee": "create_mcp_deployment",
+          "lineNumber": 81
+        }
+      ],
+      "metrics": {
+        "importCount": 0,
+        "exportCount": 2,
+        "functionCount": 0,
+        "classCount": 2
+      }
+    }
+  ]
+}

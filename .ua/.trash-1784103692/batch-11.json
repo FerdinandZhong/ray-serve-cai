@@ -1,0 +1,63 @@
+{
+  "nodes": [
+    {
+      "id": "file:ray_serve_cai/management/services/setup_logging.py",
+      "type": "file",
+      "name": "setup_logging.py",
+      "filePath": "ray_serve_cai/management/services/setup_logging.py",
+      "summary": "Provides the setup_serve_logging() function called during FastAPI application startup to configure structured logging for the Ray Serve management API.",
+      "tags": ["utility", "service"],
+      "complexity": "simple"
+    },
+    {
+      "id": "file:ray_serve_cai/management/services/cai_cluster_manager.py",
+      "type": "file",
+      "name": "cai_cluster_manager.py",
+      "filePath": "ray_serve_cai/management/services/cai_cluster_manager.py",
+      "summary": "Defines CAIClusterManager — the service class that orchestrates Ray cluster startup and teardown on Cloudera AI by launching head and worker CML applications and waiting for cluster readiness.",
+      "tags": ["service", "middleware"],
+      "complexity": "complex"
+    },
+    {
+      "id": "file:ray_serve_cai/management/services/worker_node.py",
+      "type": "file",
+      "name": "worker_node.py",
+      "filePath": "ray_serve_cai/management/services/worker_node.py",
+      "summary": "Defines data structures and logic for CML worker node lifecycle management, representing the node configuration and state transitions used by CAIClusterManager.",
+      "tags": ["data-model", "service"],
+      "complexity": "moderate"
+    },
+    {
+      "id": "file:ray_serve_cai/management/services/nginx_service.py",
+      "type": "file",
+      "name": "nginx_service.py",
+      "filePath": "ray_serve_cai/management/services/nginx_service.py",
+      "summary": "Manages nginx process lifecycle for the reverse proxy that fronts the management API, including starting, stopping, and health-checking the nginx subprocess.",
+      "tags": ["service", "middleware"],
+      "complexity": "moderate"
+    }
+  ],
+  "edges": [
+    {
+      "source": "file:ray_serve_cai/management/app.py",
+      "target": "file:ray_serve_cai/management/services/setup_logging.py",
+      "type": "depends_on",
+      "direction": "forward",
+      "weight": 0.6
+    },
+    {
+      "source": "file:cai_integration/launch_ray_cluster.py",
+      "target": "file:ray_serve_cai/management/services/cai_cluster_manager.py",
+      "type": "depends_on",
+      "direction": "forward",
+      "weight": 0.6
+    },
+    {
+      "source": "file:tests/test_e2e_deployment.py",
+      "target": "file:ray_serve_cai/management/services/cai_cluster_manager.py",
+      "type": "depends_on",
+      "direction": "forward",
+      "weight": 0.6
+    }
+  ]
+}

@@ -1,0 +1,1219 @@
+{
+  "scriptCompleted": true,
+  "filesAnalyzed": 6,
+  "filesSkipped": [
+    "ray_serve_cai/management/services/cml_client.py"
+  ],
+  "results": [
+    {
+      "path": "ray_serve_cai/management/api/engines.py",
+      "language": "python",
+      "fileCategory": "code",
+      "totalLines": 100,
+      "nonEmptyLines": 80,
+      "functions": [
+        {
+          "name": "register_engine_endpoint",
+          "startLine": 42,
+          "endLine": 93,
+          "params": [
+            "body",
+            "request"
+          ]
+        },
+        {
+          "name": "list_engines_endpoint",
+          "startLine": 97,
+          "endLine": 100,
+          "params": []
+        }
+      ],
+      "classes": [
+        {
+          "name": "EngineRegisterRequest",
+          "startLine": 33,
+          "endLine": 38,
+          "methods": [],
+          "properties": [
+            "engine_type",
+            "module_path",
+            "config_builder_class",
+            "deployment_factory_class",
+            "engine_class"
+          ]
+        }
+      ],
+      "exports": [
+        {
+          "name": "EngineRegisterRequest",
+          "line": 33,
+          "isDefault": false
+        },
+        {
+          "name": "register_engine_endpoint",
+          "line": 41,
+          "isDefault": false
+        },
+        {
+          "name": "list_engines_endpoint",
+          "line": 96,
+          "isDefault": false
+        }
+      ],
+      "callGraph": [
+        {
+          "caller": "register_engine_endpoint",
+          "callee": "any",
+          "lineNumber": 51
+        },
+        {
+          "caller": "register_engine_endpoint",
+          "callee": "body.module_path.startswith",
+          "lineNumber": 51
+        },
+        {
+          "caller": "register_engine_endpoint",
+          "callee": "HTTPException",
+          "lineNumber": 52
+        },
+        {
+          "caller": "register_engine_endpoint",
+          "callee": "importlib.import_module",
+          "lineNumber": 58
+        },
+        {
+          "caller": "register_engine_endpoint",
+          "callee": "HTTPException",
+          "lineNumber": 60
+        },
+        {
+          "caller": "register_engine_endpoint",
+          "callee": "get_registry",
+          "lineNumber": 65
+        },
+        {
+          "caller": "register_engine_endpoint",
+          "callee": "registry.list_engines",
+          "lineNumber": 66
+        },
+        {
+          "caller": "register_engine_endpoint",
+          "callee": "HTTPException",
+          "lineNumber": 67
+        },
+        {
+          "caller": "register_engine_endpoint",
+          "callee": "getattr",
+          "lineNumber": 73
+        },
+        {
+          "caller": "register_engine_endpoint",
+          "callee": "getattr",
+          "lineNumber": 74
+        },
+        {
+          "caller": "register_engine_endpoint",
+          "callee": "getattr",
+          "lineNumber": 76
+        },
+        {
+          "caller": "register_engine_endpoint",
+          "callee": "type",
+          "lineNumber": 78
+        },
+        {
+          "caller": "register_engine_endpoint",
+          "callee": "HTTPException",
+          "lineNumber": 81
+        },
+        {
+          "caller": "register_engine_endpoint",
+          "callee": "register_engine",
+          "lineNumber": 83
+        },
+        {
+          "caller": "register_engine_endpoint",
+          "callee": "logger.info",
+          "lineNumber": 86
+        },
+        {
+          "caller": "list_engines_endpoint",
+          "callee": "get_registry",
+          "lineNumber": 99
+        },
+        {
+          "caller": "list_engines_endpoint",
+          "callee": "registry.list_engines",
+          "lineNumber": 100
+        },
+        {
+          "caller": "list_engines_endpoint",
+          "callee": "registry.get_default_engine",
+          "lineNumber": 100
+        }
+      ],
+      "metrics": {
+        "importCount": 3,
+        "exportCount": 3,
+        "functionCount": 2,
+        "classCount": 1
+      }
+    },
+    {
+      "path": "ray_serve_cai/management/api/environments.py",
+      "language": "python",
+      "fileCategory": "code",
+      "totalLines": 196,
+      "nonEmptyLines": 165,
+      "functions": [
+        {
+          "name": "_import_setup",
+          "startLine": 65,
+          "endLine": 75,
+          "params": []
+        },
+        {
+          "name": "_is_ready",
+          "startLine": 78,
+          "endLine": 83,
+          "params": [
+            "name"
+          ]
+        },
+        {
+          "name": "_run_creation",
+          "startLine": 86,
+          "endLine": 101,
+          "params": [
+            "name",
+            "packages",
+            "python"
+          ]
+        },
+        {
+          "name": "_discover_disk_venvs",
+          "startLine": 104,
+          "endLine": 113,
+          "params": []
+        },
+        {
+          "name": "list_environments",
+          "startLine": 117,
+          "endLine": 137,
+          "params": []
+        },
+        {
+          "name": "get_environment",
+          "startLine": 141,
+          "endLine": 159,
+          "params": [
+            "name"
+          ]
+        },
+        {
+          "name": "create_environment",
+          "startLine": 163,
+          "endLine": 196,
+          "params": [
+            "body"
+          ]
+        }
+      ],
+      "classes": [
+        {
+          "name": "CreateEnvironmentRequest",
+          "startLine": 39,
+          "endLine": 62,
+          "methods": [],
+          "properties": [
+            "name",
+            "packages",
+            "python"
+          ]
+        }
+      ],
+      "exports": [
+        {
+          "name": "CreateEnvironmentRequest",
+          "line": 39,
+          "isDefault": false
+        },
+        {
+          "name": "_import_setup",
+          "line": 65,
+          "isDefault": false
+        },
+        {
+          "name": "_is_ready",
+          "line": 78,
+          "isDefault": false
+        },
+        {
+          "name": "_run_creation",
+          "line": 86,
+          "isDefault": false
+        },
+        {
+          "name": "_discover_disk_venvs",
+          "line": 104,
+          "isDefault": false
+        },
+        {
+          "name": "list_environments",
+          "line": 116,
+          "isDefault": false
+        },
+        {
+          "name": "get_environment",
+          "line": 140,
+          "isDefault": false
+        },
+        {
+          "name": "create_environment",
+          "line": 162,
+          "isDefault": false
+        }
+      ],
+      "callGraph": [
+        {
+          "caller": "_import_setup",
+          "callee": "os.environ.get",
+          "lineNumber": 71
+        },
+        {
+          "caller": "_import_setup",
+          "callee": "sys.path.insert",
+          "lineNumber": 73
+        },
+        {
+          "caller": "_is_ready",
+          "callee": "_import_setup",
+          "lineNumber": 80
+        },
+        {
+          "caller": "_is_ready",
+          "callee": "bool",
+          "lineNumber": 81
+        },
+        {
+          "caller": "_is_ready",
+          "callee": "is_venv_ready",
+          "lineNumber": 81
+        },
+        {
+          "caller": "_is_ready",
+          "callee": "venv_dir_for",
+          "lineNumber": 81
+        },
+        {
+          "caller": "_is_ready",
+          "callee": "Path(venv_dir_for(name)).exists",
+          "lineNumber": 83
+        },
+        {
+          "caller": "_is_ready",
+          "callee": "Path",
+          "lineNumber": 83
+        },
+        {
+          "caller": "_is_ready",
+          "callee": "venv_dir_for",
+          "lineNumber": 83
+        },
+        {
+          "caller": "_run_creation",
+          "callee": "_import_setup",
+          "lineNumber": 89
+        },
+        {
+          "caller": "_run_creation",
+          "callee": "setup_engine_venv",
+          "lineNumber": 90
+        },
+        {
+          "caller": "_run_creation",
+          "callee": "logger.info",
+          "lineNumber": 97
+        },
+        {
+          "caller": "_run_creation",
+          "callee": "str",
+          "lineNumber": 100
+        },
+        {
+          "caller": "_run_creation",
+          "callee": "logger.exception",
+          "lineNumber": 101
+        },
+        {
+          "caller": "_discover_disk_venvs",
+          "callee": "Path",
+          "lineNumber": 106
+        },
+        {
+          "caller": "_discover_disk_venvs",
+          "callee": "base.exists",
+          "lineNumber": 107
+        },
+        {
+          "caller": "_discover_disk_venvs",
+          "callee": "base.glob",
+          "lineNumber": 110
+        },
+        {
+          "caller": "_discover_disk_venvs",
+          "callee": "p.is_dir",
+          "lineNumber": 111
+        },
+        {
+          "caller": "_discover_disk_venvs",
+          "callee": "out.append",
+          "lineNumber": 112
+        },
+        {
+          "caller": "_discover_disk_venvs",
+          "callee": "len",
+          "lineNumber": 112
+        },
+        {
+          "caller": "_discover_disk_venvs",
+          "callee": "sorted",
+          "lineNumber": 113
+        },
+        {
+          "caller": "list_environments",
+          "callee": "set",
+          "lineNumber": 119
+        },
+        {
+          "caller": "list_environments",
+          "callee": "_discover_disk_venvs",
+          "lineNumber": 119
+        },
+        {
+          "caller": "list_environments",
+          "callee": "names.update",
+          "lineNumber": 121
+        },
+        {
+          "caller": "list_environments",
+          "callee": "_CREATIONS.keys",
+          "lineNumber": 121
+        },
+        {
+          "caller": "list_environments",
+          "callee": "sorted",
+          "lineNumber": 124
+        },
+        {
+          "caller": "list_environments",
+          "callee": "_is_ready",
+          "lineNumber": 125
+        },
+        {
+          "caller": "list_environments",
+          "callee": "_CREATIONS.get",
+          "lineNumber": 127
+        },
+        {
+          "caller": "list_environments",
+          "callee": "envs.append",
+          "lineNumber": 129
+        },
+        {
+          "caller": "list_environments",
+          "callee": "venv_dir_for",
+          "lineNumber": 131
+        },
+        {
+          "caller": "list_environments",
+          "callee": "(rec or {}).get",
+          "lineNumber": 134
+        },
+        {
+          "caller": "list_environments",
+          "callee": "(rec or {}).get",
+          "lineNumber": 135
+        },
+        {
+          "caller": "list_environments",
+          "callee": "len",
+          "lineNumber": 137
+        },
+        {
+          "caller": "get_environment",
+          "callee": "validate_venv_name",
+          "lineNumber": 143
+        },
+        {
+          "caller": "get_environment",
+          "callee": "HTTPException",
+          "lineNumber": 145
+        },
+        {
+          "caller": "get_environment",
+          "callee": "str",
+          "lineNumber": 145
+        },
+        {
+          "caller": "get_environment",
+          "callee": "_is_ready",
+          "lineNumber": 147
+        },
+        {
+          "caller": "get_environment",
+          "callee": "_CREATIONS.get",
+          "lineNumber": 149
+        },
+        {
+          "caller": "get_environment",
+          "callee": "HTTPException",
+          "lineNumber": 151
+        },
+        {
+          "caller": "get_environment",
+          "callee": "venv_dir_for",
+          "lineNumber": 154
+        },
+        {
+          "caller": "get_environment",
+          "callee": "(rec or {}).get",
+          "lineNumber": 157
+        },
+        {
+          "caller": "get_environment",
+          "callee": "(rec or {}).get",
+          "lineNumber": 158
+        },
+        {
+          "caller": "create_environment",
+          "callee": "validate_venv_name",
+          "lineNumber": 166
+        },
+        {
+          "caller": "create_environment",
+          "callee": "HTTPException",
+          "lineNumber": 168
+        },
+        {
+          "caller": "create_environment",
+          "callee": "str",
+          "lineNumber": 168
+        },
+        {
+          "caller": "create_environment",
+          "callee": "_is_ready",
+          "lineNumber": 170
+        },
+        {
+          "caller": "create_environment",
+          "callee": "_CREATIONS.get",
+          "lineNumber": 174
+        },
+        {
+          "caller": "create_environment",
+          "callee": "HTTPException",
+          "lineNumber": 176
+        },
+        {
+          "caller": "create_environment",
+          "callee": "threading.Thread",
+          "lineNumber": 184
+        },
+        {
+          "caller": "create_environment",
+          "callee": "thread.start",
+          "lineNumber": 189
+        },
+        {
+          "caller": "create_environment",
+          "callee": "venv_dir_for",
+          "lineNumber": 194
+        }
+      ],
+      "metrics": {
+        "importCount": 2,
+        "exportCount": 8,
+        "functionCount": 7,
+        "classCount": 1
+      }
+    },
+    {
+      "path": "ray_serve_cai/management/services/__init__.py",
+      "language": "python",
+      "fileCategory": "code",
+      "totalLines": 7,
+      "nonEmptyLines": 5,
+      "metrics": {
+        "importCount": 1,
+        "exportCount": 0,
+        "functionCount": 0,
+        "classCount": 0
+      }
+    },
+    {
+      "path": "ray_serve_cai/management/services/coordinator.py",
+      "language": "python",
+      "fileCategory": "code",
+      "totalLines": 377,
+      "nonEmptyLines": 325,
+      "functions": [
+        {
+          "name": "_detect_node_type",
+          "startLine": 29,
+          "endLine": 42,
+          "params": [
+            "resources"
+          ]
+        }
+      ],
+      "classes": [
+        {
+          "name": "CoordinatorService",
+          "startLine": 45,
+          "endLine": 377,
+          "methods": [
+            "__init__",
+            "load_state",
+            "save_state",
+            "add_node_mapping",
+            "remove_node_mapping",
+            "get_enriched_nodes",
+            "get_worker_apps",
+            "_head_app_name",
+            "get_cluster_status",
+            "add_worker_node",
+            "remove_worker_node",
+            "launch_cai_application",
+            "remove_cai_application",
+            "get_resource_map"
+          ],
+          "properties": []
+        }
+      ],
+      "exports": [
+        {
+          "name": "_detect_node_type",
+          "line": 29,
+          "isDefault": false
+        },
+        {
+          "name": "CoordinatorService",
+          "line": 45,
+          "isDefault": false
+        }
+      ],
+      "callGraph": [
+        {
+          "caller": "_detect_node_type",
+          "callee": "key.startswith",
+          "lineNumber": 40
+        },
+        {
+          "caller": "_detect_node_type",
+          "callee": "len",
+          "lineNumber": 41
+        },
+        {
+          "caller": "__init__",
+          "callee": "ResourceMap",
+          "lineNumber": 58
+        },
+        {
+          "caller": "__init__",
+          "callee": "Path",
+          "lineNumber": 59
+        },
+        {
+          "caller": "load_state",
+          "callee": "self.state_file.exists",
+          "lineNumber": 68
+        },
+        {
+          "caller": "load_state",
+          "callee": "open",
+          "lineNumber": 70
+        },
+        {
+          "caller": "load_state",
+          "callee": "json.load",
+          "lineNumber": 71
+        },
+        {
+          "caller": "load_state",
+          "callee": "logger.error",
+          "lineNumber": 73
+        },
+        {
+          "caller": "save_state",
+          "callee": "open",
+          "lineNumber": 85
+        },
+        {
+          "caller": "save_state",
+          "callee": "json.dump",
+          "lineNumber": 86
+        },
+        {
+          "caller": "save_state",
+          "callee": "logger.error",
+          "lineNumber": 88
+        },
+        {
+          "caller": "add_node_mapping",
+          "callee": "self.load_state",
+          "lineNumber": 99
+        },
+        {
+          "caller": "add_node_mapping",
+          "callee": "self.save_state",
+          "lineNumber": 104
+        },
+        {
+          "caller": "remove_node_mapping",
+          "callee": "self.load_state",
+          "lineNumber": 113
+        },
+        {
+          "caller": "remove_node_mapping",
+          "callee": "self.save_state",
+          "lineNumber": 116
+        },
+        {
+          "caller": "get_enriched_nodes",
+          "callee": "self.ray_service.get_nodes",
+          "lineNumber": 129
+        },
+        {
+          "caller": "get_enriched_nodes",
+          "callee": "self.load_state",
+          "lineNumber": 130
+        },
+        {
+          "caller": "get_enriched_nodes",
+          "callee": "state.get",
+          "lineNumber": 131
+        },
+        {
+          "caller": "get_enriched_nodes",
+          "callee": "self.cai_service.list_applications",
+          "lineNumber": 136
+        },
+        {
+          "caller": "get_enriched_nodes",
+          "callee": "app.get",
+          "lineNumber": 138
+        },
+        {
+          "caller": "get_enriched_nodes",
+          "callee": "logger.warning",
+          "lineNumber": 140
+        },
+        {
+          "caller": "get_enriched_nodes",
+          "callee": "node.get",
+          "lineNumber": 144
+        },
+        {
+          "caller": "get_enriched_nodes",
+          "callee": "node_mapping.get",
+          "lineNumber": 145
+        },
+        {
+          "caller": "get_enriched_nodes",
+          "callee": "mapping.get",
+          "lineNumber": 146
+        },
+        {
+          "caller": "get_enriched_nodes",
+          "callee": "node.get",
+          "lineNumber": 149
+        },
+        {
+          "caller": "get_enriched_nodes",
+          "callee": "_detect_node_type",
+          "lineNumber": 150
+        },
+        {
+          "caller": "get_enriched_nodes",
+          "callee": "node.get",
+          "lineNumber": 150
+        },
+        {
+          "caller": "get_enriched_nodes",
+          "callee": "node.get",
+          "lineNumber": 151
+        },
+        {
+          "caller": "get_enriched_nodes",
+          "callee": "node.get",
+          "lineNumber": 152
+        },
+        {
+          "caller": "get_enriched_nodes",
+          "callee": "node.get",
+          "lineNumber": 153
+        },
+        {
+          "caller": "get_enriched_nodes",
+          "callee": "node.get",
+          "lineNumber": 154
+        },
+        {
+          "caller": "get_enriched_nodes",
+          "callee": "mapping.get",
+          "lineNumber": 156
+        },
+        {
+          "caller": "get_enriched_nodes",
+          "callee": "cml_status_by_id.get",
+          "lineNumber": 157
+        },
+        {
+          "caller": "get_enriched_nodes",
+          "callee": "enriched_nodes.append",
+          "lineNumber": 159
+        },
+        {
+          "caller": "get_worker_apps",
+          "callee": "self.cai_service.list_applications",
+          "lineNumber": 172
+        },
+        {
+          "caller": "get_worker_apps",
+          "callee": "logger.error",
+          "lineNumber": 174
+        },
+        {
+          "caller": "get_worker_apps",
+          "callee": "app.get",
+          "lineNumber": 179
+        },
+        {
+          "caller": "get_worker_apps",
+          "callee": "app.get",
+          "lineNumber": 180
+        },
+        {
+          "caller": "get_worker_apps",
+          "callee": "name.startswith",
+          "lineNumber": 182
+        },
+        {
+          "caller": "get_worker_apps",
+          "callee": "self._head_app_name",
+          "lineNumber": 182
+        },
+        {
+          "caller": "get_worker_apps",
+          "callee": "workers.append",
+          "lineNumber": 183
+        },
+        {
+          "caller": "_head_app_name",
+          "callee": "self.cai_service._load_cluster_info",
+          "lineNumber": 193
+        },
+        {
+          "caller": "_head_app_name",
+          "callee": "info.get",
+          "lineNumber": 194
+        },
+        {
+          "caller": "get_cluster_status",
+          "callee": "self.ray_service.get_nodes",
+          "lineNumber": 206
+        },
+        {
+          "caller": "get_cluster_status",
+          "callee": "sum",
+          "lineNumber": 207
+        },
+        {
+          "caller": "get_cluster_status",
+          "callee": "n.get",
+          "lineNumber": 207
+        },
+        {
+          "caller": "get_cluster_status",
+          "callee": "self.ray_service.get_cluster_resources",
+          "lineNumber": 210
+        },
+        {
+          "caller": "get_cluster_status",
+          "callee": "self.ray_service.get_available_resources",
+          "lineNumber": 211
+        },
+        {
+          "caller": "get_cluster_status",
+          "callee": "total_resources.get",
+          "lineNumber": 213
+        },
+        {
+          "caller": "get_cluster_status",
+          "callee": "available_resources.get",
+          "lineNumber": 214
+        },
+        {
+          "caller": "get_cluster_status",
+          "callee": "total_resources.get",
+          "lineNumber": 215
+        },
+        {
+          "caller": "get_cluster_status",
+          "callee": "available_resources.get",
+          "lineNumber": 216
+        },
+        {
+          "caller": "get_cluster_status",
+          "callee": "self.ray_service.list_applications",
+          "lineNumber": 223
+        },
+        {
+          "caller": "get_cluster_status",
+          "callee": "len",
+          "lineNumber": 226
+        },
+        {
+          "caller": "get_cluster_status",
+          "callee": "len",
+          "lineNumber": 227
+        },
+        {
+          "caller": "get_cluster_status",
+          "callee": "len",
+          "lineNumber": 229
+        },
+        {
+          "caller": "get_cluster_status",
+          "callee": "total_resources.get",
+          "lineNumber": 235
+        },
+        {
+          "caller": "get_cluster_status",
+          "callee": "available_resources.get",
+          "lineNumber": 236
+        },
+        {
+          "caller": "get_cluster_status",
+          "callee": "round",
+          "lineNumber": 237
+        },
+        {
+          "caller": "add_worker_node",
+          "callee": "self.cai_service.create_worker_node",
+          "lineNumber": 252
+        },
+        {
+          "caller": "add_worker_node",
+          "callee": "self.resource_map.register_worker",
+          "lineNumber": 258
+        },
+        {
+          "caller": "add_worker_node",
+          "callee": "logger.info",
+          "lineNumber": 266
+        },
+        {
+          "caller": "add_worker_node",
+          "callee": "result.get",
+          "lineNumber": 266
+        },
+        {
+          "caller": "remove_worker_node",
+          "callee": "self.load_state",
+          "lineNumber": 277
+        },
+        {
+          "caller": "remove_worker_node",
+          "callee": "state.get",
+          "lineNumber": 278
+        },
+        {
+          "caller": "remove_worker_node",
+          "callee": "node_mapping.items",
+          "lineNumber": 281
+        },
+        {
+          "caller": "remove_worker_node",
+          "callee": "mapping.get",
+          "lineNumber": 282
+        },
+        {
+          "caller": "remove_worker_node",
+          "callee": "self.cai_service.delete_application",
+          "lineNumber": 290
+        },
+        {
+          "caller": "remove_worker_node",
+          "callee": "str",
+          "lineNumber": 292
+        },
+        {
+          "caller": "remove_worker_node",
+          "callee": "logger.warning",
+          "lineNumber": 293
+        },
+        {
+          "caller": "remove_worker_node",
+          "callee": "self.resource_map.unregister_worker",
+          "lineNumber": 299
+        },
+        {
+          "caller": "remove_worker_node",
+          "callee": "self.remove_node_mapping",
+          "lineNumber": 302
+        },
+        {
+          "caller": "remove_worker_node",
+          "callee": "logger.info",
+          "lineNumber": 303
+        },
+        {
+          "caller": "launch_cai_application",
+          "callee": "self.resource_map.validate",
+          "lineNumber": 330
+        },
+        {
+          "caller": "launch_cai_application",
+          "callee": "self.cai_service.launch_cai_application",
+          "lineNumber": 332
+        },
+        {
+          "caller": "launch_cai_application",
+          "callee": "self.resource_map.allocate",
+          "lineNumber": 342
+        },
+        {
+          "caller": "remove_cai_application",
+          "callee": "self.cai_service.delete_application",
+          "lineNumber": 353
+        },
+        {
+          "caller": "remove_cai_application",
+          "callee": "self.resource_map.release",
+          "lineNumber": 354
+        },
+        {
+          "caller": "get_resource_map",
+          "callee": "self.cai_service.list_applications",
+          "lineNumber": 366
+        },
+        {
+          "caller": "get_resource_map",
+          "callee": "a.get",
+          "lineNumber": 369
+        },
+        {
+          "caller": "get_resource_map",
+          "callee": "self.resource_map.sync",
+          "lineNumber": 371
+        },
+        {
+          "caller": "get_resource_map",
+          "callee": "logger.info",
+          "lineNumber": 373
+        },
+        {
+          "caller": "get_resource_map",
+          "callee": "logger.warning",
+          "lineNumber": 375
+        },
+        {
+          "caller": "get_resource_map",
+          "callee": "self.resource_map.get_summary",
+          "lineNumber": 377
+        }
+      ],
+      "metrics": {
+        "importCount": 2,
+        "exportCount": 2,
+        "functionCount": 1,
+        "classCount": 1
+      }
+    },
+    {
+      "path": "ray_serve_cai/management/app.py",
+      "language": "python",
+      "fileCategory": "code",
+      "totalLines": 152,
+      "nonEmptyLines": 119,
+      "functions": [
+        {
+          "name": "lifespan",
+          "startLine": 31,
+          "endLine": 75,
+          "params": [
+            "app"
+          ]
+        },
+        {
+          "name": "root",
+          "startLine": 108,
+          "endLine": 115,
+          "params": []
+        },
+        {
+          "name": "health_check",
+          "startLine": 119,
+          "endLine": 125,
+          "params": []
+        },
+        {
+          "name": "get_coordinator_service",
+          "startLine": 128,
+          "endLine": 136,
+          "params": []
+        }
+      ],
+      "exports": [
+        {
+          "name": "lifespan",
+          "line": 30,
+          "isDefault": false
+        },
+        {
+          "name": "root",
+          "line": 107,
+          "isDefault": false
+        },
+        {
+          "name": "health_check",
+          "line": 118,
+          "isDefault": false
+        },
+        {
+          "name": "get_coordinator_service",
+          "line": 128,
+          "isDefault": false
+        }
+      ],
+      "callGraph": [
+        {
+          "caller": "lifespan",
+          "callee": "setup_serve_logging",
+          "lineNumber": 35
+        },
+        {
+          "caller": "lifespan",
+          "callee": "logger.info",
+          "lineNumber": 36
+        },
+        {
+          "caller": "lifespan",
+          "callee": "os.environ.get",
+          "lineNumber": 39
+        },
+        {
+          "caller": "lifespan",
+          "callee": "RayService",
+          "lineNumber": 40
+        },
+        {
+          "caller": "lifespan",
+          "callee": "os.environ.get(\"CDSW_DOMAIN\", \"\").strip",
+          "lineNumber": 44
+        },
+        {
+          "caller": "lifespan",
+          "callee": "os.environ.get",
+          "lineNumber": 44
+        },
+        {
+          "caller": "lifespan",
+          "callee": "os.environ.get",
+          "lineNumber": 45
+        },
+        {
+          "caller": "lifespan",
+          "callee": "os.environ.get",
+          "lineNumber": 47
+        },
+        {
+          "caller": "lifespan",
+          "callee": "os.environ.get",
+          "lineNumber": 47
+        },
+        {
+          "caller": "lifespan",
+          "callee": "logger.warning",
+          "lineNumber": 49
+        },
+        {
+          "caller": "lifespan",
+          "callee": "logger.info",
+          "lineNumber": 51
+        },
+        {
+          "caller": "lifespan",
+          "callee": "logger.info",
+          "lineNumber": 52
+        },
+        {
+          "caller": "lifespan",
+          "callee": "CAIService",
+          "lineNumber": 55
+        },
+        {
+          "caller": "lifespan",
+          "callee": "logger.info",
+          "lineNumber": 56
+        },
+        {
+          "caller": "lifespan",
+          "callee": "logger.error",
+          "lineNumber": 58
+        },
+        {
+          "caller": "lifespan",
+          "callee": "CoordinatorService",
+          "lineNumber": 63
+        },
+        {
+          "caller": "lifespan",
+          "callee": "logger.info",
+          "lineNumber": 64
+        },
+        {
+          "caller": "lifespan",
+          "callee": "logger.error",
+          "lineNumber": 66
+        },
+        {
+          "caller": "lifespan",
+          "callee": "logger.info",
+          "lineNumber": 71
+        },
+        {
+          "caller": "lifespan",
+          "callee": "logger.info",
+          "lineNumber": 75
+        },
+        {
+          "caller": "get_coordinator_service",
+          "callee": "RuntimeError",
+          "lineNumber": 135
+        }
+      ],
+      "metrics": {
+        "importCount": 2,
+        "exportCount": 4,
+        "functionCount": 4,
+        "classCount": 0
+      }
+    },
+    {
+      "path": "ray_serve_cai/management/__init__.py",
+      "language": "python",
+      "fileCategory": "code",
+      "totalLines": 3,
+      "nonEmptyLines": 2,
+      "metrics": {
+        "importCount": 0,
+        "exportCount": 0,
+        "functionCount": 0,
+        "classCount": 0
+      }
+    }
+  ]
+}

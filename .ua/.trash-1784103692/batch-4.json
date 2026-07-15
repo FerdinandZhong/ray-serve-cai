@@ -1,0 +1,169 @@
+{
+  "nodes": [
+    {
+      "id": "file:cai_integration/setup_environment.py",
+      "type": "file",
+      "name": "setup_environment.py",
+      "filePath": "cai_integration/setup_environment.py",
+      "summary": "Main CML environment setup script that installs nginx from source, creates isolated Python virtual environments using uv, pins Ray and other packages to match the base environment, and installs engine-specific packages — runnable as a CLI entry point or importable as a library.",
+      "tags": ["entry-point", "script", "utility"],
+      "complexity": "complex",
+      "languageNotes": "Uses fcntl.flock for cross-process lock safety during venv creation; pin helpers use regex to match and rewrite package version specifiers."
+    },
+    {
+      "id": "file:cai_integration/setup_vllm_env.py",
+      "type": "file",
+      "name": "setup_vllm_env.py",
+      "filePath": "cai_integration/setup_vllm_env.py",
+      "summary": "Thin CLI wrapper script that invokes setup_engine_venv() with the vLLM-specific package list and verifies the resulting venv has a working vLLM installation.",
+      "tags": ["entry-point", "script", "utility"],
+      "complexity": "simple"
+    },
+    {
+      "id": "file:cai_integration/__init__.py",
+      "type": "file",
+      "name": "__init__.py",
+      "filePath": "cai_integration/__init__.py",
+      "summary": "Package initializer for the cai_integration module, re-exporting core setup and utility functions for use by the management API and environment router.",
+      "tags": ["barrel", "entry-point"],
+      "complexity": "simple"
+    },
+    {
+      "id": "file:cai_integration/resource_map.py",
+      "type": "file",
+      "name": "resource_map.py",
+      "filePath": "cai_integration/resource_map.py",
+      "summary": "Defines ResourceMap — a data structure tracking CPU/memory/GPU resource allocation across CML worker nodes, supporting register, unregister, allocate, release, sync, validate, and summary operations used by CoordinatorService.",
+      "tags": ["data-model", "service", "utility"],
+      "complexity": "moderate"
+    },
+    {
+      "id": "file:cai_integration/validate_venv.py",
+      "type": "file",
+      "name": "validate_venv.py",
+      "filePath": "cai_integration/validate_venv.py",
+      "summary": "Utility module providing venv path resolution (venv_dir_for) and readiness validation (is_venv_ready, validate_venv_name) functions used by the environments API router.",
+      "tags": ["utility", "validation"],
+      "complexity": "simple"
+    },
+    {
+      "id": "function:cai_integration/setup_environment.py:setup_engine_venv",
+      "type": "function",
+      "name": "setup_engine_venv",
+      "filePath": "cai_integration/setup_environment.py",
+      "lineRange": [270, 340],
+      "summary": "Core venv creation function that creates a uv virtualenv, pins Ray and protobuf to match the base environment, installs engine packages, and verifies the result — with file-lock protection for concurrent callers.",
+      "tags": ["utility", "factory"],
+      "complexity": "complex"
+    },
+    {
+      "id": "function:cai_integration/setup_environment.py:is_venv_ready",
+      "type": "function",
+      "name": "is_venv_ready",
+      "filePath": "cai_integration/setup_environment.py",
+      "lineRange": [44, 59],
+      "summary": "Checks whether a venv directory exists and contains the expected Python interpreter and pip executables, returning True only when fully provisioned.",
+      "tags": ["utility", "validation"],
+      "complexity": "simple"
+    },
+    {
+      "id": "function:cai_integration/setup_environment.py:install_nginx",
+      "type": "function",
+      "name": "install_nginx",
+      "filePath": "cai_integration/setup_environment.py",
+      "lineRange": [62, 185],
+      "summary": "Downloads and compiles nginx from source into the user's home directory, configuring it as a reverse proxy for the Ray Serve management API with CML authentication headers.",
+      "tags": ["utility", "script"],
+      "complexity": "complex"
+    },
+    {
+      "id": "function:cai_integration/setup_environment.py:main",
+      "type": "function",
+      "name": "main",
+      "filePath": "cai_integration/setup_environment.py",
+      "lineRange": [370, 531],
+      "summary": "CLI entry point that orchestrates the full environment setup: installs nginx, bootstraps the base Ray venv, and iterates over all configured engine types to set up their isolated venvs.",
+      "tags": ["entry-point", "script"],
+      "complexity": "complex"
+    }
+  ],
+  "edges": [
+    {
+      "source": "file:cai_integration/setup_environment.py",
+      "target": "function:cai_integration/setup_environment.py:setup_engine_venv",
+      "type": "contains",
+      "direction": "forward",
+      "weight": 1.0
+    },
+    {
+      "source": "file:cai_integration/setup_environment.py",
+      "target": "function:cai_integration/setup_environment.py:is_venv_ready",
+      "type": "contains",
+      "direction": "forward",
+      "weight": 1.0
+    },
+    {
+      "source": "file:cai_integration/setup_environment.py",
+      "target": "function:cai_integration/setup_environment.py:install_nginx",
+      "type": "contains",
+      "direction": "forward",
+      "weight": 1.0
+    },
+    {
+      "source": "file:cai_integration/setup_environment.py",
+      "target": "function:cai_integration/setup_environment.py:main",
+      "type": "contains",
+      "direction": "forward",
+      "weight": 1.0
+    },
+    {
+      "source": "file:cai_integration/setup_environment.py",
+      "target": "function:cai_integration/setup_environment.py:setup_engine_venv",
+      "type": "exports",
+      "direction": "forward",
+      "weight": 0.8
+    },
+    {
+      "source": "file:cai_integration/setup_environment.py",
+      "target": "function:cai_integration/setup_environment.py:is_venv_ready",
+      "type": "exports",
+      "direction": "forward",
+      "weight": 0.8
+    },
+    {
+      "source": "file:cai_integration/setup_environment.py",
+      "target": "function:cai_integration/setup_environment.py:install_nginx",
+      "type": "exports",
+      "direction": "forward",
+      "weight": 0.8
+    },
+    {
+      "source": "file:cai_integration/setup_environment.py",
+      "target": "function:cai_integration/setup_environment.py:main",
+      "type": "exports",
+      "direction": "forward",
+      "weight": 0.8
+    },
+    {
+      "source": "file:cai_integration/setup_vllm_env.py",
+      "target": "function:cai_integration/setup_vllm_env.py:main",
+      "type": "contains",
+      "direction": "forward",
+      "weight": 1.0
+    },
+    {
+      "source": "file:cai_integration/setup_vllm_env.py",
+      "target": "function:cai_integration/setup_vllm_env.py:main",
+      "type": "exports",
+      "direction": "forward",
+      "weight": 0.8
+    },
+    {
+      "source": "file:cai_integration/setup_vllm_env.py",
+      "target": "file:cai_integration/setup_environment.py",
+      "type": "depends_on",
+      "direction": "forward",
+      "weight": 0.6
+    }
+  ]
+}

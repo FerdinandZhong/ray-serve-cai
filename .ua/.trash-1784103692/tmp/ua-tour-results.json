@@ -1,0 +1,490 @@
+{
+  "scriptCompleted": true,
+  "entryPointCandidates": [
+    {
+      "id": "file:ray_serve_cai/management/app.py",
+      "score": 5,
+      "name": "app.py",
+      "summary": "FastAPI application factory: lifespan initializes Ray/CAI/Coordinator services, registers all routers"
+    },
+    {
+      "id": "document:README.md",
+      "score": 5,
+      "name": "README.md",
+      "summary": "Project README: architecture overview, quick start, engine reference, management API"
+    },
+    {
+      "id": "file:cai_integration/setup_vllm_env.py",
+      "score": 3,
+      "name": "setup_vllm_env.py",
+      "summary": "Creates /home/cdsw/.venv-vllm via setup_engine_venv('vllm', ...)"
+    },
+    {
+      "id": "file:cai_integration/launch_ray_cluster.py",
+      "score": 3,
+      "name": "launch_ray_cluster.py",
+      "summary": "Cluster launch: reads config YAML, creates head+worker CML applications, generates Jinja2 launcher scripts"
+    },
+    {
+      "id": "file:ray_serve_cai/management/api/applications.py",
+      "score": 2,
+      "name": "applications.py",
+      "summary": "FastAPI router: deploy/delete/list/get Ray Serve applications"
+    }
+  ],
+  "fanInRanking": [
+    {
+      "id": "file:ray_serve_cai/management/services/coordinator.py",
+      "fanIn": 2,
+      "name": "coordinator.py"
+    },
+    {
+      "id": "file:ray_serve_cai/cai_cluster.py",
+      "fanIn": 2,
+      "name": "cai_cluster.py"
+    },
+    {
+      "id": "file:ray_serve_cai/management/services/ray_service.py",
+      "fanIn": 1,
+      "name": "ray_service.py"
+    },
+    {
+      "id": "file:ray_serve_cai/management/services/cai_service.py",
+      "fanIn": 1,
+      "name": "cai_service.py"
+    },
+    {
+      "id": "file:ray_serve_cai/management/services/resource_map.py",
+      "fanIn": 1,
+      "name": "resource_map.py"
+    },
+    {
+      "id": "file:ray_serve_cai/engines/base.py",
+      "fanIn": 1,
+      "name": "base.py"
+    },
+    {
+      "id": "file:ray_serve_cai/engines/registry.py",
+      "fanIn": 1,
+      "name": "registry.py"
+    },
+    {
+      "id": "file:cai_integration/setup_environment.py",
+      "fanIn": 1,
+      "name": "setup_environment.py"
+    },
+    {
+      "id": "file:ray_serve_cai/management/app.py",
+      "fanIn": 0,
+      "name": "app.py"
+    },
+    {
+      "id": "file:ray_serve_cai/management/api/applications.py",
+      "fanIn": 0,
+      "name": "applications.py"
+    },
+    {
+      "id": "file:ray_serve_cai/management/api/resources.py",
+      "fanIn": 0,
+      "name": "resources.py"
+    },
+    {
+      "id": "file:ray_serve_cai/management/api/environments.py",
+      "fanIn": 0,
+      "name": "environments.py"
+    },
+    {
+      "id": "file:ray_serve_cai/management/models/requests.py",
+      "fanIn": 0,
+      "name": "requests.py"
+    },
+    {
+      "id": "file:ray_serve_cai/management/models/responses.py",
+      "fanIn": 0,
+      "name": "responses.py"
+    },
+    {
+      "id": "file:ray_serve_cai/engines/venv_utils.py",
+      "fanIn": 0,
+      "name": "venv_utils.py"
+    },
+    {
+      "id": "file:ray_serve_cai/engines/vllm_engine.py",
+      "fanIn": 0,
+      "name": "vllm_engine.py"
+    },
+    {
+      "id": "file:ray_serve_cai/engines/vllm_config.py",
+      "fanIn": 0,
+      "name": "vllm_config.py"
+    },
+    {
+      "id": "file:ray_serve_cai/engines/__init__.py",
+      "fanIn": 0,
+      "name": "__init__.py"
+    },
+    {
+      "id": "file:cai_integration/setup_vllm_env.py",
+      "fanIn": 0,
+      "name": "setup_vllm_env.py"
+    },
+    {
+      "id": "file:cai_integration/launch_ray_cluster.py",
+      "fanIn": 0,
+      "name": "launch_ray_cluster.py"
+    }
+  ],
+  "fanOutRanking": [
+    {
+      "id": "file:ray_serve_cai/management/services/coordinator.py",
+      "fanOut": 3,
+      "name": "coordinator.py"
+    },
+    {
+      "id": "file:ray_serve_cai/management/app.py",
+      "fanOut": 2,
+      "name": "app.py"
+    },
+    {
+      "id": "file:ray_serve_cai/management/services/cai_service.py",
+      "fanOut": 1,
+      "name": "cai_service.py"
+    },
+    {
+      "id": "file:ray_serve_cai/management/api/applications.py",
+      "fanOut": 1,
+      "name": "applications.py"
+    },
+    {
+      "id": "file:ray_serve_cai/management/api/resources.py",
+      "fanOut": 1,
+      "name": "resources.py"
+    },
+    {
+      "id": "file:ray_serve_cai/engines/registry.py",
+      "fanOut": 1,
+      "name": "registry.py"
+    },
+    {
+      "id": "file:ray_serve_cai/engines/__init__.py",
+      "fanOut": 1,
+      "name": "__init__.py"
+    },
+    {
+      "id": "file:cai_integration/setup_vllm_env.py",
+      "fanOut": 1,
+      "name": "setup_vllm_env.py"
+    },
+    {
+      "id": "file:cai_integration/launch_ray_cluster.py",
+      "fanOut": 1,
+      "name": "launch_ray_cluster.py"
+    },
+    {
+      "id": "file:ray_serve_cai/management/services/ray_service.py",
+      "fanOut": 0,
+      "name": "ray_service.py"
+    },
+    {
+      "id": "file:ray_serve_cai/management/services/resource_map.py",
+      "fanOut": 0,
+      "name": "resource_map.py"
+    },
+    {
+      "id": "file:ray_serve_cai/management/api/environments.py",
+      "fanOut": 0,
+      "name": "environments.py"
+    },
+    {
+      "id": "file:ray_serve_cai/management/models/requests.py",
+      "fanOut": 0,
+      "name": "requests.py"
+    },
+    {
+      "id": "file:ray_serve_cai/management/models/responses.py",
+      "fanOut": 0,
+      "name": "responses.py"
+    },
+    {
+      "id": "file:ray_serve_cai/cai_cluster.py",
+      "fanOut": 0,
+      "name": "cai_cluster.py"
+    },
+    {
+      "id": "file:ray_serve_cai/engines/base.py",
+      "fanOut": 0,
+      "name": "base.py"
+    },
+    {
+      "id": "file:ray_serve_cai/engines/venv_utils.py",
+      "fanOut": 0,
+      "name": "venv_utils.py"
+    },
+    {
+      "id": "file:ray_serve_cai/engines/vllm_engine.py",
+      "fanOut": 0,
+      "name": "vllm_engine.py"
+    },
+    {
+      "id": "file:ray_serve_cai/engines/vllm_config.py",
+      "fanOut": 0,
+      "name": "vllm_config.py"
+    },
+    {
+      "id": "file:cai_integration/setup_environment.py",
+      "fanOut": 0,
+      "name": "setup_environment.py"
+    }
+  ],
+  "bfsTraversal": {
+    "startNode": "file:ray_serve_cai/management/app.py",
+    "order": [
+      "file:ray_serve_cai/management/app.py"
+    ],
+    "depthMap": {
+      "file:ray_serve_cai/management/app.py": 0
+    },
+    "byDepth": {
+      "0": [
+        "file:ray_serve_cai/management/app.py"
+      ]
+    }
+  },
+  "nonCodeFiles": {
+    "documentation": [
+      {
+        "id": "document:README.md",
+        "name": "README.md",
+        "type": "document",
+        "summary": "Project README: architecture overview, quick start, engine reference, management API"
+      },
+      {
+        "id": "document:docs/ARCHITECTURE.md",
+        "name": "ARCHITECTURE.md",
+        "type": "document",
+        "summary": "Architecture deep-dive: two-layer design, node/app/venv mapping, engine plugin system"
+      },
+      {
+        "id": "document:docs/ISOLATED_ENV_DESIGN.md",
+        "name": "ISOLATED_ENV_DESIGN.md",
+        "type": "document",
+        "summary": "Design doc: isolated engine venv approach and NFS-safe locking"
+      }
+    ],
+    "infrastructure": [],
+    "data": [],
+    "config": [
+      {
+        "id": "config:configs/ray_cluster_config.yaml",
+        "name": "ray_cluster_config.yaml",
+        "type": "config",
+        "summary": "Main cluster config: worker_groups with node_type, accelerator_type, node_label, cpu/memory/gpus"
+      }
+    ]
+  },
+  "clusters": [],
+  "layers": {
+    "count": 10,
+    "list": [
+      {
+        "id": "layer:api",
+        "name": "API Layer",
+        "description": "FastAPI routers handling HTTP endpoints for applications, resources, environments, cluster, metrics, engines"
+      },
+      {
+        "id": "layer:types",
+        "name": "Types Layer",
+        "description": "Pydantic v2 request and response models"
+      },
+      {
+        "id": "layer:service",
+        "name": "Service Layer",
+        "description": "CoordinatorService, CAIService, RayService, ResourceMap, app factory"
+      },
+      {
+        "id": "layer:engines",
+        "name": "Inference Engines Layer",
+        "description": "Engine plugin system: EngineRegistry, protocols, venv_utils, per-engine actors and configs"
+      },
+      {
+        "id": "layer:cluster",
+        "name": "Cluster Management Layer",
+        "description": "CAIClusterManager, Ray backend, CLI launcher, package root"
+      },
+      {
+        "id": "layer:integration",
+        "name": "Integration Layer",
+        "description": "CML setup scripts, venv factories, job chain, Jinja2 launcher templates, CI/CD"
+      },
+      {
+        "id": "layer:config",
+        "name": "Config Layer",
+        "description": "Ray cluster YAML configs and pyproject.toml"
+      },
+      {
+        "id": "layer:test",
+        "name": "Test Layer",
+        "description": "E2E and integration tests, test guides"
+      },
+      {
+        "id": "layer:examples",
+        "name": "Examples Layer",
+        "description": "Usage examples, model deploy scripts, benchmarks"
+      },
+      {
+        "id": "layer:documentation",
+        "name": "Documentation Layer",
+        "description": "Markdown docs, design docs, HTML diagrams"
+      }
+    ]
+  },
+  "nodeSummaryIndex": {
+    "file:ray_serve_cai/management/app.py": {
+      "name": "app.py",
+      "type": "file",
+      "summary": "FastAPI application factory: lifespan initializes Ray/CAI/Coordinator services, registers all routers"
+    },
+    "file:ray_serve_cai/management/services/coordinator.py": {
+      "name": "coordinator.py",
+      "type": "file",
+      "summary": "CoordinatorService: central orchestrator bridging API to Ray+CML, handles node/app/resource lifecycle"
+    },
+    "file:ray_serve_cai/management/services/ray_service.py": {
+      "name": "ray_service.py",
+      "type": "file",
+      "summary": "RayService: Ray cluster and Ray Serve operations — deploy_model, deploy_application"
+    },
+    "file:ray_serve_cai/management/services/cai_service.py": {
+      "name": "cai_service.py",
+      "type": "file",
+      "summary": "CAIService: wraps CAIClusterManager to create/manage CML worker node applications"
+    },
+    "file:ray_serve_cai/management/services/resource_map.py": {
+      "name": "resource_map.py",
+      "type": "file",
+      "summary": "ResourceMap: persistent capacity accounting for workers and applications on shared NFS"
+    },
+    "file:ray_serve_cai/management/api/applications.py": {
+      "name": "applications.py",
+      "type": "file",
+      "summary": "FastAPI router: deploy/delete/list/get Ray Serve applications"
+    },
+    "file:ray_serve_cai/management/api/resources.py": {
+      "name": "resources.py",
+      "type": "file",
+      "summary": "FastAPI router: worker node add/remove, resource allocation maps"
+    },
+    "file:ray_serve_cai/management/api/environments.py": {
+      "name": "environments.py",
+      "type": "file",
+      "summary": "FastAPI router: venv lifecycle — list/inspect/create engine venvs"
+    },
+    "file:ray_serve_cai/management/models/requests.py": {
+      "name": "requests.py",
+      "type": "file",
+      "summary": "Pydantic v2 request models: AddNodeRequest, DeployApplicationRequest, SchedulingConfig"
+    },
+    "file:ray_serve_cai/management/models/responses.py": {
+      "name": "responses.py",
+      "type": "file",
+      "summary": "Pydantic v2 response models: NodeInfo, ApplicationInfo, ClusterStatus, ResourceCapacity"
+    },
+    "file:ray_serve_cai/cai_cluster.py": {
+      "name": "cai_cluster.py",
+      "type": "file",
+      "summary": "CMLAPIClient, WorkerGroupConfig, CAIClusterManager: CML API client and cluster/worker lifecycle"
+    },
+    "file:ray_serve_cai/engines/base.py": {
+      "name": "base.py",
+      "type": "file",
+      "summary": "ConfigBuilderProtocol, DeploymentFactoryProtocol, EngineComponents: base protocols for engine plugin system"
+    },
+    "file:ray_serve_cai/engines/registry.py": {
+      "name": "registry.py",
+      "type": "file",
+      "summary": "EngineRegistry singleton: register/lookup engine config builders and deployment factories"
+    },
+    "file:ray_serve_cai/engines/venv_utils.py": {
+      "name": "venv_utils.py",
+      "type": "file",
+      "summary": "resolve_venv_path(), venv_dir_for(), validate_venv_name(): NFS venv path resolution and safety"
+    },
+    "file:ray_serve_cai/engines/vllm_engine.py": {
+      "name": "vllm_engine.py",
+      "type": "file",
+      "summary": "VLLMEngine @serve.deployment: placement group + venv injection for vLLM actors"
+    },
+    "file:ray_serve_cai/engines/vllm_config.py": {
+      "name": "vllm_config.py",
+      "type": "file",
+      "summary": "VLLMConfigBuilder, VLLMDeploymentFactory: vLLM config and factory calling resolve_venv_path()"
+    },
+    "file:ray_serve_cai/engines/__init__.py": {
+      "name": "__init__.py",
+      "type": "file",
+      "summary": "Engine auto-registration: registers vllm, sglang, litellm, yolo, mcp into EngineRegistry at import"
+    },
+    "file:cai_integration/setup_environment.py": {
+      "name": "setup_environment.py",
+      "type": "file",
+      "summary": "Base venv factory: setup_engine_venv() NFS-safe fcntl-locked venv creator, _ENGINE_PACKAGES"
+    },
+    "file:cai_integration/setup_vllm_env.py": {
+      "name": "setup_vllm_env.py",
+      "type": "file",
+      "summary": "Creates /home/cdsw/.venv-vllm via setup_engine_venv('vllm', ...)"
+    },
+    "file:cai_integration/launch_ray_cluster.py": {
+      "name": "launch_ray_cluster.py",
+      "type": "file",
+      "summary": "Cluster launch: reads config YAML, creates head+worker CML applications, generates Jinja2 launcher scripts"
+    },
+    "file:cai_integration/templates/ray_worker_launcher.py.j2": {
+      "name": "ray_worker_launcher.py.j2",
+      "type": "file",
+      "summary": "Jinja2 template: worker startup registers node_type+accelerator_type Ray resources"
+    },
+    "file:cai_integration/templates/ray_head_launcher.py.j2": {
+      "name": "ray_head_launcher.py.j2",
+      "type": "file",
+      "summary": "Jinja2 template: head startup — ray start, deploy management API, start nginx"
+    },
+    "config:configs/ray_cluster_config.yaml": {
+      "name": "ray_cluster_config.yaml",
+      "type": "config",
+      "summary": "Main cluster config: worker_groups with node_type, accelerator_type, node_label, cpu/memory/gpus"
+    },
+    "document:README.md": {
+      "name": "README.md",
+      "type": "document",
+      "summary": "Project README: architecture overview, quick start, engine reference, management API"
+    },
+    "document:docs/ARCHITECTURE.md": {
+      "name": "ARCHITECTURE.md",
+      "type": "document",
+      "summary": "Architecture deep-dive: two-layer design, node/app/venv mapping, engine plugin system"
+    },
+    "document:docs/ISOLATED_ENV_DESIGN.md": {
+      "name": "ISOLATED_ENV_DESIGN.md",
+      "type": "document",
+      "summary": "Design doc: isolated engine venv approach and NFS-safe locking"
+    },
+    "file:tests/test_e2e_deployment.py": {
+      "name": "test_e2e_deployment.py",
+      "type": "file",
+      "summary": "End-to-end deployment test: full cluster lifecycle via CML API"
+    },
+    "file:examples/cai_cluster_example.py": {
+      "name": "cai_cluster_example.py",
+      "type": "file",
+      "summary": "Example: programmatic cluster launch using CAIClusterManager"
+    },
+    "file:examples/custom_engine_template/my_engine.py": {
+      "name": "my_engine.py",
+      "type": "file",
+      "summary": "Custom engine template: implements ConfigBuilderProtocol + DeploymentFactoryProtocol"
+    }
+  },
+  "totalNodes": 29,
+  "totalEdges": 12
+}

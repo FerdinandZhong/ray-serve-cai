@@ -1,0 +1,11 @@
+{
+  "projectRoot": "/Users/zhongqishuai/Projects/cldr_projects/ray-serve-cai",
+  "batchFiles": [
+    {"path": "ray_serve_cai/engines/base.py", "language": "python", "sizeLines": 0, "fileCategory": "code"},
+    {"path": "ray_serve_cai/engines/venv_utils.py", "language": "python", "sizeLines": 0, "fileCategory": "code"},
+    {"path": "ray_serve_cai/engines/engine_utils.py", "language": "python", "sizeLines": 0, "fileCategory": "code"},
+    {"path": "ray_serve_cai/engines/mcps/__init__.py", "language": "python", "sizeLines": 0, "fileCategory": "code"},
+    {"path": "ray_serve_cai/engines/mcps/weather_tools.py", "language": "python", "sizeLines": 0, "fileCategory": "code"}
+  ],
+  "batchImportData": {}
+}

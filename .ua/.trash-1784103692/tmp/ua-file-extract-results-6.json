@@ -1,0 +1,13 @@
+{
+  "scriptCompleted": true,
+  "filesAnalyzed": 0,
+  "filesSkipped": [
+    "tests/__init__.py",
+    "tests/test_coordinator.py",
+    "tests/test_deploy_api.py",
+    "tests/test_engine_registry.py",
+    "tests/test_requests_models.py",
+    "tests/test_resource_map.py"
+  ],
+  "results": []
+}

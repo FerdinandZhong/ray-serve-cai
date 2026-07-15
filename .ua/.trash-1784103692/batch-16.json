@@ -1,0 +1,47 @@
+{
+  "nodes": [
+    {
+      "id": "file:ray_serve_cai/__init__.py",
+      "type": "file",
+      "name": "__init__.py",
+      "filePath": "ray_serve_cai/__init__.py",
+      "summary": "Top-level package initializer for ray_serve_cai, importing core components and setting up the public API surface for the package.",
+      "tags": ["entry-point", "barrel"],
+      "complexity": "simple"
+    },
+    {
+      "id": "file:scripts/run_management_api.sh",
+      "type": "file",
+      "name": "run_management_api.sh",
+      "filePath": "scripts/run_management_api.sh",
+      "summary": "Shell script that launches the FastAPI management API server using uvicorn, configuring host, port, and worker settings for local or CML deployment.",
+      "tags": ["entry-point", "script", "deployment"],
+      "complexity": "simple"
+    },
+    {
+      "id": "config:cai_integration/cluster_config.yaml",
+      "type": "config",
+      "name": "cluster_config.yaml",
+      "filePath": "cai_integration/cluster_config.yaml",
+      "summary": "YAML configuration for Ray cluster deployment on Cloudera AI, defining worker group specs (CPU, memory, GPU, node labels), Ray ports, dashboard settings, and management API configuration.",
+      "tags": ["configuration", "infrastructure", "deployment"],
+      "complexity": "moderate"
+    }
+  ],
+  "edges": [
+    {
+      "source": "file:scripts/run_management_api.sh",
+      "target": "file:ray_serve_cai/management/app.py",
+      "type": "deploys",
+      "direction": "forward",
+      "weight": 0.7
+    },
+    {
+      "source": "config:cai_integration/cluster_config.yaml",
+      "target": "file:cai_integration/launch_ray_cluster.py",
+      "type": "configures",
+      "direction": "forward",
+      "weight": 0.6
+    }
+  ]
+}

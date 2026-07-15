@@ -1,0 +1,87 @@
+{
+  "nodes": [
+    {
+      "id": "file:tests/test_cluster_deployment.py",
+      "type": "file",
+      "name": "test_cluster_deployment.py",
+      "filePath": "tests/test_cluster_deployment.py",
+      "summary": "Integration test suite for Ray cluster deployment with a RayClusterTester class that connects to a live cluster, verifies cluster resources, and runs a simple remote task to confirm worker connectivity.",
+      "tags": ["test", "service"],
+      "complexity": "moderate"
+    },
+    {
+      "id": "file:tests/test_e2e_deployment.py",
+      "type": "file",
+      "name": "test_e2e_deployment.py",
+      "filePath": "tests/test_e2e_deployment.py",
+      "summary": "Full end-to-end test suite for CML Ray cluster deployment with E2EDeploymentTester: tests CML API connectivity, creates or retrieves a project, waits for git clone, starts the cluster via CAIClusterManager, checks cluster status, then tears down.",
+      "tags": ["test", "service"],
+      "complexity": "complex",
+      "languageNotes": "Self-contained integration test that exercises the full deployment flow including CML API calls and cluster lifecycle; no production code imports — all interactions via HTTP or subprocess."
+    },
+    {
+      "id": "class:tests/test_cluster_deployment.py:RayClusterTester",
+      "type": "class",
+      "name": "RayClusterTester",
+      "filePath": "tests/test_cluster_deployment.py",
+      "lineRange": [37, 196],
+      "summary": "Test harness class that connects to a running Ray cluster, checks cluster resources and node count, and submits a remote test task to verify end-to-end Ray task execution.",
+      "tags": ["test", "service"],
+      "complexity": "moderate"
+    },
+    {
+      "id": "class:tests/test_e2e_deployment.py:E2EDeploymentTester",
+      "type": "class",
+      "name": "E2EDeploymentTester",
+      "filePath": "tests/test_e2e_deployment.py",
+      "lineRange": [45, 548],
+      "summary": "End-to-end test harness that orchestrates the full CML cluster lifecycle: project setup, git clone, launcher script generation, cluster creation via CAIClusterManager, status verification, and cluster teardown.",
+      "tags": ["test", "service"],
+      "complexity": "complex"
+    }
+  ],
+  "edges": [
+    {
+      "source": "file:tests/test_cluster_deployment.py",
+      "target": "class:tests/test_cluster_deployment.py:RayClusterTester",
+      "type": "contains",
+      "direction": "forward",
+      "weight": 1.0
+    },
+    {
+      "source": "file:tests/test_cluster_deployment.py",
+      "target": "class:tests/test_cluster_deployment.py:RayClusterTester",
+      "type": "exports",
+      "direction": "forward",
+      "weight": 0.8
+    },
+    {
+      "source": "file:tests/test_e2e_deployment.py",
+      "target": "class:tests/test_e2e_deployment.py:E2EDeploymentTester",
+      "type": "contains",
+      "direction": "forward",
+      "weight": 1.0
+    },
+    {
+      "source": "file:tests/test_e2e_deployment.py",
+      "target": "class:tests/test_e2e_deployment.py:E2EDeploymentTester",
+      "type": "exports",
+      "direction": "forward",
+      "weight": 0.8
+    },
+    {
+      "source": "file:tests/test_cluster_deployment.py",
+      "target": "file:cai_integration/launch_ray_cluster.py",
+      "type": "related",
+      "direction": "forward",
+      "weight": 0.5
+    },
+    {
+      "source": "file:tests/test_e2e_deployment.py",
+      "target": "file:cai_integration/launch_ray_cluster.py",
+      "type": "related",
+      "direction": "forward",
+      "weight": 0.5
+    }
+  ]
+}

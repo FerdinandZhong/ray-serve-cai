@@ -1,0 +1,137 @@
+{
+  "nodes": [
+    {
+      "id": "file:tests/__init__.py",
+      "type": "file",
+      "name": "__init__.py",
+      "filePath": "tests/__init__.py",
+      "summary": "Empty package initializer for the tests directory.",
+      "tags": ["test", "barrel"],
+      "complexity": "simple"
+    },
+    {
+      "id": "file:tests/test_coordinator.py",
+      "type": "file",
+      "name": "test_coordinator.py",
+      "filePath": "tests/test_coordinator.py",
+      "summary": "Unit tests for CoordinatorService covering worker node add/remove, CML application lifecycle, resource mapping, and state persistence using mocked RayService and CAIService dependencies.",
+      "tags": ["test", "service"],
+      "complexity": "moderate"
+    },
+    {
+      "id": "file:tests/test_deploy_api.py",
+      "type": "file",
+      "name": "test_deploy_api.py",
+      "filePath": "tests/test_deploy_api.py",
+      "summary": "Integration-level tests for the applications management API endpoints (deploy, delete, list, get) using FastAPI TestClient with mocked coordinator and verifying request/response model serialization.",
+      "tags": ["test", "api-handler"],
+      "complexity": "complex"
+    },
+    {
+      "id": "file:tests/test_engine_registry.py",
+      "type": "file",
+      "name": "test_engine_registry.py",
+      "filePath": "tests/test_engine_registry.py",
+      "summary": "Unit tests for EngineRegistry covering engine registration, lookup, default engine selection, and error handling for unknown or duplicate engine types.",
+      "tags": ["test", "factory"],
+      "complexity": "moderate"
+    },
+    {
+      "id": "file:tests/test_requests_models.py",
+      "type": "file",
+      "name": "test_requests_models.py",
+      "filePath": "tests/test_requests_models.py",
+      "summary": "Unit tests for Pydantic request models (DeployApplicationRequest, SchedulingConfig, AddNodeRequest) covering validation rules, discriminated union behavior, and field defaults.",
+      "tags": ["test", "data-model", "validation"],
+      "complexity": "moderate"
+    },
+    {
+      "id": "file:tests/test_resource_map.py",
+      "type": "file",
+      "name": "test_resource_map.py",
+      "filePath": "tests/test_resource_map.py",
+      "summary": "Unit tests for ResourceMap covering worker registration, allocation, release, sync against live CML state, and capacity validation logic.",
+      "tags": ["test", "data-model"],
+      "complexity": "moderate"
+    }
+  ],
+  "edges": [
+    {
+      "source": "file:tests/test_coordinator.py",
+      "target": "file:ray_serve_cai/management/services/coordinator.py",
+      "type": "imports",
+      "direction": "forward",
+      "weight": 0.7
+    },
+    {
+      "source": "file:tests/test_coordinator.py",
+      "target": "file:ray_serve_cai/management/models/requests.py",
+      "type": "imports",
+      "direction": "forward",
+      "weight": 0.7
+    },
+    {
+      "source": "file:tests/test_deploy_api.py",
+      "target": "file:ray_serve_cai/management/api/applications.py",
+      "type": "imports",
+      "direction": "forward",
+      "weight": 0.7
+    },
+    {
+      "source": "file:tests/test_deploy_api.py",
+      "target": "file:ray_serve_cai/management/models/requests.py",
+      "type": "imports",
+      "direction": "forward",
+      "weight": 0.7
+    },
+    {
+      "source": "file:tests/test_deploy_api.py",
+      "target": "file:ray_serve_cai/management/models/responses.py",
+      "type": "imports",
+      "direction": "forward",
+      "weight": 0.7
+    },
+    {
+      "source": "file:tests/test_engine_registry.py",
+      "target": "file:ray_serve_cai/engines/registry.py",
+      "type": "imports",
+      "direction": "forward",
+      "weight": 0.7
+    },
+    {
+      "source": "file:tests/test_requests_models.py",
+      "target": "file:ray_serve_cai/management/models/requests.py",
+      "type": "imports",
+      "direction": "forward",
+      "weight": 0.7
+    },
+    {
+      "source": "file:ray_serve_cai/management/services/coordinator.py",
+      "target": "file:tests/test_coordinator.py",
+      "type": "tested_by",
+      "direction": "forward",
+      "weight": 0.5
+    },
+    {
+      "source": "file:ray_serve_cai/management/api/applications.py",
+      "target": "file:tests/test_deploy_api.py",
+      "type": "tested_by",
+      "direction": "forward",
+      "weight": 0.5
+    },
+    {
+      "source": "file:ray_serve_cai/engines/registry.py",
+      "target": "file:tests/test_engine_registry.py",
+      "type": "tested_by",
+      "direction": "forward",
+      "weight": 0.5
+    },
+    {
+      "source": "file:ray_serve_cai/management/models/requests.py",
+      "target": "file:tests/test_requests_models.py",
+      "type": "tested_by",
+      "direction": "forward",
+      "weight": 0.5
+    }
+  ]
+}
