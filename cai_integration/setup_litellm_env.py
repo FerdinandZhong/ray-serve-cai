@@ -22,12 +22,14 @@ import sys
 # Ensure the project root is on the path so we can import from cai_integration.
 sys.path.insert(0, os.environ.get("CDSW_PROJECT_DIR", "/home/cdsw"))
 
-from cai_integration.setup_environment import setup_engine_venv  # noqa: E402
+# Package set is defined once in setup_environment._ENGINE_PACKAGES so the CML
+# job and the base-env registry never drift (see that module for rationale).
+from cai_integration.setup_environment import (  # noqa: E402
+    _ENGINE_PACKAGES,
+    setup_engine_venv,
+)
 
-LITELLM_PACKAGES = [
-    "litellm[proxy]>=1.83.0",  # [proxy] pulls in websockets + apscheduler + other proxy deps
-    "pyyaml>=6.0.3",           # used by litellm_engine.py to write the config YAML
-]
+LITELLM_PACKAGES = _ENGINE_PACKAGES["litellm"]
 
 _VENV_DIR = "/home/cdsw/.venv-litellm"
 

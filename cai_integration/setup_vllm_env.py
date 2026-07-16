@@ -16,15 +16,14 @@ import sys
 # Ensure the project root is on the path so we can import from cai_integration.
 sys.path.insert(0, os.environ.get("CDSW_PROJECT_DIR", "/home/cdsw"))
 
-from cai_integration.setup_environment import setup_engine_venv  # noqa: E402
+# Package set is defined once in setup_environment._ENGINE_PACKAGES so the CML
+# job and the base-env registry never drift (see that module for rationale).
+from cai_integration.setup_environment import (  # noqa: E402
+    _ENGINE_PACKAGES,
+    setup_engine_venv,
+)
 
-VLLM_PACKAGES = [
-    "ray[serve]==2.55.1",
-    "protobuf>=5.29.6,<7.0",
-    "fastapi==0.138.0",
-    "vllm>=0.13.0",
-    "ninja",   # required by FlashInfer JIT on older GPUs (e.g. T4/SM7.5)
-]
+VLLM_PACKAGES = _ENGINE_PACKAGES["vllm"]
 
 
 def main():
