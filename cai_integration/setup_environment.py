@@ -358,12 +358,17 @@ _RAY_BASE = [
     "fastapi==0.138.0",
 ]
 
+# Single source of truth for every engine venv's package set. The setup_*_env.py
+# CML jobs import from here rather than redefining their own lists, so a change to
+# _RAY_BASE (e.g. a Ray bump) propagates to every engine venv automatically.
 _ENGINE_PACKAGES = {
     "vllm":    _RAY_BASE + ["vllm>=0.13.0", "ninja"],
     "sglang":  _RAY_BASE + ["sglang>=0.5.7"],
     "yolo":    _RAY_BASE + ["ultralytics>=8.0.0", "Pillow>=9.0.0", "opencv-python-headless>=4.8.0"],
     "mcp":     _RAY_BASE + ["mcp>=1.0.0", "httpx>=0.27.0"],
-    "litellm": _RAY_BASE + ["litellm>=1.83.0"],
+    # [proxy] pulls in websockets + apscheduler + other proxy-subprocess deps;
+    # pyyaml is used by litellm_engine.py to write the proxy config YAML.
+    "litellm": _RAY_BASE + ["litellm[proxy]>=1.83.0", "pyyaml>=6.0.3"],
 }
 
 
