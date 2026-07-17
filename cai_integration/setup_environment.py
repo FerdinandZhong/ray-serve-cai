@@ -198,6 +198,16 @@ def venv_ray_version(venv_dir: str) -> str | None:
     return result.stdout.strip() if result.returncode == 0 else None
 
 
+def _venv_pkg_version(venv_dir: str, pkg_name: str) -> str | None:
+    """Return the version of *pkg_name* installed in *venv_dir*, or None."""
+    check = (
+        f'{venv_dir}/bin/python -c '
+        f'"import importlib.metadata; print(importlib.metadata.version(\'{pkg_name}\'))"'
+    )
+    result = subprocess.run(check, shell=True, capture_output=True, text=True)
+    return result.stdout.strip() if result.returncode == 0 else None
+
+
 def _pin_ray_to_base(packages: list, base_version: str | None) -> list:
     """Rewrite any floating ``ray``/``ray[serve]`` requirement to an exact pin.
 
@@ -267,6 +277,65 @@ def _pin_pkgs_to_base(packages: list, pkg_names: list[str]) -> list:
     return pinned
 
 
+# Packages that MUST match the base env exactly in every engine venv, because
+# Ray cloudpickles objects on the head and unpickles them inside the actor venv:
+#   ray:     worker and head must run the same Ray (DeploymentConfig proto)
+#   fastapi: renamed internals (e.g. '_IncludedRouter') break unpickling
+# protobuf is intentionally excluded — it is range-pinned (<7), not tied to an
+# exact base version.
+_BASE_MATCHED_PKGS = ("ray", "fastapi")
+
+
+def _reconcile_engine_venv(engine: str, venv_dir: str, lock_path: str) -> bool:
+    """Re-pin ray + fastapi in an *existing* venv to match the base env.
+
+    A venv created before the version pins existed (or before a base-env bump)
+    can drift: e.g. its fastapi lacks a class the head pickled, so the Serve
+    replica dies in ``__init__`` with an AttributeError on
+    ``fastapi.routing._IncludedRouter``.  This reconciles a ready venv in place
+    so a drifted env self-heals instead of failing at deploy time.
+
+    The version *check* runs lock-free (cheap, read-only).  Only when drift is
+    found do we take the NFS flock and reinstall — re-checking under the lock
+    so concurrent pods don't reinstall redundantly.
+    """
+    import fcntl
+
+    drift = []
+    for pkg in _BASE_MATCHED_PKGS:
+        base_v = _base_pkg_version(pkg)
+        engine_v = _venv_pkg_version(venv_dir, pkg)
+        if base_v and engine_v and base_v != engine_v:
+            drift.append((pkg, engine_v, base_v))
+
+    if not drift:
+        return True
+
+    lock_fd = open(lock_path, "w")
+    try:
+        fcntl.flock(lock_fd, fcntl.LOCK_EX)
+        ok = True
+        for pkg, engine_v, base_v in drift:
+            # Another pod may have repinned while we waited for the lock.
+            if _venv_pkg_version(venv_dir, pkg) == base_v:
+                continue
+            # ray needs the [serve] extra so the reinstall keeps serve deps.
+            spec = f"ray[serve]=={base_v}" if pkg == "ray" else f"{pkg}=={base_v}"
+            print(
+                f"⚠️  {engine} venv: {pkg} {engine_v} != base env {base_v} — "
+                f"repinning to match the head (prevents cloudpickle mismatch)"
+            )
+            if not run_command(f"uv pip install --python {venv_dir}/bin/python '{spec}'"):
+                print(f"❌ Failed to repin {pkg} in {engine} venv")
+                ok = False
+        if ok:
+            print(f"✅ {engine} venv reconciled with base env")
+        return ok
+    finally:
+        fcntl.flock(lock_fd, fcntl.LOCK_UN)
+        lock_fd.close()
+
+
 def setup_engine_venv(
     engine: str,
     packages: list,
@@ -289,7 +358,10 @@ def setup_engine_venv(
 
     if is_venv_ready(venv_dir):
         print(f"✅ {engine} venv already ready at {venv_dir}")
-        return True
+        # Self-heal: an existing venv can drift from the base env (e.g. created
+        # before the fastapi pin, or after a base-env bump) and then fail at
+        # deploy with a cloudpickle/proto AttributeError. Reconcile in place.
+        return _reconcile_engine_venv(engine, venv_dir, lock_path)
 
     python_flag = f"--python {python}" if python else ""
     print(f"\n🔧 Creating {engine} venv at {venv_dir} (python={python or 'default'}) ...")
