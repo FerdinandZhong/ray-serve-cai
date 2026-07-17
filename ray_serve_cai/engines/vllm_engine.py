@@ -45,10 +45,15 @@ try:
     from vllm import AsyncLLMEngine
     from vllm.engine.arg_utils import AsyncEngineArgs
     _VLLM_AVAILABLE = True
-except ImportError:
+    _VLLM_IMPORT_ERROR: Optional[BaseException] = None
+except ImportError as exc:
     AsyncLLMEngine = None           # type: ignore[assignment,misc]
     AsyncEngineArgs = None          # type: ignore[assignment,misc]
     _VLLM_AVAILABLE = False
+    # Preserve the real reason. On the head node this is expected (no vLLM);
+    # inside the .venv-vllm actor it is the root cause of an otherwise cryptic
+    # "'NoneType' object is not callable" at AsyncEngineArgs(**engine_config).
+    _VLLM_IMPORT_ERROR = exc
 
 # Serving-layer imports — paths differ across vLLM versions.  These are only
 # needed inside __init__ / request handlers, so a failed import here must NOT
@@ -88,6 +93,29 @@ if _VLLM_AVAILABLE:
             pass  # serving imports deferred to __init__ for this vLLM version
 
 logger = logging.getLogger(__name__)
+
+
+def _load_vllm_core():
+    """Import vLLM's core engine classes, deferred to call-time in the actor.
+
+    This module is imported on the head node too (engines/__init__.py imports it
+    for registration), where vLLM is intentionally absent — so the module-level
+    ``AsyncLLMEngine`` / ``AsyncEngineArgs`` fall back to ``None``. Ray then
+    serializes the deployment carrying those head-side globals, so the replica's
+    ``__init__`` would see ``None`` even though vLLM imports fine in the actor's
+    own venv (``.venv-vllm``). Calling this from ``__init__`` binds the real
+    classes from THIS process's environment at runtime, sidestepping the pickled
+    ``None``. See docs/ISOLATED_ENV_DESIGN.md.
+    """
+    try:
+        from vllm import AsyncLLMEngine
+        from vllm.engine.arg_utils import AsyncEngineArgs
+    except ImportError as exc:
+        raise RuntimeError(
+            "vLLM failed to import inside this actor's venv (.venv-vllm): "
+            f"{exc!r}. Verify with: /home/cdsw/.venv-vllm/bin/python -c 'import vllm'"
+        ) from exc
+    return AsyncLLMEngine, AsyncEngineArgs
 
 
 # ---------------------------------------------------------------------------
@@ -302,6 +330,10 @@ class VLLMEngine:
 
     def __init__(self, engine_config: Dict[str, Any]) -> None:
         logger.info("Initializing vLLM engine with config: %s", engine_config)
+
+        # Bind vLLM's core classes at runtime, inside the actor — see
+        # _load_vllm_core() for why the module-level globals cannot be used.
+        AsyncLLMEngine, AsyncEngineArgs = _load_vllm_core()
 
         try:
             import os
