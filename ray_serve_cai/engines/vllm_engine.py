@@ -358,6 +358,20 @@ class VLLMEngine:
 
         try:
             import os
+            import sys
+
+            # FlashInfer JIT-compiles CUDA kernels at first use by shelling out to
+            # `ninja` (a console script installed into this venv's bin/). Ray's
+            # py_executable swaps the interpreter but NOT PATH, so the venv bin is
+            # not searched and the EngineCore subprocess dies with
+            # `FileNotFoundError: 'ninja'`. Prepend the venv bin so ninja (and any
+            # other venv console tool) resolves. This must happen here — before
+            # the engine core subprocess starts — and cannot be done via the
+            # deploy payload (PATH is denylisted in SchedulingConfig.env_vars).
+            _venv_bin = os.path.dirname(sys.executable)
+            if _venv_bin and _venv_bin not in os.environ.get("PATH", "").split(os.pathsep):
+                os.environ["PATH"] = _venv_bin + os.pathsep + os.environ.get("PATH", "")
+                logger.info("Prepended %s to PATH (FlashInfer JIT needs ninja)", _venv_bin)
 
             # attention_backend must be set as an env var before the engine
             # starts — vLLM's EngineCore subprocess inherits it from us.

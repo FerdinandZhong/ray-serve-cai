@@ -285,19 +285,38 @@ def _pin_pkgs_to_base(packages: list, pkg_names: list[str]) -> list:
 # exact base version.
 _BASE_MATCHED_PKGS = ("ray", "fastapi")
 
+# Build tools that provide a console script spawned as a subprocess at runtime
+# (e.g. FlashInfer's JIT shells out to `ninja`). They must be present ON DISK in
+# the engine venv — a venv created before they were added to the package set
+# would miss them, so the ready-path reconcile reinstalls them if absent.
+_PRESENCE_CRITICAL = ("ninja",)
 
-def _reconcile_engine_venv(engine: str, venv_dir: str, lock_path: str) -> bool:
-    """Re-pin ray + fastapi in an *existing* venv to match the base env.
 
-    A venv created before the version pins existed (or before a base-env bump)
-    can drift: e.g. its fastapi lacks a class the head pickled, so the Serve
-    replica dies in ``__init__`` with an AttributeError on
-    ``fastapi.routing._IncludedRouter``.  This reconciles a ready venv in place
-    so a drifted env self-heals instead of failing at deploy time.
+def _spec_name(spec: str) -> str:
+    """Bare, lowercase distribution name from a requirement spec string."""
+    return re.split(r"[<>=!~\[ ]", spec.strip(), maxsplit=1)[0].lower()
 
-    The version *check* runs lock-free (cheap, read-only).  Only when drift is
-    found do we take the NFS flock and reinstall — re-checking under the lock
-    so concurrent pods don't reinstall redundantly.
+
+def _reconcile_engine_venv(
+    engine: str, venv_dir: str, lock_path: str, packages: list = ()
+) -> bool:
+    """Reconcile an *existing* venv with the base env, in place.
+
+    Two independent repairs, so a venv created before the current rules
+    self-heals instead of failing at deploy:
+
+    1. **Version match** — re-pin ``ray`` + ``fastapi`` to the base env's exact
+       versions. A drifted fastapi lacks a class the head pickled, so the Serve
+       replica dies in ``__init__`` with an AttributeError on
+       ``fastapi.routing._IncludedRouter``.
+    2. **Presence** — install any ``_PRESENCE_CRITICAL`` build tool (e.g.
+       ``ninja``) that is missing. FlashInfer's JIT shells out to ``ninja``; a
+       venv predating the ninja addition would fail with
+       ``FileNotFoundError: 'ninja'`` at first inference.
+
+    The *checks* run lock-free (cheap, read-only). Only when a repair is needed
+    do we take the NFS flock and reinstall — re-checking under the lock so
+    concurrent pods don't reinstall redundantly.
     """
     import fcntl
 
@@ -308,7 +327,14 @@ def _reconcile_engine_venv(engine: str, venv_dir: str, lock_path: str) -> bool:
         if base_v and engine_v and base_v != engine_v:
             drift.append((pkg, engine_v, base_v))
 
-    if not drift:
+    missing = [
+        spec
+        for spec in packages
+        if _spec_name(spec) in _PRESENCE_CRITICAL
+        and _venv_pkg_version(venv_dir, _spec_name(spec)) is None
+    ]
+
+    if not drift and not missing:
         return True
 
     lock_fd = open(lock_path, "w")
@@ -327,6 +353,13 @@ def _reconcile_engine_venv(engine: str, venv_dir: str, lock_path: str) -> bool:
             )
             if not run_command(f"uv pip install --python {venv_dir}/bin/python '{spec}'"):
                 print(f"❌ Failed to repin {pkg} in {engine} venv")
+                ok = False
+        for spec in missing:
+            if _venv_pkg_version(venv_dir, _spec_name(spec)) is not None:
+                continue  # installed by another pod while we waited
+            print(f"⚠️  {engine} venv: missing build tool {spec!r} — installing")
+            if not run_command(f"uv pip install --python {venv_dir}/bin/python '{spec}'"):
+                print(f"❌ Failed to install {spec} in {engine} venv")
                 ok = False
         if ok:
             print(f"✅ {engine} venv reconciled with base env")
@@ -359,9 +392,9 @@ def setup_engine_venv(
     if is_venv_ready(venv_dir):
         print(f"✅ {engine} venv already ready at {venv_dir}")
         # Self-heal: an existing venv can drift from the base env (e.g. created
-        # before the fastapi pin, or after a base-env bump) and then fail at
-        # deploy with a cloudpickle/proto AttributeError. Reconcile in place.
-        return _reconcile_engine_venv(engine, venv_dir, lock_path)
+        # before the fastapi pin / after a base-env bump) or miss a build tool
+        # added later (e.g. ninja), then fail at deploy. Reconcile in place.
+        return _reconcile_engine_venv(engine, venv_dir, lock_path, packages)
 
     python_flag = f"--python {python}" if python else ""
     print(f"\n🔧 Creating {engine} venv at {venv_dir} (python={python or 'default'}) ...")
