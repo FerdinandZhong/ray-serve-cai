@@ -95,6 +95,40 @@ if _VLLM_AVAILABLE:
 logger = logging.getLogger(__name__)
 
 
+def _load_vllm_serving():
+    """Deferred, version-adaptive import of the vLLM OpenAI serving-layer classes.
+
+    Same head-side-None rationale as the core classes (see load_engine_symbols):
+    these are used inside the actor (VLLMEngine.__init__ and _build_serving_render),
+    but the module-level globals are None on the vLLM-less head and that None rides
+    the deployment pickle into the replica. The import paths differ across vLLM
+    layouts, so try the 0.18+ subdirectory layout first, then the 0.13.x flat
+    layout. See docs/ISOLATED_ENV_DESIGN.md.
+
+    Returns (OpenAIServingCompletion, OpenAIServingChat, OpenAIServingModels,
+    BaseModelPath).
+    """
+    try:
+        try:  # vLLM 0.14+/0.18+ — subdirectory layout
+            from vllm.entrypoints.openai.completion.serving import OpenAIServingCompletion
+            from vllm.entrypoints.openai.chat_completion.serving import OpenAIServingChat
+            from vllm.entrypoints.openai.models.serving import OpenAIServingModels
+            from vllm.entrypoints.openai.models.protocol import BaseModelPath
+        except ImportError:  # vLLM 0.13.x — flat layout
+            from vllm.entrypoints.openai.serving_completion import OpenAIServingCompletion
+            from vllm.entrypoints.openai.serving_chat import OpenAIServingChat
+            from vllm.entrypoints.openai.serving_models import (
+                BaseModelPath,
+                OpenAIServingModels,
+            )
+    except ImportError as exc:
+        raise RuntimeError(
+            "vLLM OpenAI serving-layer classes failed to import inside this "
+            f"actor's venv (.venv-vllm): {exc!r}"
+        ) from exc
+    return OpenAIServingCompletion, OpenAIServingChat, OpenAIServingModels, BaseModelPath
+
+
 # ---------------------------------------------------------------------------
 # Helpers
 # ---------------------------------------------------------------------------
@@ -182,6 +216,9 @@ def _build_serving_render(engine_args: AsyncEngineArgs, model_name: str,
     from vllm.entrypoints.serve.render.serving import OpenAIServingRender
     from vllm.plugins.io_processors import get_io_processor
     from vllm.renderers import renderer_from_config
+
+    # Runtime-bind BaseModelPath (module global is None on the head).
+    _, _, _, BaseModelPath = _load_vllm_serving()
 
     # VllmConfig is built from engine args — no running engine needed.
     vllm_config = engine_args.create_engine_config()
@@ -353,6 +390,15 @@ class VLLMEngine:
             self.tensor_parallel_size = engine_config.get("tensor_parallel_size", 1)
 
             model_config = self.engine.model_config
+
+            # Bind serving-layer classes at runtime (module globals are None on
+            # the head; see _load_vllm_serving). Locals shadow the globals below.
+            (
+                OpenAIServingCompletion,
+                OpenAIServingChat,
+                OpenAIServingModels,
+                BaseModelPath,
+            ) = _load_vllm_serving()
 
             # ── OpenAIServingModels ──────────────────────────────────────────
             base_model_path = BaseModelPath(
