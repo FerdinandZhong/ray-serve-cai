@@ -13,6 +13,7 @@ Run this as a CML job to prepare the environment for Ray cluster deployment.
 import os
 import re
 import sys
+import shutil
 import subprocess
 from pathlib import Path
 
@@ -39,6 +40,52 @@ def run_command(cmd, cwd=None):
         if e.stderr:
             print(f"Error output: {e.stderr}")
         return False
+
+
+_UV_CMD = None
+
+
+def _ensure_uv() -> str:
+    """Resolve a usable ``uv`` executable, installing it if necessary.
+
+    ``setup_ray_environment()`` bootstraps uv, but standalone engine jobs
+    (e.g. ``setup_vllm_env.py``) call ``setup_engine_venv()`` directly and never
+    run that bootstrap — so ``uv`` may be absent from PATH and bare-``uv``
+    commands die with ``uv: not found`` (exit 127), including the reconcile
+    repin path. Resolve robustly (PATH → known bin dirs → pip-install) and cache.
+    """
+    global _UV_CMD
+    if _UV_CMD:
+        return _UV_CMD
+
+    found = shutil.which("uv")
+    if not found:
+        for cand in (
+            os.path.join(os.path.dirname(sys.executable), "uv"),
+            os.path.join(_BASE_VENV, "bin", "uv"),
+            os.path.expanduser("~/.local/bin/uv"),
+            os.path.expanduser("~/.cargo/bin/uv"),
+        ):
+            if os.access(cand, os.X_OK):
+                found = cand
+                break
+
+    if not found:
+        # Bootstrap into the current interpreter, then re-resolve.
+        print("⬇️  uv not found on PATH — installing it ...")
+        run_command(f"{sys.executable} -m pip install uv")
+        found = shutil.which("uv") or os.path.join(
+            os.path.dirname(sys.executable), "uv"
+        )
+
+    if not found or not os.access(found, os.X_OK):
+        raise RuntimeError(
+            "uv is not available and could not be installed "
+            "(tried PATH, base venv, ~/.local/bin, ~/.cargo/bin)"
+        )
+
+    _UV_CMD = found
+    return _UV_CMD
 
 
 def is_venv_ready(venv_dir):
@@ -351,14 +398,14 @@ def _reconcile_engine_venv(
                 f"⚠️  {engine} venv: {pkg} {engine_v} != base env {base_v} — "
                 f"repinning to match the head (prevents cloudpickle mismatch)"
             )
-            if not run_command(f"uv pip install --python {venv_dir}/bin/python '{spec}'"):
+            if not run_command(f"{_ensure_uv()} pip install --python {venv_dir}/bin/python '{spec}'"):
                 print(f"❌ Failed to repin {pkg} in {engine} venv")
                 ok = False
         for spec in missing:
             if _venv_pkg_version(venv_dir, _spec_name(spec)) is not None:
                 continue  # installed by another pod while we waited
             print(f"⚠️  {engine} venv: missing build tool {spec!r} — installing")
-            if not run_command(f"uv pip install --python {venv_dir}/bin/python '{spec}'"):
+            if not run_command(f"{_ensure_uv()} pip install --python {venv_dir}/bin/python '{spec}'"):
                 print(f"❌ Failed to install {spec} in {engine} venv")
                 ok = False
         if ok:
@@ -405,7 +452,7 @@ def setup_engine_venv(
             print(f"✅ {engine} venv created by another process")
             return True
 
-        if not run_command(f"uv venv {python_flag} {venv_dir}".strip()):
+        if not run_command(f"{_ensure_uv()} venv {python_flag} {venv_dir}".strip()):
             print(f"❌ Failed to create {engine} venv")
             return False
 
@@ -418,7 +465,7 @@ def setup_engine_venv(
         # on renamed internal classes (e.g. '_IncludedRouter').
         packages = _pin_pkgs_to_base(packages, ["fastapi"])
 
-        uv_install = f"uv pip install --python {venv_dir}/bin/python"
+        uv_install = f"{_ensure_uv()} pip install --python {venv_dir}/bin/python"
         for pkg in packages:
             if not run_command(f"{uv_install} '{pkg}'"):
                 print(f"⚠️  {pkg} failed for {engine} venv — continuing")
@@ -525,17 +572,14 @@ def main():
         else:
             print("⚠️  Ray not found, will reinstall...")
 
-    # Install uv first (bypasses pip config issues)
-    print("\n⬇️  Installing uv package manager...")
-    if not run_command("pip install uv"):
-        print("❌ Failed to install uv")
+    # Ensure uv is available (resolve on PATH / known bin dirs, else install).
+    print("\n⬇️  Ensuring uv package manager is available...")
+    try:
+        uv = _ensure_uv()
+    except Exception as e:
+        print(f"❌ Failed to make uv available: {e}")
         sys.exit(1)
-
-    # Verify uv installation
-    print("\n🔍 Verifying uv installation...")
-    if not run_command("uv --version"):
-        print("❌ Failed to verify uv installation")
-        sys.exit(1)
+    run_command(f"{uv} --version")
 
     # Create virtual environment with uv
     print("\n📝 Creating Python virtual environment...")
@@ -543,7 +587,7 @@ def main():
         print(f"   Removing existing incomplete venv...")
         run_command(f"rm -rf {venv_dir}")
 
-    if not run_command(f"uv venv {venv_dir}"):
+    if not run_command(f"{uv} venv {venv_dir}"):
         print("❌ Failed to create virtual environment")
         sys.exit(1)
 
@@ -554,7 +598,7 @@ def main():
 
     # Always target the venv explicitly so packages land in the right place
     # regardless of whether the caller has activated the venv.
-    uv_install = f"uv pip install --python {venv_dir}/bin/python"
+    uv_install = f"{uv} pip install --python {venv_dir}/bin/python"
 
     # Install core package (no inference-engine extras — vllm and sglang
     # require conflicting llguidance versions and cannot be co-installed).
