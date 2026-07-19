@@ -47,6 +47,16 @@ def main() -> int:
     import ray
     from ray import serve
 
+    # Ray Serve cloudpickles the FastAPI app in @serve.ingress below. fastapi>=0.137
+    # apps hold an unpicklable threading.Lock; register a reducer that reconstructs
+    # locks as fresh ones. Guarded because this is a generic deployer that may run
+    # against apps outside the ray_serve_cai package.
+    try:
+        from ray_serve_cai._serialization import install_lock_pickle_reducer
+        install_lock_pickle_reducer()
+    except Exception:
+        pass
+
     print(f"  Connecting to Ray cluster (address=auto)...")
     ray.init(address="auto", ignore_reinit_error=True)
 

@@ -33,6 +33,15 @@ For more information:
 
 __version__ = "0.1.0"
 
+# Install the cloudpickle lock reducer BEFORE importing anything that runs a
+# module-level @serve.ingress (engines/mcp_engine.py) or that a worker actor
+# imports. Ray Serve cloudpickles the FastAPI ingress app at decoration time,
+# and fastapi>=0.137 apps hold an unpicklable threading.Lock. See
+# _serialization.install_lock_pickle_reducer for the full rationale.
+from ._serialization import install_lock_pickle_reducer
+
+install_lock_pickle_reducer()
+
 from .ray_backend import RayBackend, ray_backend
 
 # Import engine components for advanced usage
