@@ -7,10 +7,47 @@ Provides three helpers that every engine can use:
   mount_metrics      — mount prometheus_client ASGI app at /metrics
 """
 
-from typing import Any, Dict, Optional
+from typing import Any, Dict, List, Optional, Tuple
 
 from fastapi import FastAPI
 from starlette.types import Receive, Scope, Send
+
+
+def load_engine_symbols(engine_label: str, specs: List[Tuple[str, str]]) -> list:
+    """Import ``(module_path, attr)`` pairs at call-time — inside the actor.
+
+    Engine modules are imported on the head node for registration, where the
+    heavy engine library (vllm, etc.) is intentionally absent. Any symbol
+    resolved at module top-level there falls back to ``None``, and once the
+    deployment is pickled that ``None`` reaches the replica — even though the
+    actor's own venv (``.venv-<engine>``) has the real object. Calling this from
+    ``__init__`` binds the symbols from THIS process's environment at runtime,
+    sidestepping the pickled ``None``. See docs/ISOLATED_ENV_DESIGN.md.
+
+    Args:
+        engine_label: Human-readable label for the error message (e.g.
+            ``"vLLM (.venv-vllm)"``).
+        specs: ``(module_path, attribute_name)`` pairs to resolve, in order.
+
+    Returns:
+        The resolved attributes, in the same order as ``specs``.
+
+    Raises:
+        RuntimeError: if any import or attribute lookup fails, with the original
+            error chained — surfaces the real cause instead of a downstream
+            ``'NoneType' object is not callable``.
+    """
+    import importlib
+
+    resolved: list = []
+    try:
+        for module_path, attr in specs:
+            resolved.append(getattr(importlib.import_module(module_path), attr))
+    except (ImportError, AttributeError) as exc:
+        raise RuntimeError(
+            f"{engine_label} failed to import inside this actor's venv: {exc!r}"
+        ) from exc
+    return resolved
 
 
 def create_engine_app(title: str, **fastapi_kwargs: Any) -> FastAPI:

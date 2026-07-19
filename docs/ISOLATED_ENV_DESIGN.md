@@ -96,6 +96,40 @@ flowchart TD
 | **Fail loud, no pip fallback** | If a per-engine venv doesn't exist the factory skips wiring `py_executable` (venv path check) and Ray falls back to the root env — making the missing venv visible immediately. |
 | **Head-safe registration** | `engines/__init__.py` imports only config/factory modules (no heavy libs) and falls back to a stub class if the engine module can't import. All 5 engines always register. |
 
+## Engine Authoring Rule — deferred in-process imports
+
+An engine module (`<engine>_engine.py`) is imported **on the head** for registration,
+where the heavy lib is absent. This creates a subtle trap for engines that import their
+lib **in-process** (vLLM, YOLO):
+
+> A heavy symbol resolved at **module top-level** falls back to `None` on the head.
+> Ray then serializes the deployment carrying those head-side globals, so the replica's
+> `__init__` sees `None` even though its own venv has the real object — surfacing as a
+> cryptic `'NoneType' object is not callable` at deploy time.
+
+Rules for any new (or edited) engine:
+
+1. **Never resolve a heavy symbol at module top-level for use at actor runtime.** Keep the
+   module top-level import-safe (wrap in `try/except ImportError` with `None` fallbacks so
+   registration survives head-side).
+2. **Bind heavy classes inside `__init__` (or request handlers)** via
+   `engine_utils.load_engine_symbols(label, [(module, attr), ...])`, which imports at
+   call-time from the actor's own venv and raises a clear `RuntimeError` (not a downstream
+   `NoneType`) if the lib is missing. Example (vLLM):
+   ```python
+   from .engine_utils import load_engine_symbols
+   AsyncLLMEngine, AsyncEngineArgs = load_engine_symbols(
+       "vLLM (.venv-vllm)",
+       [("vllm", "AsyncLLMEngine"), ("vllm.engine.arg_utils", "AsyncEngineArgs")],
+   )
+   ```
+3. **Prefer subprocess isolation where practical** (SGLang, LiteLLM launch their lib as a
+   child process via `{venv}/bin/python`) — the actor never imports the heavy lib, so this
+   trap does not apply.
+
+Regression guard: `tests/test_engine_import_safety.py` blocks the per-engine libs to
+simulate the head and asserts the engines package still imports and registers.
+
 ## Venv Contents
 
 | Venv | Path | Contents |

@@ -95,27 +95,38 @@ if _VLLM_AVAILABLE:
 logger = logging.getLogger(__name__)
 
 
-def _load_vllm_core():
-    """Import vLLM's core engine classes, deferred to call-time in the actor.
+def _load_vllm_serving():
+    """Deferred, version-adaptive import of the vLLM OpenAI serving-layer classes.
 
-    This module is imported on the head node too (engines/__init__.py imports it
-    for registration), where vLLM is intentionally absent — so the module-level
-    ``AsyncLLMEngine`` / ``AsyncEngineArgs`` fall back to ``None``. Ray then
-    serializes the deployment carrying those head-side globals, so the replica's
-    ``__init__`` would see ``None`` even though vLLM imports fine in the actor's
-    own venv (``.venv-vllm``). Calling this from ``__init__`` binds the real
-    classes from THIS process's environment at runtime, sidestepping the pickled
-    ``None``. See docs/ISOLATED_ENV_DESIGN.md.
+    Same head-side-None rationale as the core classes (see load_engine_symbols):
+    these are used inside the actor (VLLMEngine.__init__ and _build_serving_render),
+    but the module-level globals are None on the vLLM-less head and that None rides
+    the deployment pickle into the replica. The import paths differ across vLLM
+    layouts, so try the 0.18+ subdirectory layout first, then the 0.13.x flat
+    layout. See docs/ISOLATED_ENV_DESIGN.md.
+
+    Returns (OpenAIServingCompletion, OpenAIServingChat, OpenAIServingModels,
+    BaseModelPath).
     """
     try:
-        from vllm import AsyncLLMEngine
-        from vllm.engine.arg_utils import AsyncEngineArgs
+        try:  # vLLM 0.14+/0.18+ — subdirectory layout
+            from vllm.entrypoints.openai.completion.serving import OpenAIServingCompletion
+            from vllm.entrypoints.openai.chat_completion.serving import OpenAIServingChat
+            from vllm.entrypoints.openai.models.serving import OpenAIServingModels
+            from vllm.entrypoints.openai.models.protocol import BaseModelPath
+        except ImportError:  # vLLM 0.13.x — flat layout
+            from vllm.entrypoints.openai.serving_completion import OpenAIServingCompletion
+            from vllm.entrypoints.openai.serving_chat import OpenAIServingChat
+            from vllm.entrypoints.openai.serving_models import (
+                BaseModelPath,
+                OpenAIServingModels,
+            )
     except ImportError as exc:
         raise RuntimeError(
-            "vLLM failed to import inside this actor's venv (.venv-vllm): "
-            f"{exc!r}. Verify with: /home/cdsw/.venv-vllm/bin/python -c 'import vllm'"
+            "vLLM OpenAI serving-layer classes failed to import inside this "
+            f"actor's venv (.venv-vllm): {exc!r}"
         ) from exc
-    return AsyncLLMEngine, AsyncEngineArgs
+    return OpenAIServingCompletion, OpenAIServingChat, OpenAIServingModels, BaseModelPath
 
 
 # ---------------------------------------------------------------------------
@@ -205,6 +216,9 @@ def _build_serving_render(engine_args: AsyncEngineArgs, model_name: str,
     from vllm.entrypoints.serve.render.serving import OpenAIServingRender
     from vllm.plugins.io_processors import get_io_processor
     from vllm.renderers import renderer_from_config
+
+    # Runtime-bind BaseModelPath (module global is None on the head).
+    _, _, _, BaseModelPath = _load_vllm_serving()
 
     # VllmConfig is built from engine args — no running engine needed.
     vllm_config = engine_args.create_engine_config()
@@ -331,12 +345,33 @@ class VLLMEngine:
     def __init__(self, engine_config: Dict[str, Any]) -> None:
         logger.info("Initializing vLLM engine with config: %s", engine_config)
 
-        # Bind vLLM's core classes at runtime, inside the actor — see
-        # _load_vllm_core() for why the module-level globals cannot be used.
-        AsyncLLMEngine, AsyncEngineArgs = _load_vllm_core()
+        # Bind vLLM's core classes at runtime, inside the actor. The module-level
+        # globals cannot be used: this module is imported on the vLLM-less head
+        # for registration, so they fall back to None and that None reaches the
+        # replica via the deployment pickle. See load_engine_symbols().
+        from .engine_utils import load_engine_symbols
+
+        AsyncLLMEngine, AsyncEngineArgs = load_engine_symbols(
+            "vLLM (.venv-vllm)",
+            [("vllm", "AsyncLLMEngine"), ("vllm.engine.arg_utils", "AsyncEngineArgs")],
+        )
 
         try:
             import os
+            import sys
+
+            # FlashInfer JIT-compiles CUDA kernels at first use by shelling out to
+            # `ninja` (a console script installed into this venv's bin/). Ray's
+            # py_executable swaps the interpreter but NOT PATH, so the venv bin is
+            # not searched and the EngineCore subprocess dies with
+            # `FileNotFoundError: 'ninja'`. Prepend the venv bin so ninja (and any
+            # other venv console tool) resolves. This must happen here — before
+            # the engine core subprocess starts — and cannot be done via the
+            # deploy payload (PATH is denylisted in SchedulingConfig.env_vars).
+            _venv_bin = os.path.dirname(sys.executable)
+            if _venv_bin and _venv_bin not in os.environ.get("PATH", "").split(os.pathsep):
+                os.environ["PATH"] = _venv_bin + os.pathsep + os.environ.get("PATH", "")
+                logger.info("Prepended %s to PATH (FlashInfer JIT needs ninja)", _venv_bin)
 
             # attention_backend must be set as an env var before the engine
             # starts — vLLM's EngineCore subprocess inherits it from us.
@@ -369,6 +404,15 @@ class VLLMEngine:
             self.tensor_parallel_size = engine_config.get("tensor_parallel_size", 1)
 
             model_config = self.engine.model_config
+
+            # Bind serving-layer classes at runtime (module globals are None on
+            # the head; see _load_vllm_serving). Locals shadow the globals below.
+            (
+                OpenAIServingCompletion,
+                OpenAIServingChat,
+                OpenAIServingModels,
+                BaseModelPath,
+            ) = _load_vllm_serving()
 
             # ── OpenAIServingModels ──────────────────────────────────────────
             base_model_path = BaseModelPath(
