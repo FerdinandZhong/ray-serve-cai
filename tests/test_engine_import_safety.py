@@ -101,6 +101,52 @@ def test_load_engine_symbols_missing_raises():
         load_engine_symbols("test-engine", [("definitely_absent_pkg_xyz", "Thing")])
 
 
+def _build_ingress_like_app():
+    """A FastAPI app shaped like management/app.py: router + CORS + lifespan.
+
+    fastapi>=0.137 retains a router graph holding a threading.Lock, so
+    cloudpickling this app is exactly what fails inside @serve.ingress.
+    """
+    from contextlib import asynccontextmanager
+
+    from fastapi import APIRouter, FastAPI
+    from fastapi.middleware.cors import CORSMiddleware
+
+    @asynccontextmanager
+    async def _lifespan(app):  # noqa: ANN001
+        yield
+
+    app = FastAPI(title="ingress-pickle-test", lifespan=_lifespan)
+    app.add_middleware(CORSMiddleware, allow_origins=["*"])
+    router = APIRouter()
+
+    @router.get("/ping")
+    async def _ping():
+        return {"ok": True}
+
+    app.include_router(router)
+    return app
+
+
+def test_fastapi_app_cloudpickles_with_lock_reducer():
+    """Guard against the serve.ingress 'cannot pickle _thread.lock' regression.
+
+    install_lock_pickle_reducer() (called at ray_serve_cai import) must make a
+    management-like FastAPI app cloudpickle-able, which is what @serve.ingress
+    requires. If a future fastapi/Ray bump reintroduces an unpicklable object,
+    this fails in CI instead of at deploy time.
+    """
+    cloudpickle = pytest.importorskip("ray.cloudpickle")
+
+    from ray_serve_cai._serialization import install_lock_pickle_reducer
+
+    install_lock_pickle_reducer()  # idempotent; import already ran it
+    app = _build_ingress_like_app()
+
+    reloaded = cloudpickle.loads(cloudpickle.dumps(app))
+    assert reloaded.title == "ingress-pickle-test"
+
+
 if __name__ == "__main__":
     # Standalone runner (no pytest/pytest-cov required).
     failures = 0
