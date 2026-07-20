@@ -45,69 +45,110 @@ def run_command(cmd, cwd=None):
 _UV_CMD = None
 
 
+def _probe(cmd: str) -> bool:
+    """True if ``<cmd> --version`` actually runs (short, quiet, never raises)."""
+    try:
+        r = subprocess.run(
+            f"{cmd} --version", shell=True,
+            capture_output=True, text=True, timeout=30,
+        )
+        return r.returncode == 0
+    except Exception:
+        return False
+
+
+def _resolve_uv() -> str | None:
+    """Find a *working* uv command without installing anything.
+
+    Returns a command string (possibly ``'<python> -m uv'``) verified to run,
+    or None if no usable uv exists on the box.
+    """
+    # a) plain `uv` executable on PATH.
+    exe = shutil.which("uv")
+    if exe:
+        return exe
+    # b) The `uv` pip package normally bundles its binary; ask it where it is.
+    try:
+        import uv as _uv_mod  # noqa: PLC0415
+        try:
+            cand = _uv_mod.find_uv_bin()
+            if cand and os.access(cand, os.X_OK):
+                return cand
+        except Exception:
+            pass
+        # `python -m uv` re-runs find_uv_bin() internally, so it ONLY works if
+        # the binary truly exists. A stub-only wheel (common on CML — the pip
+        # package installs without its binary) makes both fail, so probe before
+        # trusting `-m uv` instead of returning a command guaranteed to die.
+        mod_cmd = f"{sys.executable} -m uv"
+        if _probe(mod_cmd):
+            return mod_cmd
+    except Exception:
+        pass
+    # c) Known bin locations (installed-script layouts).
+    import site  # noqa: PLC0415
+    for cand in (
+        os.path.join(os.path.dirname(sys.executable), "uv"),
+        os.path.join(_BASE_VENV, "bin", "uv"),
+        os.path.join(site.getuserbase(), "bin", "uv"),
+        os.path.expanduser("~/.local/bin/uv"),
+        os.path.expanduser("~/.cargo/bin/uv"),
+    ):
+        if os.access(cand, os.X_OK):
+            return cand
+    return None
+
+
 def _ensure_uv() -> str:
     """Resolve a usable ``uv`` executable, installing it if necessary.
 
     ``setup_ray_environment()`` bootstraps uv, but standalone engine jobs
     (e.g. ``setup_vllm_env.py``) call ``setup_engine_venv()`` directly and never
-    run that bootstrap — so ``uv`` may be absent from PATH and bare-``uv``
-    commands die with ``uv: not found`` (exit 127), including the reconcile
-    repin path. Resolve robustly (PATH → known bin dirs → pip-install) and cache.
+    run that bootstrap. Resolve robustly and cache. Raises if uv genuinely
+    cannot be made to work — but the self-heal path uses _pip_install_into_venv()
+    which does NOT require uv, so a broken uv only blocks fresh venv creation.
     """
     global _UV_CMD
     if _UV_CMD:
         return _UV_CMD
 
-    def _resolve():
-        # a) plain `uv` executable on PATH.
-        exe = shutil.which("uv")
-        if exe:
-            return exe
-        # b) The `uv` pip package bundles its binary *inside* the package (not at
-        #    ~/.local/bin), which is the common CML case. Ask the package where it
-        #    is; fall back to running it as a module if the binary path is odd.
-        try:
-            import uv as _uv_mod  # noqa: PLC0415
-            try:
-                cand = _uv_mod.find_uv_bin()
-                if cand and os.access(cand, os.X_OK):
-                    return cand
-            except Exception:
-                pass
-            return f"{sys.executable} -m uv"
-        except Exception:
-            pass
-        # c) Known bin locations (installed-script layouts).
-        import site  # noqa: PLC0415
-        for cand in (
-            os.path.join(os.path.dirname(sys.executable), "uv"),
-            os.path.join(_BASE_VENV, "bin", "uv"),
-            os.path.join(site.getuserbase(), "bin", "uv"),
-            os.path.expanduser("~/.local/bin/uv"),
-            os.path.expanduser("~/.cargo/bin/uv"),
-        ):
-            if os.access(cand, os.X_OK):
-                return cand
-        return None
-
-    cmd = _resolve()
+    cmd = _resolve_uv()
     if not cmd:
-        # Bootstrap into the current interpreter, then re-resolve.
-        print("⬇️  uv not found — installing it ...")
-        run_command(f"{sys.executable} -m pip install uv")
+        # A stub-only `uv` wheel installs the package without its binary; a
+        # forced reinstall re-fetches the platform wheel that carries the binary
+        # (landing in ~/.local/bin for a --user install), then re-resolve.
+        print("⬇️  uv not usable — (re)installing it ...")
+        run_command(f"{sys.executable} -m pip install --user --force-reinstall uv")
         import importlib  # noqa: PLC0415
         importlib.invalidate_caches()
-        cmd = _resolve()
+        cmd = _resolve_uv()
 
     if not cmd:
         raise RuntimeError(
             "uv is not available and could not be installed (tried PATH, "
-            "`import uv`/find_uv_bin, `-m uv`, base venv, user base, "
-            "~/.local/bin, ~/.cargo/bin)"
+            "`import uv`/find_uv_bin, probed `-m uv`, base venv, user base, "
+            "~/.local/bin, ~/.cargo/bin, and a --user --force-reinstall)"
         )
 
     _UV_CMD = cmd
     return _UV_CMD
+
+
+def _pip_install_into_venv(venv_dir: str, spec: str) -> bool:
+    """Install one requirement into an existing venv — uv-optional.
+
+    The self-heal / reconcile path must work even when uv is broken or absent
+    (a stub-only `uv` wheel on CML makes `uv`/`-m uv` unusable). Prefer a
+    *verified* uv; otherwise fall back to the venv's own pip, bootstrapping it
+    with stdlib ``ensurepip`` first because ``uv venv`` creates venvs without pip.
+    """
+    cmd = _resolve_uv()  # no-install probe; avoids a pip-install storm per repin
+    if cmd:
+        return run_command(f"{cmd} pip install --python {venv_dir}/bin/python '{spec}'")
+    py = f"{venv_dir}/bin/python"
+    print("   uv unavailable — installing via the venv's own pip (ensurepip)")
+    run_command(f"{py} -m ensurepip --upgrade")  # idempotent if pip already there
+    return run_command(f"{py} -m pip install '{spec}'")
 
 
 def is_venv_ready(venv_dir):
@@ -420,14 +461,14 @@ def _reconcile_engine_venv(
                 f"⚠️  {engine} venv: {pkg} {engine_v} != base env {base_v} — "
                 f"repinning to match the head (prevents cloudpickle mismatch)"
             )
-            if not run_command(f"{_ensure_uv()} pip install --python {venv_dir}/bin/python '{spec}'"):
+            if not _pip_install_into_venv(venv_dir, spec):
                 print(f"❌ Failed to repin {pkg} in {engine} venv")
                 ok = False
         for spec in missing:
             if _venv_pkg_version(venv_dir, _spec_name(spec)) is not None:
                 continue  # installed by another pod while we waited
             print(f"⚠️  {engine} venv: missing build tool {spec!r} — installing")
-            if not run_command(f"{_ensure_uv()} pip install --python {venv_dir}/bin/python '{spec}'"):
+            if not _pip_install_into_venv(venv_dir, spec):
                 print(f"❌ Failed to install {spec} in {engine} venv")
                 ok = False
         if ok:
@@ -526,10 +567,16 @@ def setup_engine_venv(
 #                removed FieldDescriptor.label used by Ray Serve's _proto_to_dict)
 #   fastapi:     Ray cloudpickles the FastAPI app on the head; mismatched versions
 #                cause AttributeError on renamed internal classes (_IncludedRouter)
+# NOTE: fastapi here is only a *fallback* pin for fresh engine-venv creation —
+# _pin_pkgs_to_base() overrides it with the base env's live fastapi at create
+# time, and _reconcile_engine_venv() repins existing venvs to the base env on
+# every deploy. It's set to the current base-env version so the fallback and
+# reality agree; the base env itself floats (pyproject: fastapi>=0.110.0), so
+# the reconcile self-heal — not this constant — is what keeps head/worker in sync.
 _RAY_BASE = [
     "ray[serve]==2.55.1",
     "protobuf>=5.29.6,<7.0",
-    "fastapi==0.138.0",
+    "fastapi==0.139.2",
 ]
 
 # Single source of truth for every engine venv's package set. The setup_*_env.py
