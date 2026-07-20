@@ -147,8 +147,13 @@ def _pip_install_into_venv(venv_dir: str, spec: str) -> bool:
         return run_command(f"{cmd} pip install --python {venv_dir}/bin/python '{spec}'")
     py = f"{venv_dir}/bin/python"
     print("   uv unavailable — installing via the venv's own pip (ensurepip)")
-    run_command(f"{py} -m ensurepip --upgrade")  # idempotent if pip already there
-    return run_command(f"{py} -m pip install '{spec}'")
+    # CML base images export PIP_USER=1 so image-level pip installs land in
+    # ~/.local. Inherited into a venv, pip then attempts an illegal `--user`
+    # install ("User site-packages are not visible in this virtualenv").
+    # Force PIP_USER=0 so the install targets the venv's own site-packages.
+    env = "PIP_USER=0"
+    run_command(f"{env} {py} -m ensurepip --upgrade")  # idempotent if pip present
+    return run_command(f"{env} {py} -m pip install '{spec}'")
 
 
 def is_venv_ready(venv_dir):
