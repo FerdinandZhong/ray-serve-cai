@@ -55,7 +55,9 @@ def main():
         if os.path.exists(lock):
             os.remove(lock)
 
-    success = setup_engine_venv("vllm", VLLM_PACKAGES)
+    # Pin the interpreter explicitly so `uv venv` doesn't pick/download a default
+    # CPython on a bare box (matches setup_litellm_env.py).
+    success = setup_engine_venv("vllm", VLLM_PACKAGES, python="python3.11")
 
     if not success:
         print("❌ vLLM venv setup failed")

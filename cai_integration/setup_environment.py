@@ -58,33 +58,55 @@ def _ensure_uv() -> str:
     if _UV_CMD:
         return _UV_CMD
 
-    found = shutil.which("uv")
-    if not found:
+    def _resolve():
+        # a) plain `uv` executable on PATH.
+        exe = shutil.which("uv")
+        if exe:
+            return exe
+        # b) The `uv` pip package bundles its binary *inside* the package (not at
+        #    ~/.local/bin), which is the common CML case. Ask the package where it
+        #    is; fall back to running it as a module if the binary path is odd.
+        try:
+            import uv as _uv_mod  # noqa: PLC0415
+            try:
+                cand = _uv_mod.find_uv_bin()
+                if cand and os.access(cand, os.X_OK):
+                    return cand
+            except Exception:
+                pass
+            return f"{sys.executable} -m uv"
+        except Exception:
+            pass
+        # c) Known bin locations (installed-script layouts).
+        import site  # noqa: PLC0415
         for cand in (
             os.path.join(os.path.dirname(sys.executable), "uv"),
             os.path.join(_BASE_VENV, "bin", "uv"),
+            os.path.join(site.getuserbase(), "bin", "uv"),
             os.path.expanduser("~/.local/bin/uv"),
             os.path.expanduser("~/.cargo/bin/uv"),
         ):
             if os.access(cand, os.X_OK):
-                found = cand
-                break
+                return cand
+        return None
 
-    if not found:
+    cmd = _resolve()
+    if not cmd:
         # Bootstrap into the current interpreter, then re-resolve.
-        print("⬇️  uv not found on PATH — installing it ...")
+        print("⬇️  uv not found — installing it ...")
         run_command(f"{sys.executable} -m pip install uv")
-        found = shutil.which("uv") or os.path.join(
-            os.path.dirname(sys.executable), "uv"
-        )
+        import importlib  # noqa: PLC0415
+        importlib.invalidate_caches()
+        cmd = _resolve()
 
-    if not found or not os.access(found, os.X_OK):
+    if not cmd:
         raise RuntimeError(
-            "uv is not available and could not be installed "
-            "(tried PATH, base venv, ~/.local/bin, ~/.cargo/bin)"
+            "uv is not available and could not be installed (tried PATH, "
+            "`import uv`/find_uv_bin, `-m uv`, base venv, user base, "
+            "~/.local/bin, ~/.cargo/bin)"
         )
 
-    _UV_CMD = found
+    _UV_CMD = cmd
     return _UV_CMD
 
 
