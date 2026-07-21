@@ -60,42 +60,15 @@ except ImportError as exc:
     # "'NoneType' object is not callable" at AsyncEngineArgs(**engine_config).
     _VLLM_IMPORT_ERROR = exc
 
-# Serving-layer imports — paths differ across vLLM versions.  These are only
-# needed inside __init__ / request handlers, so a failed import here must NOT
-# null out the core symbols above.
-OpenAIServingCompletion = None  # type: ignore[assignment]
-OpenAIServingChat = None        # type: ignore[assignment]
-OpenAIServingModels = None      # type: ignore[assignment]
-BaseModelPath = None            # type: ignore[assignment]
-CompletionRequest = None        # type: ignore[assignment]
-ChatCompletionRequest = None    # type: ignore[assignment]
-_VLLM_NEW_LAYOUT = False
-
-if _VLLM_AVAILABLE:
-    try:
-        # vLLM 0.14+ / 0.18+ (subdirectory layout)
-        from vllm.entrypoints.openai.completion.serving import OpenAIServingCompletion   # type: ignore[no-redef]
-        from vllm.entrypoints.openai.chat_completion.serving import OpenAIServingChat    # type: ignore[no-redef]
-        from vllm.entrypoints.openai.models.serving import OpenAIServingModels           # type: ignore[no-redef]
-        from vllm.entrypoints.openai.models.protocol import BaseModelPath                # type: ignore[no-redef]
-        from vllm.entrypoints.openai.completion.protocol import CompletionRequest        # type: ignore[no-redef]
-        from vllm.entrypoints.openai.chat_completion.protocol import ChatCompletionRequest  # type: ignore[no-redef]
-        _VLLM_NEW_LAYOUT = True
-    except ImportError:
-        try:
-            # vLLM 0.13.x (flat layout)
-            from vllm.entrypoints.openai.serving_completion import OpenAIServingCompletion   # type: ignore[no-redef]
-            from vllm.entrypoints.openai.serving_chat import OpenAIServingChat               # type: ignore[no-redef]
-            from vllm.entrypoints.openai.serving_models import (                             # type: ignore[no-redef]
-                OpenAIServingModels,
-                BaseModelPath,
-            )
-            from vllm.entrypoints.openai.protocol import (                                   # type: ignore[no-redef]
-                CompletionRequest,
-                ChatCompletionRequest,
-            )
-        except ImportError:
-            pass  # serving imports deferred to __init__ for this vLLM version
+# Serving-layer classes (OpenAIServing*/BaseModelPath) and the OpenAI request
+# models (CompletionRequest/ChatCompletionRequest) are intentionally NOT bound
+# at module level. They live only in the actor venv (.venv-vllm); on the head
+# the names would be None, and — critically — the FastAPI routes below are built
+# at import time on the head, then cloudpickled to the replica by
+# @serve.ingress. If a route annotated its body with a head-None class, FastAPI
+# would resolve it to None and mis-route the JSON body as a query param (422).
+# So these are loaded lazily inside the actor via _load_vllm_serving() /
+# _load_vllm_protocol(), and request bodies are validated at request time.
 
 logger = logging.getLogger(__name__)
 
@@ -132,6 +105,41 @@ def _load_vllm_serving():
             f"actor's venv (.venv-vllm): {exc!r}"
         ) from exc
     return OpenAIServingCompletion, OpenAIServingChat, OpenAIServingModels, BaseModelPath
+
+
+def _load_vllm_protocol():
+    """Deferred, version-adaptive import of the OpenAI request models.
+
+    Same head-side-None rationale as _load_vllm_serving: CompletionRequest /
+    ChatCompletionRequest are None on the vLLM-less head. The FastAPI route
+    handlers must NOT annotate their body with these globals — the routes are
+    built at module import time on the head (where the names resolve to None),
+    then @serve.ingress cloudpickles that broken app to the replica. Instead we
+    resolve the real classes here, inside the actor, and validate the JSON body
+    at request time. Returns (CompletionRequest, ChatCompletionRequest).
+    """
+    try:
+        try:  # vLLM 0.14+/0.18+ — subdirectory layout
+            from vllm.entrypoints.openai.completion.protocol import CompletionRequest
+            from vllm.entrypoints.openai.chat_completion.protocol import ChatCompletionRequest
+        except ImportError:  # vLLM 0.13.x — flat layout
+            from vllm.entrypoints.openai.protocol import (
+                ChatCompletionRequest,
+                CompletionRequest,
+            )
+    except ImportError as exc:
+        raise RuntimeError(
+            "vLLM OpenAI protocol models failed to import inside this actor's "
+            f"venv (.venv-vllm): {exc!r}"
+        ) from exc
+    return CompletionRequest, ChatCompletionRequest
+
+
+def _validate_request(cls, payload: dict):
+    """Build a vLLM request model from a raw JSON payload (pydantic v2/v1)."""
+    if hasattr(cls, "model_validate"):
+        return cls.model_validate(payload)
+    return cls(**payload)  # pydantic v1 fallback
 
 
 # ---------------------------------------------------------------------------
@@ -558,6 +566,14 @@ class VLLMEngine:
                     })
                 )
 
+            # Bind the OpenAI request models for in-handler body validation.
+            # The FastAPI routes can't annotate these (None on the head; see
+            # _load_vllm_protocol), so we validate the JSON body at request time.
+            (
+                self._completion_request_cls,
+                self._chat_request_cls,
+            ) = _load_vllm_protocol()
+
             logger.info("✅ vLLM engine initialized  model=%s  tp=%d",
                         self.model_name, self.tensor_parallel_size)
 
@@ -583,12 +599,20 @@ class VLLMEngine:
     # wrong; vLLM still returns an async generator when the request streams.
     # ------------------------------------------------------------------
 
+    # Body is parsed manually (see chat_completion) — the handlers take only the
+    # Starlette Request. The request models can't be FastAPI body annotations:
+    # those globals are None on the head where @serve.ingress builds+pickles the
+    # app, so FastAPI would (mis)route the body as a query param → 422.
     @_vllm_app.post("/v1/chat/completions", tags=["Chat"],
                     summary="Chat completion (OpenAI-compatible)",
                     response_model=None)
-    async def chat_completion(
-        self, body: ChatCompletionRequest, request: Request
-    ) -> Response:
+    async def chat_completion(self, request: Request) -> Response:
+        try:
+            payload = await request.json()
+            body = _validate_request(self._chat_request_cls, payload)
+        except Exception as exc:
+            logger.warning("Invalid chat completion request: %s", exc)
+            return JSONResponse({"error": f"invalid request: {exc}"}, status_code=422)
         try:
             result = await self.openai_serving_chat.create_chat_completion(
                 body, raw_request=request
@@ -605,9 +629,13 @@ class VLLMEngine:
     @_vllm_app.post("/v1/completions", tags=["Completions"],
                     summary="Text completion (OpenAI-compatible)",
                     response_model=None)
-    async def completion(
-        self, body: CompletionRequest, request: Request
-    ) -> Response:
+    async def completion(self, request: Request) -> Response:
+        try:
+            payload = await request.json()
+            body = _validate_request(self._completion_request_cls, payload)
+        except Exception as exc:
+            logger.warning("Invalid completion request: %s", exc)
+            return JSONResponse({"error": f"invalid request: {exc}"}, status_code=422)
         try:
             result = await self.openai_serving_completion.create_completion(
                 body, raw_request=request

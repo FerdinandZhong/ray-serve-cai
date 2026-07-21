@@ -188,6 +188,36 @@ def test_build_renderer_for_picks_kwarg_by_signature(monkeypatch):
     assert ve._build_renderer_for(Flat, **common) == (None, None)
 
 
+def test_vllm_post_routes_take_no_body_annotation():
+    """Guard the serve.ingress body-annotation regression.
+
+    The vLLM FastAPI routes are built at import time on the head (where vllm is
+    absent) and cloudpickled to the replica by @serve.ingress. If a POST handler
+    annotates its body with a vLLM request model, that name resolves to None on
+    the head and FastAPI mis-routes the JSON body as a query param → 422 for
+    every inference call. So /v1/chat/completions and /v1/completions must take
+    only (self, request) and validate the body at request time.
+    """
+    import inspect
+
+    with heavy_libs_blocked():
+        from ray_serve_cai.engines import vllm_engine as ve
+
+        by_path = {}
+        for r in ve._vllm_app.routes:
+            for p in getattr(r, "path", "") and [r.path] or []:
+                by_path[p] = r
+
+        for path in ("/v1/chat/completions", "/v1/completions"):
+            route = by_path.get(path)
+            assert route is not None, f"route {path} not registered"
+            params = set(inspect.signature(route.endpoint).parameters) - {"self"}
+            assert params == {"request"}, (
+                f"{path} handler must take only (self, request); got {params}. "
+                "A body-typed param reintroduces the head-None 422 bug."
+            )
+
+
 if __name__ == "__main__":
     # Standalone runner (no pytest/pytest-cov required).
     failures = 0
