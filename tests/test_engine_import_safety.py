@@ -147,6 +147,47 @@ def test_fastapi_app_cloudpickles_with_lock_reducer():
     assert reloaded.title == "ingress-pickle-test"
 
 
+def test_build_renderer_for_picks_kwarg_by_signature(monkeypatch):
+    """Guard the vLLM renderer-kwarg dispatch across versions.
+
+    vLLM renamed the serving-layer renderer argument `openai_serving_render`
+    (v0.18.0) → `online_renderer` (renderers/ refactor). _build_renderer_for
+    must select the name the constructor actually declares; the original bug
+    only knew `openai_serving_render`, so the newer constructor fell through to
+    the no-renderer (v0.13.x) path and died with
+    'missing 1 required keyword-only argument: online_renderer'.
+
+    The two builders import vllm, so we stub them and assert only the dispatch.
+    """
+    with heavy_libs_blocked():
+        from ray_serve_cai.engines import vllm_engine as ve
+
+    monkeypatch.setattr(ve, "_build_online_renderer",
+                        lambda *a, **k: "ONLINE", raising=True)
+    monkeypatch.setattr(ve, "_build_serving_render",
+                        lambda *a, **k: "SERVING", raising=True)
+
+    class Newest:  # renderers/ refactor
+        def __init__(self, engine_client, models, *, online_renderer,
+                     request_logger):  # noqa: ANN001
+            ...
+
+    class V018:  # subdirectory layout
+        def __init__(self, engine_client, models, *, openai_serving_render,
+                     request_logger):  # noqa: ANN001
+            ...
+
+    class Flat:  # v0.13.x flat layout — no renderer arg
+        def __init__(self, engine_client, models, request_logger=None):  # noqa: ANN001
+            ...
+
+    common = dict(engine=object(), engine_args=object(), model_name="m")
+
+    assert ve._build_renderer_for(Newest, **common) == ("online_renderer", "ONLINE")
+    assert ve._build_renderer_for(V018, **common) == ("openai_serving_render", "SERVING")
+    assert ve._build_renderer_for(Flat, **common) == (None, None)
+
+
 if __name__ == "__main__":
     # Standalone runner (no pytest/pytest-cov required).
     failures = 0

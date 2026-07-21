@@ -5,11 +5,16 @@ Leverages vLLM's built-in OpenAI-compatible request handlers.
 Import paths and constructor signatures differ across vLLM versions:
 
   v0.13.x  — flat layout under vllm/entrypoints/openai/
-  v0.18.0+ — subdirectory layout; OpenAIServingChat / OpenAIServingCompletion
-              both require a new `openai_serving_render` argument built from
-              renderer_from_config() + get_io_processor()
+  v0.18.0  — subdirectory layout; OpenAIServingChat / OpenAIServingCompletion
+              require an `openai_serving_render` argument (OpenAIServingRender),
+              built from renderer_from_config() + get_io_processor().
+  newest   — renderers/ refactor renames that argument to `online_renderer`
+              (class OnlineRenderer), built from the live engine's model_config
+              + renderer (no io_processor/model_registry). See
+              _build_online_renderer / _build_renderer_for.
 
-Both layouts are handled via try/except on imports and signature inspection.
+All layouts are handled via try/except on imports and signature inspection
+(_build_renderer_for picks the correct kwarg name + renderer class).
 
 References:
   vLLM OpenAI Server: https://docs.vllm.ai/en/stable/serving/openai_compatible_server.html
@@ -255,6 +260,68 @@ def _build_serving_render(engine_args: AsyncEngineArgs, model_name: str,
     )
 
 
+def _build_online_renderer(engine, engine_args: AsyncEngineArgs, model_name: str,
+                           chat_template: Optional[str] = None):
+    """
+    Build OnlineRenderer for the newest vLLM layout (the ``online_renderer`` kwarg).
+
+    OnlineRenderer replaced OpenAIServingRender in the renderers/ refactor. It
+    wraps the live engine's ``model_config`` + ``renderer`` (mirroring vLLM's own
+    ``init_app_state``), so no io_processor / model_registry plumbing is needed.
+    When the engine client doesn't expose ``.renderer`` (e.g. a CPU render build)
+    we fall back to ``renderer_from_config(vllm_config)``, matching vLLM's
+    ``init_render_app_state``.
+    """
+    from vllm.renderers.online_renderer import OnlineRenderer
+
+    model_config = getattr(engine, "model_config", None)
+    renderer = getattr(engine, "renderer", None)
+    if model_config is None or renderer is None:
+        from vllm.renderers import renderer_from_config
+        vllm_config = engine_args.create_engine_config()
+        if model_config is None:
+            model_config = vllm_config.model_config
+        if renderer is None:
+            renderer = renderer_from_config(vllm_config)
+
+    # chat_template_content_format: accept the enum or fall back to "auto".
+    try:
+        from vllm.entrypoints.chat_utils import ChatTemplateContentFormatOption
+        content_format = ChatTemplateContentFormatOption("auto")
+    except Exception:
+        content_format = "auto"  # type: ignore[assignment]
+
+    return OnlineRenderer(**_accepted_kwargs(OnlineRenderer, {
+        "model_config":                 model_config,
+        "renderer":                     renderer,
+        "request_logger":               None,
+        "chat_template":                chat_template,
+        "chat_template_content_format": content_format,
+    }))
+
+
+def _build_renderer_for(cls, *, engine, engine_args: AsyncEngineArgs,
+                        model_name: str, chat_template: Optional[str] = None):
+    """
+    Return ``(kwarg_name, renderer_obj)`` for the renderer argument that
+    ``cls.__init__`` expects, or ``(None, None)`` when it takes no renderer.
+
+    vLLM renamed this argument across versions (check newest name first):
+      - newest       → ``online_renderer``      (OnlineRenderer)
+      - v0.18.0      → ``openai_serving_render`` (OpenAIServingRender)
+      - v0.13.x flat → none
+    """
+    if _requires_param(cls, "online_renderer"):
+        return "online_renderer", _build_online_renderer(
+            engine, engine_args, model_name, chat_template,
+        )
+    if _requires_param(cls, "openai_serving_render"):
+        return "openai_serving_render", _build_serving_render(
+            engine_args=engine_args, model_name=model_name, chat_template=chat_template,
+        )
+    return None, None
+
+
 # ---------------------------------------------------------------------------
 # ASGI middleware — strips route_prefix from scope["path"] before routing.
 #
@@ -425,38 +492,46 @@ class VLLMEngine:
             )
 
             # ── OpenAIServingCompletion / OpenAIServingChat ──────────────────
-            # v0.18.0+ requires openai_serving_render; build it lazily only
-            # when the parameter is actually declared in the constructor.
-            if _requires_param(OpenAIServingCompletion, "openai_serving_render"):
-                # vLLM 0.18.0+
-                logger.info("Detected vLLM 0.18.0+ layout — building OpenAIServingRender")
-                serving_render = _build_serving_render(
-                    engine_args=self.engine_args,
-                    model_name=self.model_name,
-                    chat_template=engine_config.get("chat_template"),
-                )
+            # The renderer argument was introduced in v0.18.0 as
+            # `openai_serving_render` (OpenAIServingRender) and later renamed to
+            # `online_renderer` (OnlineRenderer) in the renderers/ refactor.
+            # Detect which name the constructor wants, build the matching
+            # renderer, and pass it under that name. When neither is present
+            # we're on the v0.13.x flat layout (no renderer arg at all).
+            render_kw, renderer_obj = _build_renderer_for(
+                OpenAIServingCompletion,
+                engine=self.engine,
+                engine_args=self.engine_args,
+                model_name=self.model_name,
+                chat_template=engine_config.get("chat_template"),
+            )
 
+            try:
+                from vllm.entrypoints.chat_utils import ChatTemplateContentFormatOption
+                content_format = ChatTemplateContentFormatOption("auto")
+            except Exception:
+                content_format = "auto"  # type: ignore[assignment]
+
+            if render_kw:
+                logger.info("Detected vLLM renderer layout — passing '%s'", render_kw)
                 self.openai_serving_completion = OpenAIServingCompletion(
-                    engine_client=self.engine,
-                    models=self.openai_serving_models,
-                    openai_serving_render=serving_render,
-                    request_logger=None,
+                    **_accepted_kwargs(OpenAIServingCompletion, {
+                        "engine_client":  self.engine,
+                        "models":         self.openai_serving_models,
+                        render_kw:        renderer_obj,
+                        "request_logger": None,
+                    })
                 )
-
-                try:
-                    from vllm.entrypoints.chat_utils import ChatTemplateContentFormatOption
-                    content_format = ChatTemplateContentFormatOption("auto")
-                except Exception:
-                    content_format = "auto"  # type: ignore[assignment]
-
                 self.openai_serving_chat = OpenAIServingChat(
-                    engine_client=self.engine,
-                    models=self.openai_serving_models,
-                    response_role="assistant",
-                    openai_serving_render=serving_render,
-                    request_logger=None,
-                    chat_template=engine_config.get("chat_template"),
-                    chat_template_content_format=content_format,
+                    **_accepted_kwargs(OpenAIServingChat, {
+                        "engine_client":                self.engine,
+                        "models":                       self.openai_serving_models,
+                        "response_role":                "assistant",
+                        render_kw:                      renderer_obj,
+                        "request_logger":               None,
+                        "chat_template":                engine_config.get("chat_template"),
+                        "chat_template_content_format": content_format,
+                    })
                 )
 
             else:
