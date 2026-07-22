@@ -216,6 +216,16 @@ def test_vllm_post_routes_take_no_body_annotation():
                 f"{path} handler must take only (self, request); got {params}. "
                 "A body-typed param reintroduces the head-None 422 bug."
             )
+            # The `request` annotation MUST be a concrete class object, not a
+            # PEP-563 string. A string relies on get_type_hints resolution, which
+            # fails after @serve.ingress cloudpickles the app (annotation-only
+            # names are dropped from the endpoint globals) → request becomes a
+            # query param (422) and OpenAPI 500s. See vllm_engine handler comment.
+            anno = route.endpoint.__annotations__.get("request")
+            assert isinstance(anno, type), (
+                f"{path} 'request' annotation must be a real class, got {anno!r}. "
+                "Assign __annotations__ = {'request': Request, ...} explicitly."
+            )
 
 
 if __name__ == "__main__":

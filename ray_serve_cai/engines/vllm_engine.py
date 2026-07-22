@@ -599,14 +599,19 @@ class VLLMEngine:
     # wrong; vLLM still returns an async generator when the request streams.
     # ------------------------------------------------------------------
 
-    # Body is parsed manually (see chat_completion) — the handlers take only the
-    # Starlette Request. The request models can't be FastAPI body annotations:
-    # those globals are None on the head where @serve.ingress builds+pickles the
-    # app, so FastAPI would (mis)route the body as a query param → 422.
-    @_vllm_app.post("/v1/chat/completions", tags=["Chat"],
-                    summary="Chat completion (OpenAI-compatible)",
-                    response_model=None)
-    async def chat_completion(self, request: Request) -> Response:
+    # These POST handlers take the Starlette Request and parse the body manually
+    # (the vLLM body models are None on the head — see _load_vllm_protocol).
+    #
+    # CRITICAL: annotations are assigned as REAL class objects, not written
+    # inline as `request: Request`. Under `from __future__ import annotations`
+    # inline hints are stringized; @serve.ingress then cloudpickles this app to
+    # the replica, and cloudpickle rebuilds each endpoint's __globals__ from the
+    # names used in the *code body* only — dropping annotation-only names like
+    # Request/Response. On the replica get_type_hints("Request") NameErrors,
+    # FastAPI falls back to treating `request` as a query param (→ 422 on every
+    # call) and OpenAPI schema-gen 500s. A concrete class object needs no
+    # get_type_hints resolution and pickles by reference, so it survives intact.
+    async def chat_completion(self, request):
         try:
             payload = await request.json()
             body = _validate_request(self._chat_request_cls, payload)
@@ -626,10 +631,13 @@ class VLLMEngine:
             result, op_name="streaming chat completion"
         )
 
-    @_vllm_app.post("/v1/completions", tags=["Completions"],
-                    summary="Text completion (OpenAI-compatible)",
-                    response_model=None)
-    async def completion(self, request: Request) -> Response:
+    chat_completion.__annotations__ = {"request": Request, "return": Response}
+    chat_completion = _vllm_app.post(
+        "/v1/chat/completions", tags=["Chat"],
+        summary="Chat completion (OpenAI-compatible)", response_model=None,
+    )(chat_completion)
+
+    async def completion(self, request):
         try:
             payload = await request.json()
             body = _validate_request(self._completion_request_cls, payload)
@@ -648,6 +656,12 @@ class VLLMEngine:
         return _normalize_vllm_stream_result(
             result, op_name="streaming completion"
         )
+
+    completion.__annotations__ = {"request": Request, "return": Response}
+    completion = _vllm_app.post(
+        "/v1/completions", tags=["Completions"],
+        summary="Text completion (OpenAI-compatible)", response_model=None,
+    )(completion)
 
     @_vllm_app.get("/v1/models", tags=["Models"],
                    summary="List available models",
