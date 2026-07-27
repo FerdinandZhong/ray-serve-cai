@@ -296,6 +296,46 @@ class RayService:
             logger.error(f"Failed to delete application {name}: {e}")
             raise
 
+    def _refresh_serve_client(self) -> None:
+        """Force a health-checked connection to the live Serve controller.
+
+        ``serve.status()`` fetches the *cached* global Serve client without a
+        health check (``raise_if_no_controller_running=False`` and
+        ``_health_check_controller=False``). When the Serve controller has
+        restarted — common on CML; the controller log sequence climbs into the
+        hundreds — that cached handle points at the dead actor, so the
+        subsequent ``client.get_serve_details()`` raises ``RayActorError`` and
+        ``serve.status()`` returns an empty status (or raises). The caller then
+        reports zero applications even though apps are running.
+
+        Forcing a health-checked client here drops any stale handle and
+        reconnects to the current controller so ``serve.status()`` sees the
+        real applications. Best-effort: if the private context API changes
+        across Ray versions, we skip the refresh and let ``serve.status()`` run
+        as before.
+        """
+        try:
+            from ray.serve.context import _get_global_client, _set_global_client
+        except Exception as e:  # noqa: BLE001 - private API moved; degrade gracefully
+            logger.debug("Serve context private API unavailable (%s); skipping refresh", e)
+            return
+
+        try:
+            _get_global_client(
+                _health_check_controller=True,
+                raise_if_no_controller_running=True,
+            )
+        except Exception as e:  # noqa: BLE001 - stale/dead/missing handle
+            logger.warning("Serve client health check failed (%s); reconnecting", e)
+            try:
+                _set_global_client(None)  # drop the stale handle
+                _get_global_client(
+                    _health_check_controller=True,
+                    raise_if_no_controller_running=True,
+                )
+            except Exception as e2:  # noqa: BLE001
+                logger.error("Failed to reconnect to Serve controller: %s", e2)
+
     def list_applications(self) -> List[Dict[str, Any]]:
         """
         List all Ray Serve applications with real status, route prefix, and replica count.
@@ -305,9 +345,17 @@ class RayService:
             sourced directly from Ray Serve.
         """
         self.connect()
+        self._refresh_serve_client()
 
         try:
             status = serve.status()
+        except Exception as e:
+            # Do NOT silently swallow into an empty list — that masks controller
+            # connectivity problems as "no applications deployed".
+            logger.error("serve.status() failed: %s", e, exc_info=True)
+            return []
+
+        try:
             result = []
             for name, app_status in status.applications.items():
                 # Sum replicas across all named deployments in this application.
@@ -346,23 +394,38 @@ class RayService:
                     "route_prefix": route_prefix,
                     "num_replicas": total_replicas,
                 })
+            if not result:
+                logger.warning(
+                    "serve.status() reported no applications; if apps are "
+                    "actually running the Serve controller connection may be "
+                    "stale (see _refresh_serve_client)."
+                )
             return result
         except Exception as e:
-            logger.error(f"Failed to list applications: {e}")
+            logger.error(f"Failed to list applications: {e}", exc_info=True)
             return []
 
     def get_application_status(self, name: str) -> Optional[Dict[str, Any]]:
         """
         Get status of a specific application.
 
+        Matches by application name OR route prefix, since the two differ: a
+        model deployed at route ``/qwen3-35b`` may carry the sanitized app name
+        ``qwen3-35b-a3b-fp8``. Looking up either the name or the route prefix
+        (with or without the leading slash) resolves it.
+
         Args:
-            name: Application name
+            name: Application name or route prefix.
 
         Returns:
             Application status or None if not found
         """
+        target = name.strip().lstrip("/")
         apps = self.list_applications()
         for app in apps:
             if app["name"] == name:
+                return app
+            route = (app.get("route_prefix") or "").strip().lstrip("/")
+            if route and route == target:
                 return app
         return None
