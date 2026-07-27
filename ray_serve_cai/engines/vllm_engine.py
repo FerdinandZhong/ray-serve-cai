@@ -5,11 +5,16 @@ Leverages vLLM's built-in OpenAI-compatible request handlers.
 Import paths and constructor signatures differ across vLLM versions:
 
   v0.13.x  — flat layout under vllm/entrypoints/openai/
-  v0.18.0+ — subdirectory layout; OpenAIServingChat / OpenAIServingCompletion
-              both require a new `openai_serving_render` argument built from
-              renderer_from_config() + get_io_processor()
+  v0.18.0  — subdirectory layout; OpenAIServingChat / OpenAIServingCompletion
+              require an `openai_serving_render` argument (OpenAIServingRender),
+              built from renderer_from_config() + get_io_processor().
+  newest   — renderers/ refactor renames that argument to `online_renderer`
+              (class OnlineRenderer), built from the live engine's model_config
+              + renderer (no io_processor/model_registry). See
+              _build_online_renderer / _build_renderer_for.
 
-Both layouts are handled via try/except on imports and signature inspection.
+All layouts are handled via try/except on imports and signature inspection
+(_build_renderer_for picks the correct kwarg name + renderer class).
 
 References:
   vLLM OpenAI Server: https://docs.vllm.ai/en/stable/serving/openai_compatible_server.html
@@ -55,42 +60,15 @@ except ImportError as exc:
     # "'NoneType' object is not callable" at AsyncEngineArgs(**engine_config).
     _VLLM_IMPORT_ERROR = exc
 
-# Serving-layer imports — paths differ across vLLM versions.  These are only
-# needed inside __init__ / request handlers, so a failed import here must NOT
-# null out the core symbols above.
-OpenAIServingCompletion = None  # type: ignore[assignment]
-OpenAIServingChat = None        # type: ignore[assignment]
-OpenAIServingModels = None      # type: ignore[assignment]
-BaseModelPath = None            # type: ignore[assignment]
-CompletionRequest = None        # type: ignore[assignment]
-ChatCompletionRequest = None    # type: ignore[assignment]
-_VLLM_NEW_LAYOUT = False
-
-if _VLLM_AVAILABLE:
-    try:
-        # vLLM 0.14+ / 0.18+ (subdirectory layout)
-        from vllm.entrypoints.openai.completion.serving import OpenAIServingCompletion   # type: ignore[no-redef]
-        from vllm.entrypoints.openai.chat_completion.serving import OpenAIServingChat    # type: ignore[no-redef]
-        from vllm.entrypoints.openai.models.serving import OpenAIServingModels           # type: ignore[no-redef]
-        from vllm.entrypoints.openai.models.protocol import BaseModelPath                # type: ignore[no-redef]
-        from vllm.entrypoints.openai.completion.protocol import CompletionRequest        # type: ignore[no-redef]
-        from vllm.entrypoints.openai.chat_completion.protocol import ChatCompletionRequest  # type: ignore[no-redef]
-        _VLLM_NEW_LAYOUT = True
-    except ImportError:
-        try:
-            # vLLM 0.13.x (flat layout)
-            from vllm.entrypoints.openai.serving_completion import OpenAIServingCompletion   # type: ignore[no-redef]
-            from vllm.entrypoints.openai.serving_chat import OpenAIServingChat               # type: ignore[no-redef]
-            from vllm.entrypoints.openai.serving_models import (                             # type: ignore[no-redef]
-                OpenAIServingModels,
-                BaseModelPath,
-            )
-            from vllm.entrypoints.openai.protocol import (                                   # type: ignore[no-redef]
-                CompletionRequest,
-                ChatCompletionRequest,
-            )
-        except ImportError:
-            pass  # serving imports deferred to __init__ for this vLLM version
+# Serving-layer classes (OpenAIServing*/BaseModelPath) and the OpenAI request
+# models (CompletionRequest/ChatCompletionRequest) are intentionally NOT bound
+# at module level. They live only in the actor venv (.venv-vllm); on the head
+# the names would be None, and — critically — the FastAPI routes below are built
+# at import time on the head, then cloudpickled to the replica by
+# @serve.ingress. If a route annotated its body with a head-None class, FastAPI
+# would resolve it to None and mis-route the JSON body as a query param (422).
+# So these are loaded lazily inside the actor via _load_vllm_serving() /
+# _load_vllm_protocol(), and request bodies are validated at request time.
 
 logger = logging.getLogger(__name__)
 
@@ -127,6 +105,41 @@ def _load_vllm_serving():
             f"actor's venv (.venv-vllm): {exc!r}"
         ) from exc
     return OpenAIServingCompletion, OpenAIServingChat, OpenAIServingModels, BaseModelPath
+
+
+def _load_vllm_protocol():
+    """Deferred, version-adaptive import of the OpenAI request models.
+
+    Same head-side-None rationale as _load_vllm_serving: CompletionRequest /
+    ChatCompletionRequest are None on the vLLM-less head. The FastAPI route
+    handlers must NOT annotate their body with these globals — the routes are
+    built at module import time on the head (where the names resolve to None),
+    then @serve.ingress cloudpickles that broken app to the replica. Instead we
+    resolve the real classes here, inside the actor, and validate the JSON body
+    at request time. Returns (CompletionRequest, ChatCompletionRequest).
+    """
+    try:
+        try:  # vLLM 0.14+/0.18+ — subdirectory layout
+            from vllm.entrypoints.openai.completion.protocol import CompletionRequest
+            from vllm.entrypoints.openai.chat_completion.protocol import ChatCompletionRequest
+        except ImportError:  # vLLM 0.13.x — flat layout
+            from vllm.entrypoints.openai.protocol import (
+                ChatCompletionRequest,
+                CompletionRequest,
+            )
+    except ImportError as exc:
+        raise RuntimeError(
+            "vLLM OpenAI protocol models failed to import inside this actor's "
+            f"venv (.venv-vllm): {exc!r}"
+        ) from exc
+    return CompletionRequest, ChatCompletionRequest
+
+
+def _validate_request(cls, payload: dict):
+    """Build a vLLM request model from a raw JSON payload (pydantic v2/v1)."""
+    if hasattr(cls, "model_validate"):
+        return cls.model_validate(payload)
+    return cls(**payload)  # pydantic v1 fallback
 
 
 # ---------------------------------------------------------------------------
@@ -253,6 +266,68 @@ def _build_serving_render(engine_args: AsyncEngineArgs, model_name: str,
         chat_template=chat_template,
         chat_template_content_format=content_format,
     )
+
+
+def _build_online_renderer(engine, engine_args: AsyncEngineArgs, model_name: str,
+                           chat_template: Optional[str] = None):
+    """
+    Build OnlineRenderer for the newest vLLM layout (the ``online_renderer`` kwarg).
+
+    OnlineRenderer replaced OpenAIServingRender in the renderers/ refactor. It
+    wraps the live engine's ``model_config`` + ``renderer`` (mirroring vLLM's own
+    ``init_app_state``), so no io_processor / model_registry plumbing is needed.
+    When the engine client doesn't expose ``.renderer`` (e.g. a CPU render build)
+    we fall back to ``renderer_from_config(vllm_config)``, matching vLLM's
+    ``init_render_app_state``.
+    """
+    from vllm.renderers.online_renderer import OnlineRenderer
+
+    model_config = getattr(engine, "model_config", None)
+    renderer = getattr(engine, "renderer", None)
+    if model_config is None or renderer is None:
+        from vllm.renderers import renderer_from_config
+        vllm_config = engine_args.create_engine_config()
+        if model_config is None:
+            model_config = vllm_config.model_config
+        if renderer is None:
+            renderer = renderer_from_config(vllm_config)
+
+    # chat_template_content_format: accept the enum or fall back to "auto".
+    try:
+        from vllm.entrypoints.chat_utils import ChatTemplateContentFormatOption
+        content_format = ChatTemplateContentFormatOption("auto")
+    except Exception:
+        content_format = "auto"  # type: ignore[assignment]
+
+    return OnlineRenderer(**_accepted_kwargs(OnlineRenderer, {
+        "model_config":                 model_config,
+        "renderer":                     renderer,
+        "request_logger":               None,
+        "chat_template":                chat_template,
+        "chat_template_content_format": content_format,
+    }))
+
+
+def _build_renderer_for(cls, *, engine, engine_args: AsyncEngineArgs,
+                        model_name: str, chat_template: Optional[str] = None):
+    """
+    Return ``(kwarg_name, renderer_obj)`` for the renderer argument that
+    ``cls.__init__`` expects, or ``(None, None)`` when it takes no renderer.
+
+    vLLM renamed this argument across versions (check newest name first):
+      - newest       → ``online_renderer``      (OnlineRenderer)
+      - v0.18.0      → ``openai_serving_render`` (OpenAIServingRender)
+      - v0.13.x flat → none
+    """
+    if _requires_param(cls, "online_renderer"):
+        return "online_renderer", _build_online_renderer(
+            engine, engine_args, model_name, chat_template,
+        )
+    if _requires_param(cls, "openai_serving_render"):
+        return "openai_serving_render", _build_serving_render(
+            engine_args=engine_args, model_name=model_name, chat_template=chat_template,
+        )
+    return None, None
 
 
 # ---------------------------------------------------------------------------
@@ -425,38 +500,46 @@ class VLLMEngine:
             )
 
             # ── OpenAIServingCompletion / OpenAIServingChat ──────────────────
-            # v0.18.0+ requires openai_serving_render; build it lazily only
-            # when the parameter is actually declared in the constructor.
-            if _requires_param(OpenAIServingCompletion, "openai_serving_render"):
-                # vLLM 0.18.0+
-                logger.info("Detected vLLM 0.18.0+ layout — building OpenAIServingRender")
-                serving_render = _build_serving_render(
-                    engine_args=self.engine_args,
-                    model_name=self.model_name,
-                    chat_template=engine_config.get("chat_template"),
-                )
+            # The renderer argument was introduced in v0.18.0 as
+            # `openai_serving_render` (OpenAIServingRender) and later renamed to
+            # `online_renderer` (OnlineRenderer) in the renderers/ refactor.
+            # Detect which name the constructor wants, build the matching
+            # renderer, and pass it under that name. When neither is present
+            # we're on the v0.13.x flat layout (no renderer arg at all).
+            render_kw, renderer_obj = _build_renderer_for(
+                OpenAIServingCompletion,
+                engine=self.engine,
+                engine_args=self.engine_args,
+                model_name=self.model_name,
+                chat_template=engine_config.get("chat_template"),
+            )
 
+            try:
+                from vllm.entrypoints.chat_utils import ChatTemplateContentFormatOption
+                content_format = ChatTemplateContentFormatOption("auto")
+            except Exception:
+                content_format = "auto"  # type: ignore[assignment]
+
+            if render_kw:
+                logger.info("Detected vLLM renderer layout — passing '%s'", render_kw)
                 self.openai_serving_completion = OpenAIServingCompletion(
-                    engine_client=self.engine,
-                    models=self.openai_serving_models,
-                    openai_serving_render=serving_render,
-                    request_logger=None,
+                    **_accepted_kwargs(OpenAIServingCompletion, {
+                        "engine_client":  self.engine,
+                        "models":         self.openai_serving_models,
+                        render_kw:        renderer_obj,
+                        "request_logger": None,
+                    })
                 )
-
-                try:
-                    from vllm.entrypoints.chat_utils import ChatTemplateContentFormatOption
-                    content_format = ChatTemplateContentFormatOption("auto")
-                except Exception:
-                    content_format = "auto"  # type: ignore[assignment]
-
                 self.openai_serving_chat = OpenAIServingChat(
-                    engine_client=self.engine,
-                    models=self.openai_serving_models,
-                    response_role="assistant",
-                    openai_serving_render=serving_render,
-                    request_logger=None,
-                    chat_template=engine_config.get("chat_template"),
-                    chat_template_content_format=content_format,
+                    **_accepted_kwargs(OpenAIServingChat, {
+                        "engine_client":                self.engine,
+                        "models":                       self.openai_serving_models,
+                        "response_role":                "assistant",
+                        render_kw:                      renderer_obj,
+                        "request_logger":               None,
+                        "chat_template":                engine_config.get("chat_template"),
+                        "chat_template_content_format": content_format,
+                    })
                 )
 
             else:
@@ -483,6 +566,14 @@ class VLLMEngine:
                     })
                 )
 
+            # Bind the OpenAI request models for in-handler body validation.
+            # The FastAPI routes can't annotate these (None on the head; see
+            # _load_vllm_protocol), so we validate the JSON body at request time.
+            (
+                self._completion_request_cls,
+                self._chat_request_cls,
+            ) = _load_vllm_protocol()
+
             logger.info("✅ vLLM engine initialized  model=%s  tp=%d",
                         self.model_name, self.tensor_parallel_size)
 
@@ -508,12 +599,25 @@ class VLLMEngine:
     # wrong; vLLM still returns an async generator when the request streams.
     # ------------------------------------------------------------------
 
-    @_vllm_app.post("/v1/chat/completions", tags=["Chat"],
-                    summary="Chat completion (OpenAI-compatible)",
-                    response_model=None)
-    async def chat_completion(
-        self, body: ChatCompletionRequest, request: Request
-    ) -> Response:
+    # These POST handlers take the Starlette Request and parse the body manually
+    # (the vLLM body models are None on the head — see _load_vllm_protocol).
+    #
+    # CRITICAL: annotations are assigned as REAL class objects, not written
+    # inline as `request: Request`. Under `from __future__ import annotations`
+    # inline hints are stringized; @serve.ingress then cloudpickles this app to
+    # the replica, and cloudpickle rebuilds each endpoint's __globals__ from the
+    # names used in the *code body* only — dropping annotation-only names like
+    # Request/Response. On the replica get_type_hints("Request") NameErrors,
+    # FastAPI falls back to treating `request` as a query param (→ 422 on every
+    # call) and OpenAPI schema-gen 500s. A concrete class object needs no
+    # get_type_hints resolution and pickles by reference, so it survives intact.
+    async def chat_completion(self, request):
+        try:
+            payload = await request.json()
+            body = _validate_request(self._chat_request_cls, payload)
+        except Exception as exc:
+            logger.warning("Invalid chat completion request: %s", exc)
+            return JSONResponse({"error": f"invalid request: {exc}"}, status_code=422)
         try:
             result = await self.openai_serving_chat.create_chat_completion(
                 body, raw_request=request
@@ -527,12 +631,19 @@ class VLLMEngine:
             result, op_name="streaming chat completion"
         )
 
-    @_vllm_app.post("/v1/completions", tags=["Completions"],
-                    summary="Text completion (OpenAI-compatible)",
-                    response_model=None)
-    async def completion(
-        self, body: CompletionRequest, request: Request
-    ) -> Response:
+    chat_completion.__annotations__ = {"request": Request, "return": Response}
+    chat_completion = _vllm_app.post(
+        "/v1/chat/completions", tags=["Chat"],
+        summary="Chat completion (OpenAI-compatible)", response_model=None,
+    )(chat_completion)
+
+    async def completion(self, request):
+        try:
+            payload = await request.json()
+            body = _validate_request(self._completion_request_cls, payload)
+        except Exception as exc:
+            logger.warning("Invalid completion request: %s", exc)
+            return JSONResponse({"error": f"invalid request: {exc}"}, status_code=422)
         try:
             result = await self.openai_serving_completion.create_completion(
                 body, raw_request=request
@@ -545,6 +656,12 @@ class VLLMEngine:
         return _normalize_vllm_stream_result(
             result, op_name="streaming completion"
         )
+
+    completion.__annotations__ = {"request": Request, "return": Response}
+    completion = _vllm_app.post(
+        "/v1/completions", tags=["Completions"],
+        summary="Text completion (OpenAI-compatible)", response_model=None,
+    )(completion)
 
     @_vllm_app.get("/v1/models", tags=["Models"],
                    summary="List available models",
