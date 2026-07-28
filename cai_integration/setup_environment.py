@@ -575,13 +575,15 @@ def setup_engine_venv(
 # NOTE: fastapi here is only a *fallback* pin for fresh engine-venv creation —
 # _pin_pkgs_to_base() overrides it with the base env's live fastapi at create
 # time, and _reconcile_engine_venv() repins existing venvs to the base env on
-# every deploy. It's set to the current base-env version so the fallback and
-# reality agree; the base env itself floats (pyproject: fastapi>=0.110.0), so
-# the reconcile self-heal — not this constant — is what keeps head/worker in sync.
+# every deploy. The hard ceiling is vLLM 0.26's own requirement
+# (fastapi[standard]>=0.133.0,<0.137.0): the engine venv can never exceed 0.136.x
+# while vLLM is installed, so the head/base env MUST stay in the same window or
+# cloudpickle across the head->replica boundary fails. pyproject pins the base
+# env into that window too; 0.136.3 is the current resolved top of it.
 _RAY_BASE = [
-    "ray[serve]==2.55.1",
+    "ray[serve]==2.56.1",
     "protobuf>=5.29.6,<7.0",
-    "fastapi==0.139.2",
+    "fastapi==0.136.3",
 ]
 
 # Single source of truth for every engine venv's package set. The setup_*_env.py
@@ -685,10 +687,10 @@ def main():
         # Fallback: Install core dependencies manually (matches pyproject.toml)
         ray_packages = [
             "ray[serve]>=2.53.0",
-            "protobuf>=3.15.3,<5.0",
+            "protobuf>=5.29.6,<7.0",
             "pyyaml>=6.0.3",
             "aiohttp>=3.13.3",
-            "fastapi>=0.110.0",
+            "fastapi>=0.133.0,<0.137.0",
             "uvicorn[standard]>=0.27.0",
             "pydantic>=2.0.0",
             "httpx>=0.27.0",
