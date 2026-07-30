@@ -297,44 +297,39 @@ class RayService:
             raise
 
     def _refresh_serve_client(self) -> None:
-        """Force a health-checked connection to the live Serve controller.
+        """Drop a stale cached Serve controller handle so ``serve.status()`` reconnects.
 
-        ``serve.status()`` fetches the *cached* global Serve client without a
-        health check (``raise_if_no_controller_running=False`` and
-        ``_health_check_controller=False``). When the Serve controller has
-        restarted — common on CML; the controller log sequence climbs into the
-        hundreds — that cached handle points at the dead actor, so the
-        subsequent ``client.get_serve_details()`` raises ``RayActorError`` and
-        ``serve.status()`` returns an empty status (or raises). The caller then
+        ``serve.status()`` uses the cached global Serve client. On Ray 2.56.1
+        ``_get_global_client()`` returns that cache **without a health check**,
+        so when the Serve controller has restarted — common on CML; the
+        controller actor is recreated — the cached handle still points at the
+        dead actor. The subsequent ``client.get_serve_details()`` then raises
+        ``RayActorError`` and ``serve.status()`` returns empty, so the caller
         reports zero applications even though apps are running.
 
-        Forcing a health-checked client here drops any stale handle and
-        reconnects to the current controller so ``serve.status()`` sees the
-        real applications. Best-effort: if the private context API changes
-        across Ray versions, we skip the refresh and let ``serve.status()`` run
-        as before.
+        Ray 2.56.1 exposes ``_check_cached_client_alive()``: it pings the cached
+        controller (``check_alive`` with a 5s timeout) and, if it is dead,
+        clears the cache. Once cleared, the next ``_get_global_client()`` inside
+        ``serve.status()`` reconnects to the live controller via ``_connect()``.
+        This is a private Serve API, so the import is guarded: if it moves in a
+        future Ray upgrade we skip the refresh and let ``serve.status()`` run as
+        before rather than break listing.
         """
         try:
-            from ray.serve.context import _get_global_client, _set_global_client
+            from ray.serve.context import _check_cached_client_alive
         except Exception as e:  # noqa: BLE001 - private API moved; degrade gracefully
-            logger.debug("Serve context private API unavailable (%s); skipping refresh", e)
+            logger.debug("Serve health-check API unavailable (%s); skipping refresh", e)
             return
 
         try:
-            _get_global_client(
-                _health_check_controller=True,
-                raise_if_no_controller_running=True,
-            )
-        except Exception as e:  # noqa: BLE001 - stale/dead/missing handle
-            logger.warning("Serve client health check failed (%s); reconnecting", e)
-            try:
-                _set_global_client(None)  # drop the stale handle
-                _get_global_client(
-                    _health_check_controller=True,
-                    raise_if_no_controller_running=True,
+            client, had_cached = _check_cached_client_alive()
+            if client is None and had_cached:
+                logger.warning(
+                    "Cached Serve controller handle was stale; cleared so "
+                    "serve.status() reconnects to the live controller."
                 )
-            except Exception as e2:  # noqa: BLE001
-                logger.error("Failed to reconnect to Serve controller: %s", e2)
+        except Exception as e:  # noqa: BLE001 - never let the health-check break listing
+            logger.error("Serve controller health-check failed: %s", e)
 
     def list_applications(self) -> List[Dict[str, Any]]:
         """
@@ -386,9 +381,11 @@ class RayService:
                     "name": name,
                     "status": str(app_status.status),
                     "message": app_status.message or "",
+                    # Ray 2.56.1: ApplicationStatusOverview.last_deployed_time_s
+                    # is a Unix timestamp (float seconds).
                     "last_deployed_time": (
-                        str(app_status.deployment_timestamp)
-                        if app_status.deployment_timestamp
+                        str(app_status.last_deployed_time_s)
+                        if app_status.last_deployed_time_s
                         else None
                     ),
                     "route_prefix": route_prefix,
