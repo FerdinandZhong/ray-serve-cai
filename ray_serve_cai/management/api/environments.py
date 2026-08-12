@@ -20,9 +20,10 @@ import threading
 from pathlib import Path
 from typing import Dict, List, Optional
 
-from fastapi import APIRouter, HTTPException
+from fastapi import APIRouter, Depends, HTTPException
 from pydantic import BaseModel, Field
 
+from ..auth import require_admin
 from ...engines.venv_utils import VENV_BASE, VENV_PREFIX, validate_venv_name, venv_dir_for
 
 router = APIRouter(prefix="/api/v1/environments", tags=["Environments"])
@@ -159,7 +160,7 @@ async def get_environment(name: str) -> dict:
     }
 
 
-@router.post("", status_code=202)
+@router.post("", status_code=202, dependencies=[Depends(require_admin)])
 async def create_environment(body: CreateEnvironmentRequest) -> dict:
     """Create a new isolated venv in the background. Returns 202 immediately."""
     try:

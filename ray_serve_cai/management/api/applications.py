@@ -1,9 +1,11 @@
 """Application management API endpoints."""
 from __future__ import annotations
 
-from fastapi import APIRouter, Depends, HTTPException
 from typing import Any, Dict
 
+from fastapi import APIRouter, Depends, HTTPException
+
+from ..auth import Identity, require_admin
 from ..models.requests import DeployApplicationRequest
 from ..models.responses import ApplicationInfo, ApplicationsListResponse
 from ..services.coordinator import CoordinatorService
@@ -30,10 +32,11 @@ async def deploy_model_compat():
     return RedirectResponse(url="/api/v1/applications", status_code=308)
 
 
-@router.post("", response_model=Dict[str, Any])
+@router.post("", response_model=Dict[str, Any], dependencies=[Depends(require_admin)])
 async def deploy_application(
     request: DeployApplicationRequest,
     coordinator: CoordinatorService = Depends(get_coordinator),
+    identity: Identity = Depends(require_admin),
 ):
     """
     Deploy a Ray Serve application.
@@ -102,6 +105,26 @@ async def deploy_application(
                 num_replicas=request.num_replicas,
                 ray_actor_options=actor_opts or None,
             )
+
+        # Persist deploy intent (audit + recovery redeploy). Best-effort: a
+        # store failure must not fail an otherwise-successful deployment.
+        try:
+            coordinator.deployment_store.record(
+                name=request.name,
+                route_prefix=request.route_prefix,
+                engine_type=request.engine_type,
+                model=request.model,
+                venv_name=request.venv_name,
+                num_replicas=request.num_replicas,
+                tensor_parallel_size=request.tensor_parallel_size,
+                request=request.model_dump(mode="json", exclude_none=True),
+                deployer=identity.username,
+            )
+        except Exception:  # noqa: BLE001
+            import logging
+            logging.getLogger(__name__).warning(
+                "Failed to persist deploy intent for '%s'", request.name, exc_info=True
+            )
         return result
     except ValueError as e:
         raise HTTPException(status_code=400, detail=str(e)) from e
@@ -109,7 +132,7 @@ async def deploy_application(
         raise HTTPException(status_code=500, detail=str(e)) from e
 
 
-@router.delete("/{app_name}", response_model=Dict[str, Any])
+@router.delete("/{app_name}", response_model=Dict[str, Any], dependencies=[Depends(require_admin)])
 async def delete_application(
     app_name: str,
     coordinator: CoordinatorService = Depends(get_coordinator),
@@ -117,7 +140,28 @@ async def delete_application(
     """Undeploy a Ray Serve application. Stops all replicas."""
     try:
         result = coordinator.ray_service.delete_application(app_name)
+        coordinator.deployment_store.remove(app_name)
         return result
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e)) from e
+
+
+@router.get("/intents", response_model=Dict[str, Any])
+async def list_deploy_intents(coordinator: CoordinatorService = Depends(get_coordinator)):
+    """Return persisted deploy intent, annotated with live-vs-drift status.
+
+    Intent (engine_type, venv, original request, deployer) is what Ray does not
+    retain; ``live`` is cross-checked against the current Ray Serve
+    applications so drift (deleted out-of-band, or awaiting recovery) is
+    visible. Ray remains the status authority.
+    """
+    try:
+        try:
+            live_names = {a["name"] for a in coordinator.ray_service.list_applications()}
+        except Exception:
+            live_names = set()
+        records = coordinator.deployment_store.reconcile(live_names)
+        return {"deployments": records, "total": len(records)}
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e)) from e
 

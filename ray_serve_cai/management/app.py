@@ -7,10 +7,11 @@ This FastAPI application provides a REST API for managing Ray clusters running o
 import os
 import logging
 from contextlib import asynccontextmanager
-from fastapi import FastAPI
+from fastapi import Depends, FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
 from .api import resources_router, applications_router, cluster_router, cml_apps_router, metrics_router, engines_router, environments_router
+from .auth import require_user
 from .services import RayService, CAIService, CoordinatorService
 from ..utils.logging import setup_serve_logging
 
@@ -85,23 +86,38 @@ app = FastAPI(
     redoc_url="/redoc",
 )
 
-# Add CORS middleware
+# Add CORS middleware.
+# Origins are restricted to the CML domain by default; set MANAGEMENT_CORS_ORIGINS
+# (comma-separated) to override. Falls back to the CML domain derived from
+# CDSW_DOMAIN, or "*" only when nothing is configured (dev).
+_cors_env = os.environ.get("MANAGEMENT_CORS_ORIGINS", "").strip()
+if _cors_env:
+    _cors_origins = [o.strip() for o in _cors_env.split(",") if o.strip()]
+elif os.environ.get("CDSW_DOMAIN", "").strip():
+    _cors_origins = [f"https://{os.environ['CDSW_DOMAIN'].strip()}", f"https://*.{os.environ['CDSW_DOMAIN'].strip()}"]
+else:
+    _cors_origins = ["*"]
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["*"],  # Configure appropriately for production
+    allow_origins=_cors_origins,
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
 )
 
-# Include routers
-app.include_router(resources_router)
-app.include_router(applications_router)
-app.include_router(cml_apps_router)
-app.include_router(cluster_router)
+# Include routers.
+# Control-plane routers require an authenticated CML caller (require_user);
+# individual mutating routes additionally require the admin role (see each
+# router's route decorators). The metrics router is intentionally left open so
+# Prometheus can scrape it without a bearer token.
+_authed = [Depends(require_user)]
+app.include_router(resources_router, dependencies=_authed)
+app.include_router(applications_router, dependencies=_authed)
+app.include_router(cml_apps_router, dependencies=_authed)
+app.include_router(cluster_router, dependencies=_authed)
 app.include_router(metrics_router)
-app.include_router(engines_router)
-app.include_router(environments_router)
+app.include_router(engines_router, dependencies=_authed)
+app.include_router(environments_router, dependencies=_authed)
 
 
 @app.get("/")

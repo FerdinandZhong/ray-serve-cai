@@ -59,6 +59,48 @@ from ray_serve_cai.cai_cluster import CAIClusterManager, WorkerGroupConfig
 TEMPLATE_DIR = script_dir / "templates"
 
 
+def render_worker_launcher(
+    group,
+    *,
+    head_address: str = None,
+    ray_port: int = 6379,
+    metrics_port: int = 9090,
+    project_dir: Path = Path("/home/cdsw"),
+) -> str:
+    """Render ONE worker group's launcher script and set group.script_path.
+
+    node_type is baked into the script (it seeds the ``node_type:<type>`` Ray
+    resource), so every node_type needs its own script — this keeps the
+    one-script-per-node_type invariant that _detect_node_type and recovery rely
+    on.  Reused both at cluster start (loop below) and by the runtime
+    "define node_type" API (cai_service.define_node_type).  Returns the path.
+    """
+    venv_python = project_dir / ".venv" / "bin" / "python"
+    env = Environment(
+        loader=FileSystemLoader(str(TEMPLATE_DIR)),
+        keep_trailing_newline=True,
+    )
+    worker_context = {
+        "venv_python":      str(venv_python),
+        "project_dir":      str(project_dir),
+        "head_address":     head_address,   # None → reads RAY_HEAD_ADDRESS at runtime
+        "ray_port":         ray_port,
+        "metrics_port":     metrics_port,
+        "node_type":        group.node_type,
+        "accelerator_type": group.accelerator_type,  # e.g. "L40", "T4", None
+        "worker_memory_gb": group.memory,
+    }
+    # Sanitise group name for use as a filename component.
+    safe_name = group.name.replace("-", "_").replace(" ", "_")
+    script_path = project_dir / f"ray_worker_{safe_name}_launcher.py"
+    script_path.write_text(
+        env.get_template("ray_worker_launcher.py.j2").render(**worker_context)
+    )
+    script_path.chmod(0o755)
+    group.script_path = str(script_path)   # write back into the dataclass
+    return str(script_path)
+
+
 def create_ray_launcher_scripts(
     worker_groups: list,
     head_address: str = None,
@@ -127,24 +169,14 @@ def create_ray_launcher_scripts(
     print(f"  mgmt_cpu={mgmt_cpu}, mgmt_memory_gb={mgmt_memory_gb}")
 
     # -- Worker launchers (one per group) ------------------------------------
-    worker_template = env.get_template("ray_worker_launcher.py.j2")
     for group in worker_groups:
-        worker_context = {
-            "venv_python":      str(venv_python),
-            "project_dir":      str(project_dir),
-            "head_address":     head_address,   # None → reads RAY_HEAD_ADDRESS at runtime
-            "ray_port":         ray_port,
-            "metrics_port":     metrics_port,
-            "node_type":        group.node_type,
-            "accelerator_type": group.accelerator_type,  # e.g. "L40", "T4", None
-            "worker_memory_gb": group.memory,
-        }
-        # Sanitise group name for use as a filename component.
-        safe_name = group.name.replace("-", "_").replace(" ", "_")
-        script_path = project_dir / f"ray_worker_{safe_name}_launcher.py"
-        script_path.write_text(worker_template.render(**worker_context))
-        script_path.chmod(0o755)
-        group.script_path = str(script_path)   # write back into the dataclass
+        script_path = render_worker_launcher(
+            group,
+            head_address=head_address,
+            ray_port=ray_port,
+            metrics_port=metrics_port,
+            project_dir=project_dir,
+        )
         print(f"Created worker launcher : {script_path}  [node_type:{group.node_type}]")
 
     return str(head_script_path), worker_groups

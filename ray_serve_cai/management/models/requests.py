@@ -74,6 +74,70 @@ class AddNodeRequest(BaseModel):
         }
 
 
+class DefineNodeTypeRequest(BaseModel):
+    """Register a new worker group / node_type at runtime (no cluster relaunch).
+
+    Once defined, scale it with POST /api/v1/resources/nodes (this endpoint only
+    registers the shape; it does not launch workers unless count > 0 is later
+    honoured by the caller).
+    """
+
+    node_type: str = Field(
+        ...,
+        description="Logical node type, e.g. 'l40-gpu-worker-12cpu'. Bare segment "
+        "(letters, digits, '.', '-', '_') — used as a Ray resource key and "
+        "launcher filename component.",
+    )
+    cpu: int = Field(..., ge=1, le=256, description="Default CPU cores per worker.")
+    memory: int = Field(..., ge=4, le=1024, description="Default memory in GB per worker.")
+    gpus: int = Field(default=0, ge=0, description="Default GPU count per worker.")
+    accelerator_type: Optional[str] = Field(
+        default=None,
+        description="Ray accelerator_type label (matches nvidia-smi GPU name, e.g. 'L40S').",
+    )
+    node_label: Optional[Dict[str, str]] = Field(
+        default=None,
+        description=(
+            "Kubernetes node-selector label(s) for pod placement, e.g. "
+            "{'node.kubernetes.io/instance-type': 'g6e.4xlarge'}. Also auto-derived "
+            "into a short-key Ray resource label. See AddNodeRequest for details."
+        ),
+    )
+    runtime_identifier: Optional[str] = Field(
+        default=None,
+        description="Docker runtime identifier (uses cluster worker default when omitted).",
+    )
+    count: int = Field(
+        default=0, ge=0,
+        description="Workers to record for the group. Registration only — scale via POST /nodes.",
+    )
+    name: Optional[str] = Field(
+        default=None,
+        description="Group display name (defaults to node_type).",
+    )
+
+    @field_validator("node_type")
+    @classmethod
+    def _validate_node_type(cls, v: str) -> str:
+        if not re.fullmatch(r"[A-Za-z0-9._-]+", v):
+            raise ValueError(
+                "node_type must be a bare segment: letters, digits, '.', '-', '_' only"
+            )
+        return v
+
+    class Config:
+        json_schema_extra = {
+            "example": {
+                "node_type": "l40-gpu-worker-12cpu",
+                "cpu": 12,
+                "memory": 64,
+                "gpus": 1,
+                "accelerator_type": "L40S",
+                "node_label": {"node.kubernetes.io/instance-type": "g6e.4xlarge"},
+            }
+        }
+
+
 class LaunchCaiApplicationRequest(BaseModel):
     """Request to launch a generic CML application."""
 

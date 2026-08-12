@@ -3,7 +3,8 @@
 from fastapi import APIRouter, HTTPException, Depends
 from typing import Dict, Any
 
-from ..models.requests import AddNodeRequest
+from ..auth import require_admin
+from ..models.requests import AddNodeRequest, DefineNodeTypeRequest
 from ..models.responses import NodeInfo, NodesListResponse, ResourceCapacity
 from ..services.coordinator import CoordinatorService
 
@@ -16,7 +17,7 @@ def get_coordinator() -> CoordinatorService:
     return get_coordinator_service()
 
 
-@router.post("/nodes", response_model=Dict[str, Any], status_code=201)
+@router.post("/nodes", response_model=Dict[str, Any], status_code=201, dependencies=[Depends(require_admin)])
 async def add_node(request: AddNodeRequest, coordinator: CoordinatorService = Depends(get_coordinator)):
     """
     Add a new worker node to the cluster.
@@ -38,6 +39,58 @@ async def add_node(request: AddNodeRequest, coordinator: CoordinatorService = De
         raise HTTPException(status_code=500, detail=str(e))
 
 
+@router.post("/node-types", response_model=Dict[str, Any], status_code=201, dependencies=[Depends(require_admin)])
+async def define_node_type(request: DefineNodeTypeRequest, coordinator: CoordinatorService = Depends(get_coordinator)):
+    """
+    Define a new worker node_type at runtime (no cluster relaunch).
+
+    Registers a worker group so subsequent `POST /api/v1/resources/nodes` calls
+    can launch workers of this type. Registration only — does not launch workers.
+    """
+    try:
+        return coordinator.define_node_type(
+            node_type=request.node_type,
+            cpu=request.cpu,
+            memory=request.memory,
+            gpus=request.gpus,
+            accelerator_type=request.accelerator_type,
+            node_label=request.node_label,
+            runtime_identifier=request.runtime_identifier,
+            count=request.count,
+            name=request.name,
+        )
+    except ValueError as e:
+        raise HTTPException(status_code=409, detail=str(e))
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@router.get("/node-types", response_model=Dict[str, Any])
+async def list_node_types(coordinator: CoordinatorService = Depends(get_coordinator)):
+    """List worker groups (node_types) known to the running cluster."""
+    try:
+        groups = coordinator.list_node_types()
+        return {"node_types": groups, "count": len(groups)}
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@router.delete("/node-types/{node_type}", response_model=Dict[str, Any], dependencies=[Depends(require_admin)])
+async def remove_node_type(node_type: str, coordinator: CoordinatorService = Depends(get_coordinator)):
+    """
+    Remove a worker node_type definition.
+
+    The rendered launcher script is left on disk. Existing running workers of this
+    type are not affected; this only removes the ability to launch new ones.
+    """
+    try:
+        return coordinator.remove_node_type(node_type)
+    except ValueError as e:
+        raise HTTPException(status_code=404, detail=str(e))
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+
 @router.get("/allocation", response_model=Dict[str, Any])
 async def get_resource_allocation(coordinator: CoordinatorService = Depends(get_coordinator)):
     """
@@ -54,7 +107,7 @@ async def get_resource_allocation(coordinator: CoordinatorService = Depends(get_
         raise HTTPException(status_code=500, detail=str(e))
 
 
-@router.delete("/nodes/{app_id}", response_model=Dict[str, Any])
+@router.delete("/nodes/{app_id}", response_model=Dict[str, Any], dependencies=[Depends(require_admin)])
 async def remove_node(app_id: str, coordinator: CoordinatorService = Depends(get_coordinator)):
     """
     Remove a worker node from the cluster.

@@ -1,12 +1,13 @@
 """Coordinator service for managing the relationship between Ray and CAI."""
 
 import json
-from pathlib import Path
-from typing import Dict, Any, List
 import logging
+from pathlib import Path
+from typing import Any, Dict, List
 
-from .ray_service import RayService
 from .cai_service import CAIService
+from .deployment_store import DeploymentStore
+from .ray_service import RayService
 from .resource_map import ResourceMap
 
 logger = logging.getLogger(__name__)
@@ -56,6 +57,7 @@ class CoordinatorService:
         self.ray_service = ray_service
         self.cai_service = cai_service
         self.resource_map = ResourceMap()
+        self.deployment_store = DeploymentStore()
         self.state_file = Path("/home/cdsw/cluster_state.json")
 
     def load_state(self) -> Dict[str, Any]:
@@ -265,6 +267,19 @@ class CoordinatorService:
         )
         logger.info(f"Worker node created and registered: {result.get('app_name')}")
         return result
+
+    # ── Node-type (worker group) registry ──────────────────────────────────
+    def define_node_type(self, **kwargs) -> Dict[str, Any]:
+        """Register a new worker group / node_type at runtime (no relaunch)."""
+        return self.cai_service.define_node_type(**kwargs)
+
+    def list_node_types(self) -> list:
+        """List worker groups (node_types) known to the cluster."""
+        return self.cai_service.list_worker_groups()
+
+    def remove_node_type(self, node_type: str) -> Dict[str, Any]:
+        """Remove a worker group / node_type definition."""
+        return self.cai_service.remove_worker_group(node_type)
 
     def remove_worker_node(self, app_id: str) -> Dict[str, Any]:
         """Remove a worker node, unregister it from the resource map, and clean up mapping.
