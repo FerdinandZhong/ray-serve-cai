@@ -269,6 +269,42 @@ class CMLAPIClient:
         response = self.session.delete(url)
         return response.status_code in [200, 204]
 
+    def create_job(
+        self,
+        project_id: str,
+        name: str,
+        script: str,
+        runtime_identifier: str,
+        cpu: int = 2,
+        memory: int = 4,
+        kernel: str = "python3",
+    ) -> Optional[str]:
+        """Create an on-demand CML Job (manual "Run" entrypoint).
+
+        Used to register the head-recovery job so an operator can trigger it
+        from the CML UI when the head — and thus the management API — is down.
+        Returns the job id, or None on failure (callers treat this as
+        best-effort so job registration never blocks cluster startup).
+        """
+        url = f"{self.base_url}/projects/{project_id}/jobs"
+        payload = {
+            "name": name,
+            "script": script,
+            "cpu": cpu,
+            "memory": memory,
+            "runtime_identifier": runtime_identifier,
+            "kernel": kernel,
+        }
+        try:
+            response = self.session.post(url, json=payload)
+            if response.status_code >= 400:
+                logger.warning("create_job HTTP %d: %s", response.status_code, response.text[:300])
+                return None
+            return response.json().get("id")
+        except requests.RequestException as e:
+            logger.warning("create_job request failed: %s", e)
+            return None
+
     def restart_application(self, project_id: str, app_id: str) -> bool:
         """
         Restart an existing CML application via the CML restart endpoint.

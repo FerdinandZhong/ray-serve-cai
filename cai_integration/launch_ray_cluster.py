@@ -535,6 +535,30 @@ def main():
             json.dump(cluster_info, f, indent=2)
         print(f"\n💾 Cluster info saved to {info_file}")
 
+        # Register the head-recovery CML Job (best-effort). The management API
+        # lives on the head, so it can't recover itself — this Job is a separate
+        # on-demand pod an operator runs from the CML UI when the head dies.
+        try:
+            _recovery_runtime = (
+                cluster_info.get("head_runtime_identifier")
+                or cluster_info.get("worker_runtime_identifier")
+            )
+            if _recovery_runtime:
+                _job_id = manager.cml_client.create_job(
+                    project_id=manager.project_id,
+                    name="ray-head-recovery",
+                    script="ray_serve_cai/scripts/recover_head.py",
+                    runtime_identifier=_recovery_runtime,
+                )
+                if _job_id:
+                    print(f"🛟 Head-recovery Job registered (id={_job_id}); "
+                          "run it from the CML UI if the head goes down.")
+                else:
+                    print("⚠️  Head-recovery Job not registered (create_job returned no id); "
+                          "run python -m ray_serve_cai.scripts.recover_head manually if needed.")
+        except Exception as _e:
+            print(f"⚠️  Head-recovery Job registration skipped: {_e}")
+
         # Print cluster information
         print("\n" + "=" * 70)
         print("✅ Ray Cluster Started Successfully!")
