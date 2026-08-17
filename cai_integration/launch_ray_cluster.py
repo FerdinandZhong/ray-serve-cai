@@ -486,9 +486,11 @@ def main():
         if management_url and not cluster_info.get("head_address"):
             import urllib.request as _urlreq2
             try:
-                with _urlreq2.urlopen(
-                    f"{management_url}/api/v1/cluster/gcs-address", timeout=10
-                ) as _r:
+                _gcs_req = _urlreq2.Request(
+                    f"{management_url}/api/v1/cluster/gcs-address",
+                    headers={"Authorization": f"Bearer {cml_api_key}"},
+                )
+                with _urlreq2.urlopen(_gcs_req, timeout=10) as _r:
                     _gcs = json.loads(_r.read()).get("gcs_address", "")
                     if _gcs:
                         cluster_info["head_address"] = _gcs
@@ -516,7 +518,10 @@ def main():
                     req = _urlreq.Request(
                         add_url,
                         data=payload,
-                        headers={"Content-Type": "application/json"},
+                        headers={
+                            "Content-Type": "application/json",
+                            "Authorization": f"Bearer {cml_api_key}",
+                        },
                         method="POST",
                     )
                     try:
