@@ -49,8 +49,12 @@ class CreateEnvironmentRequest(BaseModel):
         description="pip requirement strings, e.g. ['vllm==0.13.0', 'ninja'].",
     )
     python: Optional[str] = Field(
-        default="python3.11",
-        description="Python interpreter for `uv venv` (e.g. 'python3.11').",
+        default=None,
+        description="Python interpreter for `uv venv`. Defaults to the base "
+        "venv's interpreter (the runtime python) so the engine actor matches "
+        "the cluster head. Only set this if that interpreter exists in the "
+        "runtime image — a missing version triggers a standalone download and "
+        "a head/actor version split.",
     )
 
     class Config:
@@ -58,7 +62,6 @@ class CreateEnvironmentRequest(BaseModel):
             "example": {
                 "name": "vllm-013",
                 "packages": ["vllm==0.13.0", "ninja"],
-                "python": "python3.11",
             }
         }
 

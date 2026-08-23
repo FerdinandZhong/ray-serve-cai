@@ -497,9 +497,21 @@ def setup_engine_venv(
         packages:  List of pip requirement strings to install.
         venv_base: Parent directory for the venv (default /home/cdsw).
         python:    Python interpreter for uv venv, e.g. 'python3.11'.
-                   When None, uv picks its default interpreter.
+                   When None, defaults to the base venv's interpreter so the
+                   engine actor and the cluster head run the SAME Python (see
+                   below). Only pass an explicit value if you know that
+                   interpreter exists in the runtime image.
     """
     import fcntl
+
+    # Derive the interpreter from the base venv (== the runtime python) unless
+    # the caller pins one explicitly. Hardcoding e.g. 'python3.11' silently
+    # breaks on a python3.10 runtime: uv can't find it, downloads a standalone
+    # CPython (fatal when air-gapped), and the resulting head(3.10)↔actor(3.11)
+    # minor-version split corrupts Ray's cloudpickle/proto payloads.
+    if not python:
+        base_python = f"{_BASE_VENV}/bin/python"
+        python = base_python if os.path.exists(base_python) else None
 
     venv_dir = f"{venv_base}/.venv-{engine}"
     lock_path = f"{venv_base}/.venv-{engine}.lock"

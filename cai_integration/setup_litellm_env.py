@@ -57,7 +57,8 @@ def main():
         if os.path.exists(lock):
             os.remove(lock)
 
-    success = setup_engine_venv("litellm", LITELLM_PACKAGES, python="python3.11")
+    # Inherit the runtime python (via the base venv); see setup_vllm_env.py.
+    success = setup_engine_venv("litellm", LITELLM_PACKAGES)
 
     if not success:
         print("❌ LiteLLM venv setup failed")
