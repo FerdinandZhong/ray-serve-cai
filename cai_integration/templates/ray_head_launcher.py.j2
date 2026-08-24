@@ -81,7 +81,13 @@ _gcs_file = PROJECT_DIR / "ray_gcs_address"
 _gcs_file.write_text(_gcs_address)
 print(f"GCS address     : {_gcs_address}  (written to {_gcs_file})")
 
-
+# ── Monitoring (Ray Dashboard metrics tab) ────────────────────────────────────
+# Set before ray start so the dashboard process inherits these env vars.
+{% if prometheus_host %}os.environ["RAY_PROMETHEUS_HOST"] = "{{ prometheus_host }}"
+{% endif %}{% if grafana_host %}os.environ["RAY_GRAFANA_HOST"] = "{{ grafana_host }}"
+{% endif %}{% if grafana_iframe_host %}os.environ["RAY_GRAFANA_IFRAME_HOST"] = "{{ grafana_iframe_host }}"
+{% endif %}{% if grafana_org_id %}os.environ["RAY_GRAFANA_ORG_ID"] = "{{ grafana_org_id }}"
+{% endif %}
 # ── [1/4] Start Ray head ─────────────────────────────────────────────────────
 print("\n[1/4] Starting Ray head node...")
 result = subprocess.run(
