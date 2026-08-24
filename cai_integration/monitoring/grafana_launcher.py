@@ -20,7 +20,7 @@ import subprocess
 import sys
 import tarfile
 import threading
-from http.server import BaseHTTPRequestHandler, HTTPServer
+from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 from pathlib import Path
 from urllib.request import urlopen, urlretrieve
 
@@ -162,11 +162,15 @@ def main():
     provision_dashboards()
     DATA_DIR.mkdir(parents=True, exist_ok=True)
 
+    class _ReusableServer(ThreadingHTTPServer):
+        allow_reuse_address = True
+        daemon_threads = True
+
     threading.Thread(
-        target=lambda: HTTPServer(("0.0.0.0", APP_PORT), _ProxyHandler).serve_forever(),
+        target=lambda: _ReusableServer(("127.0.0.1", APP_PORT), _ProxyHandler).serve_forever(),
         daemon=True,
     ).start()
-    print(f"Proxy listening on :{APP_PORT} -> :{GF_PORT}")
+    print(f"Proxy listening on 127.0.0.1:{APP_PORT} -> :{GF_PORT}")
 
     gf_bin = next((str(c) for c in _GF_CANDIDATES if c.exists()), None)
     if not gf_bin:

@@ -20,7 +20,7 @@ import sys
 import tarfile
 import textwrap
 import threading
-from http.server import BaseHTTPRequestHandler, HTTPServer
+from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 from pathlib import Path
 from urllib.parse import urlparse
 from urllib.request import urlopen, urlretrieve
@@ -61,19 +61,21 @@ def download_prometheus():
 
 
 def write_config():
-    parsed = urlparse(RAY_HEAD_URL) if RAY_HEAD_URL else None
-    scheme = (parsed.scheme if parsed else "https") or "https"
-    host_port = (
-        f"{parsed.hostname}:{parsed.port}" if parsed and parsed.port
-        else (parsed.hostname if parsed else "localhost")
-    )
-    config = textwrap.dedent(f"""\
-        global:
-          scrape_interval: 15s
-          scrape_timeout: 10s
-          evaluation_interval: 15s
+    # Always self-scrape so the config is valid and Prometheus starts even
+    # before a Ray head URL is configured.
+    jobs = textwrap.dedent(f"""\
+          - job_name: 'prometheus'
+            static_configs:
+              - targets: ['127.0.0.1:{PROM_PORT}']
+    """)
 
-        scrape_configs:
+    if RAY_HEAD_URL:
+        parsed = urlparse(RAY_HEAD_URL)
+        scheme = parsed.scheme or "https"
+        host_port = (
+            f"{parsed.hostname}:{parsed.port}" if parsed.port else parsed.hostname
+        )
+        jobs += textwrap.dedent(f"""\
           - job_name: 'ray-nodes'
             http_sd_configs:
               - url: '{RAY_HEAD_URL}/api/v1/metrics/discovery'
@@ -93,8 +95,18 @@ def write_config():
             tls_config:
               insecure_skip_verify: true
     """)
-    if not RAY_HEAD_URL:
-        print("WARNING: RAY_CLUSTER_HEAD_URL not set — Prometheus will scrape nothing")
+    else:
+        print("WARNING: RAY_CLUSTER_HEAD_URL not set — only self-scrape configured; "
+              "set it so Prometheus can discover Ray nodes")
+
+    config = textwrap.dedent("""\
+        global:
+          scrape_interval: 15s
+          scrape_timeout: 10s
+          evaluation_interval: 15s
+
+        scrape_configs:
+    """) + jobs
     CONFIG_FILE.write_text(config)
     print(f"Wrote Prometheus config: {CONFIG_FILE}")
 
@@ -139,11 +151,15 @@ def main():
     write_config()
     DATA_DIR.mkdir(parents=True, exist_ok=True)
 
+    class _ReusableServer(ThreadingHTTPServer):
+        allow_reuse_address = True
+        daemon_threads = True
+
     threading.Thread(
-        target=lambda: HTTPServer(("0.0.0.0", APP_PORT), _ProxyHandler).serve_forever(),
+        target=lambda: _ReusableServer(("127.0.0.1", APP_PORT), _ProxyHandler).serve_forever(),
         daemon=True,
     ).start()
-    print(f"Proxy listening on :{APP_PORT} -> :{PROM_PORT}")
+    print(f"Proxy listening on 127.0.0.1:{APP_PORT} -> :{PROM_PORT}")
 
     cmd = [
         str(PROM_BIN),
