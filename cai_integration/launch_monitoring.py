@@ -109,7 +109,7 @@ def main():
     if ray_head_url:
         prom_env["RAY_CLUSTER_HEAD_URL"] = ray_head_url
 
-    manager.create_application(
+    manager.cml_client.create_application(
         project_id=project_id,
         name="prometheus-server",
         script="cai_integration/monitoring/prometheus_launcher.py",
@@ -132,7 +132,7 @@ def main():
     if prom_url:
         grafana_env["PROMETHEUS_URL"] = prom_url
 
-    manager.create_application(
+    manager.cml_client.create_application(
         project_id=project_id,
         name="grafana-server",
         script="cai_integration/monitoring/grafana_launcher.py",
