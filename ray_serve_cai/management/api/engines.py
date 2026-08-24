@@ -13,9 +13,10 @@ import logging
 import os
 from typing import Optional
 
-from fastapi import APIRouter, HTTPException, Request
+from fastapi import APIRouter, Depends, HTTPException, Request
 from pydantic import BaseModel
 
+from ..auth import require_admin
 from ...engines.registry import get_registry, register_engine
 
 router = APIRouter(prefix="/api/v1/engines", tags=["Engines"])
@@ -38,7 +39,7 @@ class EngineRegisterRequest(BaseModel):
     engine_class: Optional[str] = None
 
 
-@router.post("/register", status_code=201)
+@router.post("/register", status_code=201, dependencies=[Depends(require_admin)])
 async def register_engine_endpoint(
     body: EngineRegisterRequest, request: Request
 ) -> dict:

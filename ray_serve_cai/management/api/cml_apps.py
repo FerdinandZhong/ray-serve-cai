@@ -8,6 +8,7 @@ management (api/resources.py).
 from fastapi import APIRouter, HTTPException, Depends
 from typing import Dict, Any
 
+from ..auth import require_admin
 from ..models.requests import LaunchCaiApplicationRequest
 from ..services.coordinator import CoordinatorService
 
@@ -20,7 +21,7 @@ def get_coordinator() -> CoordinatorService:
     return get_coordinator_service()
 
 
-@router.post("", response_model=Dict[str, Any])
+@router.post("", response_model=Dict[str, Any], dependencies=[Depends(require_admin)])
 async def launch_cai_application(
     request: LaunchCaiApplicationRequest,
     coordinator: CoordinatorService = Depends(get_coordinator),
@@ -48,7 +49,7 @@ async def launch_cai_application(
         raise HTTPException(status_code=500, detail=str(e))
 
 
-@router.delete("/{app_id}", response_model=Dict[str, Any])
+@router.delete("/{app_id}", response_model=Dict[str, Any], dependencies=[Depends(require_admin)])
 async def remove_cai_application(
     app_id: str,
     coordinator: CoordinatorService = Depends(get_coordinator),

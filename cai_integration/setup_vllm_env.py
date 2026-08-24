@@ -55,9 +55,10 @@ def main():
         if os.path.exists(lock):
             os.remove(lock)
 
-    # Pin the interpreter explicitly so `uv venv` doesn't pick/download a default
-    # CPython on a bare box (matches setup_litellm_env.py).
-    success = setup_engine_venv("vllm", VLLM_PACKAGES, python="python3.11")
+    # Inherit the runtime python (via the base venv) so the vLLM actor matches
+    # the cluster head. Do NOT pin a version string: it triggers a standalone
+    # download + head/actor version split on a runtime that lacks it.
+    success = setup_engine_venv("vllm", VLLM_PACKAGES)
 
     if not success:
         print("❌ vLLM venv setup failed")

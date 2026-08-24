@@ -59,6 +59,48 @@ from ray_serve_cai.cai_cluster import CAIClusterManager, WorkerGroupConfig
 TEMPLATE_DIR = script_dir / "templates"
 
 
+def render_worker_launcher(
+    group,
+    *,
+    head_address: str = None,
+    ray_port: int = 6379,
+    metrics_port: int = 9090,
+    project_dir: Path = Path("/home/cdsw"),
+) -> str:
+    """Render ONE worker group's launcher script and set group.script_path.
+
+    node_type is baked into the script (it seeds the ``node_type:<type>`` Ray
+    resource), so every node_type needs its own script — this keeps the
+    one-script-per-node_type invariant that _detect_node_type and recovery rely
+    on.  Reused both at cluster start (loop below) and by the runtime
+    "define node_type" API (cai_service.define_node_type).  Returns the path.
+    """
+    venv_python = project_dir / ".venv" / "bin" / "python"
+    env = Environment(
+        loader=FileSystemLoader(str(TEMPLATE_DIR)),
+        keep_trailing_newline=True,
+    )
+    worker_context = {
+        "venv_python":      str(venv_python),
+        "project_dir":      str(project_dir),
+        "head_address":     head_address,   # None → reads RAY_HEAD_ADDRESS at runtime
+        "ray_port":         ray_port,
+        "metrics_port":     metrics_port,
+        "node_type":        group.node_type,
+        "accelerator_type": group.accelerator_type,  # e.g. "L40", "T4", None
+        "worker_memory_gb": group.memory,
+    }
+    # Sanitise group name for use as a filename component.
+    safe_name = group.name.replace("-", "_").replace(" ", "_")
+    script_path = project_dir / f"ray_worker_{safe_name}_launcher.py"
+    script_path.write_text(
+        env.get_template("ray_worker_launcher.py.j2").render(**worker_context)
+    )
+    script_path.chmod(0o755)
+    group.script_path = str(script_path)   # write back into the dataclass
+    return str(script_path)
+
+
 def create_ray_launcher_scripts(
     worker_groups: list,
     head_address: str = None,
@@ -127,24 +169,14 @@ def create_ray_launcher_scripts(
     print(f"  mgmt_cpu={mgmt_cpu}, mgmt_memory_gb={mgmt_memory_gb}")
 
     # -- Worker launchers (one per group) ------------------------------------
-    worker_template = env.get_template("ray_worker_launcher.py.j2")
     for group in worker_groups:
-        worker_context = {
-            "venv_python":      str(venv_python),
-            "project_dir":      str(project_dir),
-            "head_address":     head_address,   # None → reads RAY_HEAD_ADDRESS at runtime
-            "ray_port":         ray_port,
-            "metrics_port":     metrics_port,
-            "node_type":        group.node_type,
-            "accelerator_type": group.accelerator_type,  # e.g. "L40", "T4", None
-            "worker_memory_gb": group.memory,
-        }
-        # Sanitise group name for use as a filename component.
-        safe_name = group.name.replace("-", "_").replace(" ", "_")
-        script_path = project_dir / f"ray_worker_{safe_name}_launcher.py"
-        script_path.write_text(worker_template.render(**worker_context))
-        script_path.chmod(0o755)
-        group.script_path = str(script_path)   # write back into the dataclass
+        script_path = render_worker_launcher(
+            group,
+            head_address=head_address,
+            ray_port=ray_port,
+            metrics_port=metrics_port,
+            project_dir=project_dir,
+        )
         print(f"Created worker launcher : {script_path}  [node_type:{group.node_type}]")
 
     return str(head_script_path), worker_groups
@@ -454,9 +486,11 @@ def main():
         if management_url and not cluster_info.get("head_address"):
             import urllib.request as _urlreq2
             try:
-                with _urlreq2.urlopen(
-                    f"{management_url}/api/v1/cluster/gcs-address", timeout=10
-                ) as _r:
+                _gcs_req = _urlreq2.Request(
+                    f"{management_url}/api/v1/cluster/gcs-address",
+                    headers={"Authorization": f"Bearer {cml_api_key}"},
+                )
+                with _urlreq2.urlopen(_gcs_req, timeout=10) as _r:
                     _gcs = json.loads(_r.read()).get("gcs_address", "")
                     if _gcs:
                         cluster_info["head_address"] = _gcs
@@ -484,7 +518,10 @@ def main():
                     req = _urlreq.Request(
                         add_url,
                         data=payload,
-                        headers={"Content-Type": "application/json"},
+                        headers={
+                            "Content-Type": "application/json",
+                            "Authorization": f"Bearer {cml_api_key}",
+                        },
                         method="POST",
                     )
                     try:
@@ -502,6 +539,30 @@ def main():
         with open(info_file, 'w') as f:
             json.dump(cluster_info, f, indent=2)
         print(f"\n💾 Cluster info saved to {info_file}")
+
+        # Register the head-recovery CML Job (best-effort). The management API
+        # lives on the head, so it can't recover itself — this Job is a separate
+        # on-demand pod an operator runs from the CML UI when the head dies.
+        try:
+            _recovery_runtime = (
+                cluster_info.get("head_runtime_identifier")
+                or cluster_info.get("worker_runtime_identifier")
+            )
+            if _recovery_runtime:
+                _job_id = manager.cml_client.create_job(
+                    project_id=manager.project_id,
+                    name="ray-head-recovery",
+                    script="ray_serve_cai/scripts/recover_head.py",
+                    runtime_identifier=_recovery_runtime,
+                )
+                if _job_id:
+                    print(f"🛟 Head-recovery Job registered (id={_job_id}); "
+                          "run it from the CML UI if the head goes down.")
+                else:
+                    print("⚠️  Head-recovery Job not registered (create_job returned no id); "
+                          "run python -m ray_serve_cai.scripts.recover_head manually if needed.")
+        except Exception as _e:
+            print(f"⚠️  Head-recovery Job registration skipped: {_e}")
 
         # Print cluster information
         print("\n" + "=" * 70)

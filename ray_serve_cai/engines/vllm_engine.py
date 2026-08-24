@@ -28,6 +28,7 @@ from __future__ import annotations
 import asyncio
 import inspect
 import logging
+import os
 from typing import Any, Dict, List, Optional
 
 from fastapi import FastAPI
@@ -88,13 +89,13 @@ def _load_vllm_serving():
     """
     try:
         try:  # vLLM 0.14+/0.18+ — subdirectory layout
-            from vllm.entrypoints.openai.completion.serving import OpenAIServingCompletion
             from vllm.entrypoints.openai.chat_completion.serving import OpenAIServingChat
-            from vllm.entrypoints.openai.models.serving import OpenAIServingModels
+            from vllm.entrypoints.openai.completion.serving import OpenAIServingCompletion
             from vllm.entrypoints.openai.models.protocol import BaseModelPath
+            from vllm.entrypoints.openai.models.serving import OpenAIServingModels
         except ImportError:  # vLLM 0.13.x — flat layout
-            from vllm.entrypoints.openai.serving_completion import OpenAIServingCompletion
             from vllm.entrypoints.openai.serving_chat import OpenAIServingChat
+            from vllm.entrypoints.openai.serving_completion import OpenAIServingCompletion
             from vllm.entrypoints.openai.serving_models import (
                 BaseModelPath,
                 OpenAIServingModels,
@@ -120,8 +121,8 @@ def _load_vllm_protocol():
     """
     try:
         try:  # vLLM 0.14+/0.18+ — subdirectory layout
-            from vllm.entrypoints.openai.completion.protocol import CompletionRequest
             from vllm.entrypoints.openai.chat_completion.protocol import ChatCompletionRequest
+            from vllm.entrypoints.openai.completion.protocol import CompletionRequest
         except ImportError:  # vLLM 0.13.x — flat layout
             from vllm.entrypoints.openai.protocol import (
                 ChatCompletionRequest,
@@ -360,6 +361,57 @@ class _RoutePathMiddleware:
         await self.app(scope, receive, send)
 
 
+class _ApiKeyMiddleware:
+    """Enforce a static bearer API key on model endpoints when configured.
+
+    The expected key is read from ``VLLM_API_KEY`` in the replica environment at
+    request time (deliver it per-deployment via ``scheduling.env_vars`` or set
+    it on the replica actor). Behaviour:
+
+    - **Fail-open**: if ``VLLM_API_KEY`` is unset/empty, all requests are allowed
+      — preserves the prior open behaviour so existing deployments don't break.
+    - ``/health`` is always exempt so Serve / K8s liveness probes need no key.
+    - Otherwise the request must carry ``Authorization: Bearer <VLLM_API_KEY>``.
+
+    Plain ASGI class (not a FastAPI/Starlette BaseHTTPMiddleware) so the module
+    app remains cloudpickle-safe for @serve.ingress — same constraint as
+    _RoutePathMiddleware above.
+    """
+
+    def __init__(self, app) -> None:
+        self.app = app
+
+    async def __call__(self, scope: Scope, receive: Receive, send: Send) -> None:
+        if scope["type"] == "http":
+            expected = os.environ.get("VLLM_API_KEY", "").strip()
+            path = scope.get("path", "") or ""
+            # endswith so the check is agnostic to any root_path prefix.
+            if expected and not path.endswith("/health"):
+                headers = dict(scope.get("headers") or [])
+                auth = headers.get(b"authorization", b"").decode("latin-1")
+                token = auth[7:].strip() if auth[:7].lower() == "bearer " else ""
+                if token != expected:
+                    await self._reject(send)
+                    return
+        await self.app(scope, receive, send)
+
+    @staticmethod
+    async def _reject(send: Send) -> None:
+        body = (
+            b'{"error":{"message":"Invalid or missing API key",'
+            b'"type":"authentication_error","code":"invalid_api_key"}}'
+        )
+        await send({
+            "type": "http.response.start",
+            "status": 401,
+            "headers": [
+                (b"content-type", b"application/json"),
+                (b"www-authenticate", b"Bearer"),
+            ],
+        })
+        await send({"type": "http.response.body", "body": body})
+
+
 # ---------------------------------------------------------------------------
 # FastAPI app — provides Swagger UI at <route_prefix>/docs
 # Defined at module level; @serve.ingress binds it to the deployment class.
@@ -386,6 +438,9 @@ _vllm_app = FastAPI(
     ],
 )
 _vllm_app.add_middleware(_RoutePathMiddleware)
+# API-key gate (outermost): rejects unauthenticated calls before routing when
+# VLLM_API_KEY is set on the replica; no-op otherwise.
+_vllm_app.add_middleware(_ApiKeyMiddleware)
 
 # ---------------------------------------------------------------------------
 # Deployment

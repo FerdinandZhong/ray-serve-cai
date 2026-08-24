@@ -338,7 +338,7 @@ readiness.
 ```bash
 curl -X POST http://<head>/api/v1/environments \
   -H 'Content-Type: application/json' \
-  -d '{"name": "vllm-013", "packages": ["vllm==0.13.0", "ninja"], "python": "python3.11"}'
+  -d '{"name": "vllm-013", "packages": ["vllm==0.27.1", "ninja"]}'
 ```
 
 Then deploy against it with `"venv_name": "vllm-013"` on the application request.

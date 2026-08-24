@@ -1,5 +1,6 @@
 """Service for CML/CAI operations."""
 
+import fcntl
 import json
 import os
 import time
@@ -59,6 +60,13 @@ class CAIService:
         with open(_CLUSTER_INFO_PATH) as f:
             return json.load(f)
 
+    def _save_cluster_info(self, info: Dict[str, Any]) -> None:
+        """Atomically persist cluster info (tmp + os.replace — safe on NFS)."""
+        tmp = _CLUSTER_INFO_PATH.with_suffix(_CLUSTER_INFO_PATH.suffix + ".tmp")
+        with open(tmp, "w") as f:
+            json.dump(info, f, indent=2)
+        os.replace(tmp, _CLUSTER_INFO_PATH)  # atomic on POSIX/NFS
+
     def _group_from_cluster_info(self, node_type: str) -> WorkerGroupConfig:
         """
         Reconstruct a WorkerGroupConfig for the given node_type from saved
@@ -86,6 +94,109 @@ class CAIService:
         )
 
     # ── Public API ────────────────────────────────────────────────────────────
+
+    @staticmethod
+    def _group_to_dict(g: WorkerGroupConfig) -> Dict[str, Any]:
+        """Serialise a group to the cluster_info worker_groups entry shape."""
+        return {
+            "name":               g.name,
+            "node_type":          g.node_type,
+            "count":              g.count,
+            "cpu":                g.cpu,
+            "memory":             g.memory,
+            "gpus":               g.gpus,
+            "accelerator_type":   g.accelerator_type,
+            "node_label":         g.node_label,
+            "script_path":        g.script_path,
+            "runtime_identifier": g.runtime_identifier,
+        }
+
+    def list_worker_groups(self) -> list:
+        """Return the worker groups (node_types) known to the running cluster."""
+        return self._load_cluster_info().get("worker_groups", [])
+
+    def define_node_type(
+        self,
+        node_type: str,
+        cpu: int,
+        memory: int,
+        gpus: int = 0,
+        accelerator_type: str = None,
+        node_label: dict = None,
+        runtime_identifier: str = None,
+        count: int = 0,
+        name: str = None,
+    ) -> Dict[str, Any]:
+        """Register a new worker group at runtime — no cluster relaunch.
+
+        Renders the group's launcher (baking in its node_type) and appends it to
+        cluster_info.worker_groups so the existing add-node path can scale it.
+        Registration only; launching workers stays with POST /resources/nodes.
+
+        Raises ValueError if node_type already exists.
+        """
+        # Lazy import: launch_ray_cluster runs a venv re-exec guard at import
+        # time, so only pull it in when actually defining a type (mirrors
+        # environments.py's lazy setup import).
+        from cai_integration.launch_ray_cluster import render_worker_launcher
+
+        lock_path = _CLUSTER_INFO_PATH.with_suffix(_CLUSTER_INFO_PATH.suffix + ".lock")
+        lock_fd = open(lock_path, "w")
+        try:
+            fcntl.flock(lock_fd, fcntl.LOCK_EX)  # ponytail: coarse lock; writes are rare/admin
+            info = self._load_cluster_info()
+            groups = info.setdefault("worker_groups", [])
+            if any(g["node_type"] == node_type for g in groups):
+                raise ValueError(f"node_type '{node_type}' already exists")
+
+            group = WorkerGroupConfig(
+                name=name or node_type,
+                node_type=node_type,
+                count=count,
+                cpu=cpu,
+                memory=memory,
+                gpus=gpus,
+                accelerator_type=accelerator_type,
+                node_label=node_label,
+                runtime_identifier=runtime_identifier,
+            )
+            cfg = info.get("configuration", {})
+            render_worker_launcher(
+                group,
+                head_address=info.get("head_address"),
+                ray_port=cfg.get("ray_port", 6379),
+                metrics_port=cfg.get("metrics_port", 9090),
+            )
+            groups.append(self._group_to_dict(group))
+            self._save_cluster_info(info)
+            logger.info(f"Defined node_type '{node_type}' (script: {group.script_path})")
+            return groups[-1]
+        finally:
+            fcntl.flock(lock_fd, fcntl.LOCK_UN)
+            lock_fd.close()
+
+    def remove_worker_group(self, node_type: str) -> Dict[str, Any]:
+        """Remove a worker group definition from cluster_info.
+
+        Leaves the rendered launcher script on disk (cheap, harmless).
+        Raises ValueError if the node_type is not found.
+        """
+        lock_path = _CLUSTER_INFO_PATH.with_suffix(_CLUSTER_INFO_PATH.suffix + ".lock")
+        lock_fd = open(lock_path, "w")
+        try:
+            fcntl.flock(lock_fd, fcntl.LOCK_EX)
+            info = self._load_cluster_info()
+            groups = info.get("worker_groups", [])
+            kept = [g for g in groups if g["node_type"] != node_type]
+            if len(kept) == len(groups):
+                raise ValueError(f"node_type '{node_type}' not found")
+            info["worker_groups"] = kept
+            self._save_cluster_info(info)
+            logger.info(f"Removed node_type '{node_type}'")
+            return {"status": "removed", "node_type": node_type}
+        finally:
+            fcntl.flock(lock_fd, fcntl.LOCK_UN)
+            lock_fd.close()
 
     def create_worker_node(
         self,
