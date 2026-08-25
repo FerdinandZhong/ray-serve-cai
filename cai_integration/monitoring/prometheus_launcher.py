@@ -42,8 +42,18 @@ from urllib.parse import urlparse
 from urllib.request import urlopen, urlretrieve
 
 # Allow importing the sibling sd_registry module whether this file is run as a
-# CML app script (cwd=/home/cdsw) or directly.
-sys.path.insert(0, str(Path(__file__).resolve().parent))
+# normal script or inside a kernel (CML apps exec the script via IPython, where
+# __file__ is undefined). Try the file's own directory first, then fall back to
+# the known location under the project root (cwd, typically /home/cdsw).
+def _this_dir() -> Path:
+    try:
+        return Path(__file__).resolve().parent  # type: ignore[name-defined]
+    except NameError:
+        cand = Path.cwd() / "cai_integration" / "monitoring"
+        return cand if (cand / "sd_registry.py").exists() else Path.cwd()
+
+
+sys.path.insert(0, str(_this_dir()))
 try:
     import sd_registry  # type: ignore
 except Exception as _sd_exc:  # pragma: no cover - defensive
