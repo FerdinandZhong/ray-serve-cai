@@ -38,10 +38,26 @@ DASHBOARD_DIR = PROVISION_DIR / "dashboards"
 _GF_CANDIDATES = [INSTALL_DIR / "bin" / "grafana", INSTALL_DIR / "bin" / "grafana-server"]
 
 
+def _install_is_complete() -> bool:
+    """A usable Grafana install needs the binary AND the bundled `public`
+    assets. Grafana refuses to start if ``public/emails/*.html`` is missing
+    (it loads notification email templates at boot), so we treat that dir as
+    the completeness sentinel rather than just checking for the binary."""
+    if not any(c.exists() for c in _GF_CANDIDATES):
+        return False
+    emails_dir = INSTALL_DIR / "public" / "emails"
+    return emails_dir.is_dir() and any(emails_dir.glob("*.html"))
+
+
 def download_grafana():
-    if any(c.exists() for c in _GF_CANDIDATES):
-        print("Grafana binary exists")
+    if _install_is_complete():
+        print("Grafana binary + public assets present")
         return
+    if INSTALL_DIR.exists():
+        # A partial/corrupt extraction (e.g. binary present but public/emails
+        # missing) would otherwise persist forever; wipe and re-extract clean.
+        print("Grafana install incomplete; re-extracting from scratch")
+        shutil.rmtree(INSTALL_DIR, ignore_errors=True)
     arch = "linux-amd64"
     tarball = f"grafana-enterprise-{GF_VERSION}.{arch}.tar.gz"
     url = f"https://dl.grafana.com/enterprise/release/{tarball}"
@@ -64,6 +80,11 @@ def download_grafana():
         if c.exists():
             c.chmod(0o755)
     dest.unlink()
+    if not _install_is_complete():
+        raise RuntimeError(
+            f"Grafana extraction incomplete: expected assets under "
+            f"{INSTALL_DIR / 'public' / 'emails'} not found"
+        )
     print(f"Installed Grafana to {INSTALL_DIR}")
 
 
@@ -179,6 +200,7 @@ def main():
 
     env = {
         **os.environ,
+        "GF_PATHS_HOME": str(INSTALL_DIR),
         "GF_PATHS_DATA": str(DATA_DIR),
         "GF_PATHS_PROVISIONING": str(PROVISION_DIR),
         "GF_SERVER_HTTP_PORT": str(GF_PORT),
@@ -200,7 +222,9 @@ def main():
     else:
         cmd = [gf_bin, "--homepath", str(INSTALL_DIR)]
     print(f"Starting Grafana: {' '.join(cmd)}")
-    proc = subprocess.Popen(cmd, env=env)
+    # Run from the home dir so Grafana resolves `public/` (dashboards, email
+    # templates) relative to the correct location regardless of caller cwd.
+    proc = subprocess.Popen(cmd, env=env, cwd=str(INSTALL_DIR))
 
     def _shutdown(sig, frame):
         proc.terminate()
