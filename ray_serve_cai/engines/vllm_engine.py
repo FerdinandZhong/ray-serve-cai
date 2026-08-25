@@ -218,7 +218,8 @@ def _normalize_vllm_stream_result(result: Any, *, op_name: str) -> Any:
 
 
 def _build_serving_render(engine_args: AsyncEngineArgs, model_name: str,
-                          chat_template: Optional[str] = None):
+                          chat_template: Optional[str] = None,
+                          tool_kwargs: Optional[Dict[str, Any]] = None):
     """
     Build OpenAIServingRender for vLLM v0.18.0+.
 
@@ -258,19 +259,26 @@ def _build_serving_render(engine_args: AsyncEngineArgs, model_name: str,
     except Exception:
         content_format = "auto"  # type: ignore[assignment]
 
-    return OpenAIServingRender(
-        model_config=model_config,
-        renderer=renderer,
-        io_processor=io_processor,
-        model_registry=model_registry,
-        request_logger=None,
-        chat_template=chat_template,
-        chat_template_content_format=content_format,
-    )
+    kw: Dict[str, Any] = {
+        "model_config":                 model_config,
+        "renderer":                     renderer,
+        "io_processor":                 io_processor,
+        "model_registry":               model_registry,
+        "request_logger":               None,
+        "chat_template":                chat_template,
+        "chat_template_content_format": content_format,
+    }
+    if tool_kwargs:
+        # Tool-calling / reasoning live on the renderer in this layout — see
+        # vLLM api_server init_app_state. _accepted_kwargs drops any the
+        # installed version doesn't declare.
+        kw.update(tool_kwargs)
+    return OpenAIServingRender(**_accepted_kwargs(OpenAIServingRender, kw))
 
 
 def _build_online_renderer(engine, engine_args: AsyncEngineArgs, model_name: str,
-                           chat_template: Optional[str] = None):
+                           chat_template: Optional[str] = None,
+                           tool_kwargs: Optional[Dict[str, Any]] = None):
     """
     Build OnlineRenderer for the newest vLLM layout (the ``online_renderer`` kwarg).
 
@@ -300,17 +308,24 @@ def _build_online_renderer(engine, engine_args: AsyncEngineArgs, model_name: str
     except Exception:
         content_format = "auto"  # type: ignore[assignment]
 
-    return OnlineRenderer(**_accepted_kwargs(OnlineRenderer, {
+    kw: Dict[str, Any] = {
         "model_config":                 model_config,
         "renderer":                     renderer,
         "request_logger":               None,
         "chat_template":                chat_template,
         "chat_template_content_format": content_format,
-    }))
+    }
+    if tool_kwargs:
+        # OnlineRenderer is where vLLM's api_server sets enable_auto_tools /
+        # tool_parser / reasoning_parser (see init_app_state). _accepted_kwargs
+        # drops any the installed version doesn't declare.
+        kw.update(tool_kwargs)
+    return OnlineRenderer(**_accepted_kwargs(OnlineRenderer, kw))
 
 
 def _build_renderer_for(cls, *, engine, engine_args: AsyncEngineArgs,
-                        model_name: str, chat_template: Optional[str] = None):
+                        model_name: str, chat_template: Optional[str] = None,
+                        tool_kwargs: Optional[Dict[str, Any]] = None):
     """
     Return ``(kwarg_name, renderer_obj)`` for the renderer argument that
     ``cls.__init__`` expects, or ``(None, None)`` when it takes no renderer.
@@ -322,11 +337,12 @@ def _build_renderer_for(cls, *, engine, engine_args: AsyncEngineArgs,
     """
     if _requires_param(cls, "online_renderer"):
         return "online_renderer", _build_online_renderer(
-            engine, engine_args, model_name, chat_template,
+            engine, engine_args, model_name, chat_template, tool_kwargs=tool_kwargs,
         )
     if _requires_param(cls, "openai_serving_render"):
         return "openai_serving_render", _build_serving_render(
             engine_args=engine_args, model_name=model_name, chat_template=chat_template,
+            tool_kwargs=tool_kwargs,
         )
     return None, None
 
@@ -510,6 +526,20 @@ class VLLMEngine:
                 os.environ["VLLM_ATTENTION_BACKEND"] = attention_backend
                 logger.info("Set VLLM_ATTENTION_BACKEND=%s", attention_backend)
 
+            # Serving-layer flags (tool calling / reasoning). vLLM defines these
+            # in FrontendArgs (not AsyncEngineArgs) and wires them onto the
+            # renderer in api_server.init_app_state. Pop them before building the
+            # engine and map FrontendArgs field -> serving kwarg exactly as vLLM
+            # does: enable_auto_tool_choice->enable_auto_tools,
+            # tool_call_parser->tool_parser, reasoning_parser->reasoning_parser.
+            serving_kwargs: Dict[str, Any] = {}
+            if engine_config.pop("enable_auto_tool_choice", False):
+                serving_kwargs["enable_auto_tools"] = True
+            if (tp := engine_config.pop("tool_call_parser", None)):
+                serving_kwargs["tool_parser"] = tp
+            if (rp := engine_config.pop("reasoning_parser", None)):
+                serving_kwargs["reasoning_parser"] = rp
+
             self.engine_args = AsyncEngineArgs(**engine_config)
 
             # Use Ray-native Prometheus metrics instead of prometheus_client.
@@ -567,6 +597,7 @@ class VLLMEngine:
                 engine_args=self.engine_args,
                 model_name=self.model_name,
                 chat_template=engine_config.get("chat_template"),
+                tool_kwargs=serving_kwargs,
             )
 
             try:
@@ -618,8 +649,14 @@ class VLLMEngine:
                         "request_logger":               None,
                         "return_tokens_as_token_ids":   False,
                         "log_error_stack":              False,
+                        # Flat layout has no renderer — tool/reasoning args live
+                        # on the chat serving class here.
+                        **serving_kwargs,
                     })
                 )
+
+            if serving_kwargs:
+                logger.info("vLLM serving flags: %s", sorted(serving_kwargs))
 
             # Bind the OpenAI request models for in-handler body validation.
             # The FastAPI routes can't annotate these (None on the head; see

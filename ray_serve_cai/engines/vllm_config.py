@@ -100,6 +100,14 @@ def build_vllm_engine_config(user_config: Dict[str, Any]) -> Dict[str, Any]:
     if user_config.get('enable_prefix_caching', False):
         engine_config['enable_prefix_caching'] = True
 
+    # vLLM FrontendArgs (serving-layer): tool calling + reasoning. Carried
+    # through here (the whitelist would otherwise drop them) and consumed by
+    # VLLMEngine.__init__, which pops them before AsyncEngineArgs and hands them
+    # to the renderer, exactly like vLLM's own api_server.
+    for _k in ('enable_auto_tool_choice', 'tool_call_parser', 'reasoning_parser'):
+        if user_config.get(_k) is not None:
+            engine_config[_k] = user_config[_k]
+
     # Custom chat template
     if user_config.get('custom_chat_template'):
         # vLLM accepts chat_template as a string
