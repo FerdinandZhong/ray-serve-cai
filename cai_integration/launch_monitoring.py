@@ -130,6 +130,13 @@ def main():
     if _metrics_token:
         prom_env["RAY_METRICS_BEARER_TOKEN"] = _metrics_token
 
+    # Forward the SD-registry write token so the co-located dynamic
+    # service-discovery registry guards register/heartbeat/delete. If unset,
+    # the registry's write endpoints stay open (fine for trusted networks).
+    _sd_token = os.environ.get("SD_REGISTRY_TOKEN", "").strip()
+    if _sd_token:
+        prom_env["SD_REGISTRY_TOKEN"] = _sd_token
+
     manager.cml_client.create_application(
         project_id=project_id,
         name="prometheus-server",
