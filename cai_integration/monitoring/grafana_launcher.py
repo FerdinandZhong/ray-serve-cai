@@ -192,7 +192,13 @@ def main():
         "GF_SECURITY_ALLOW_EMBEDDING": "true",
     }
 
-    cmd = [gf_bin, "--homepath", str(INSTALL_DIR)]
+    # Grafana 10+ ships a single `grafana` binary that requires the `server`
+    # subcommand before flags; the legacy `grafana-server` binary takes
+    # --homepath directly.
+    if Path(gf_bin).name == "grafana":
+        cmd = [gf_bin, "server", "--homepath", str(INSTALL_DIR)]
+    else:
+        cmd = [gf_bin, "--homepath", str(INSTALL_DIR)]
     print(f"Starting Grafana: {' '.join(cmd)}")
     proc = subprocess.Popen(cmd, env=env)
 

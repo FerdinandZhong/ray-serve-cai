@@ -314,6 +314,22 @@ def load_config():
         if _v is not None:
             _mon[_key] = _v
 
+    # ── Break the launch-order cycle via deterministic URLs ──────────────────
+    # The monitoring apps use fixed subdomains, so their URLs are predictable
+    # from CDSW_DOMAIN *before* they exist. Derive them when not set explicitly
+    # so the head can be launched first: the Ray dashboard just needs the URL
+    # values, and Grafana/Prometheus become reachable once they come up.
+    _cdsw_domain = os.environ.get("CDSW_DOMAIN", "").strip()
+    if _cdsw_domain:
+        _prom_sub = os.environ.get("PROMETHEUS_SUBDOMAIN", "prometheus-server")
+        _graf_sub = os.environ.get("GRAFANA_SUBDOMAIN", "grafana-server")
+        if not _mon.get('prometheus_host'):
+            _mon['prometheus_host'] = f"https://{_prom_sub}.{_cdsw_domain}"
+        if not _mon.get('grafana_host'):
+            _mon['grafana_host'] = f"https://{_graf_sub}.{_cdsw_domain}"
+        if not _mon.get('grafana_iframe_host'):
+            _mon['grafana_iframe_host'] = _mon['grafana_host']
+
     return config
 
 

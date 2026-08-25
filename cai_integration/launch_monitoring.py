@@ -84,7 +84,19 @@ def main():
 
     prom_sub    = os.environ.get("PROMETHEUS_SUBDOMAIN", "prometheus-server")
     grafana_sub = os.environ.get("GRAFANA_SUBDOMAIN",    "grafana-server")
-    ray_head_url = os.environ.get("RAY_CLUSTER_HEAD_URL", "")
+
+    # Head URL is deterministic from the head app subdomain + CDSW_DOMAIN, so we
+    # can point Prometheus at it without the cluster being up yet — this breaks
+    # the monitoring<->cluster launch-order cycle. Prometheus tolerates a target
+    # that is down and marks it UP once the head comes online.
+    ray_head_url = os.environ.get("RAY_CLUSTER_HEAD_URL", "").strip()
+    if not ray_head_url:
+        head_sub = (
+            os.environ.get("RAY_HEAD_SUBDOMAIN")
+            or ray_config.get("head_app_name")
+            or "ray-cluster-head"
+        )
+        ray_head_url = f"https://{head_sub}.{cdsw_domain}" if cdsw_domain else ""
 
     prom_url    = f"https://{prom_sub}.{cdsw_domain}"    if cdsw_domain else ""
     grafana_url = f"https://{grafana_sub}.{cdsw_domain}" if cdsw_domain else ""
@@ -108,6 +120,15 @@ def main():
     prom_env = {}
     if ray_head_url:
         prom_env["RAY_CLUSTER_HEAD_URL"] = ray_head_url
+    # Forward a Bearer token so Prometheus can scrape the head's ingress when
+    # the head app requires authentication. Default to the CML API key
+    # ($CDSW_APIV2_KEY / $CML_API_KEY), which the Management API accepts.
+    _metrics_token = (
+        os.environ.get("RAY_METRICS_BEARER_TOKEN", "").strip()
+        or (cml_api_key or "").strip()
+    )
+    if _metrics_token:
+        prom_env["RAY_METRICS_BEARER_TOKEN"] = _metrics_token
 
     manager.cml_client.create_application(
         project_id=project_id,

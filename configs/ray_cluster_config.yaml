@@ -9,13 +9,13 @@ ray_cluster:
   # ── Head node resources ───────────────────────────────────────────────────
   # The head node runs Ray GCS, the Ray Dashboard, the Management API, and
   # nginx.  It is CPU-only — GPUs are reserved for worker nodes.
-  head_cpu:    8
-  head_memory: 32   # GB
+  head_cpu:    16
+  head_memory: 32   # GB  (object_store ~9 GB + memory ~21.5 GB ≈ 32 GB request)
 
   # ── Management API resources (Ray Serve deployment on the head node) ──────
   # Defaults: half of head_cpu / head_memory when omitted.
   # Must not exceed head_cpu / head_memory.
-  management_api_cpu:    4   # = head_cpu // 2
+  management_api_cpu:    8   # = head_cpu // 2
   management_api_memory: 16  # GB  = head_memory // 2
 
   # ── Worker groups ─────────────────────────────────────────────────────────
@@ -33,9 +33,9 @@ ray_cluster:
   worker_groups:
     - name:      l40-gpu-workers
       node_type: l40-gpu-worker
-      count:     1
-      cpu:       16
-      memory:    64   # GB
+      count:     2   # 2 L40S workers currently running (g6e.4xlarge)
+      cpu:       12
+      memory:    64   # GB  (object_store ~12.8 GB + memory ~46.4 GB ≈ 64 GB request)
       gpus:      1
       accelerator_type: L40S  # Ray accelerator_type label (matches nvidia-smi GPU name)
       node_label:             # K8s node selector for pod placement

@@ -2,15 +2,21 @@
 """
 CML Application: Prometheus for Ray cluster metrics.
 
-Downloads the Prometheus binary (if missing) and runs it configured to
-scrape Ray nodes discovered via the Management API's /api/v1/metrics/discovery
-endpoint (http_sd_configs).
+Downloads the Prometheus binary (if missing) and runs it configured to scrape
+the Ray head's public HTTPS ingress endpoints. Prometheus runs as a *separate*
+CML application, so it cannot reach the cluster's internal nodeIP:9090 exporters
+that http_sd discovery would return — only the head's 443 ingress is routable.
+We therefore scrape the head's aggregation routes instead:
+
+  /metrics               → all alive nodes, aggregated (nginx → /api/v1/metrics/all)
+  /api/v1/metrics/apps   → Ray Serve application metrics (vLLM, etc.)
 
 Environment variables:
-  RAY_CLUSTER_HEAD_URL   — Management API base URL  (e.g. https://ray-cluster-head.example.com)
-  CDSW_APP_PORT          — CML application port (proxied to Prometheus 9090)
-  PROMETHEUS_VERSION     — Prometheus release to download (default: 3.4.1)
-  PROMETHEUS_RETENTION   — Data retention period (default: 15d)
+  RAY_CLUSTER_HEAD_URL     — head ingress base URL (e.g. https://ray-cluster-head.example.com)
+  RAY_METRICS_BEARER_TOKEN — optional Bearer token if the head app requires auth
+  CDSW_APP_PORT            — CML application port (proxied to Prometheus 9090)
+  PROMETHEUS_VERSION       — Prometheus release to download (default: 3.4.1)
+  PROMETHEUS_RETENTION     — Data retention period (default: 15d)
 """
 
 import os
@@ -27,7 +33,16 @@ from urllib.request import urlopen, urlretrieve
 
 PROM_VERSION = os.environ.get("PROMETHEUS_VERSION", "3.4.1")
 PROM_RETENTION = os.environ.get("PROMETHEUS_RETENTION", "15d")
-RAY_HEAD_URL = os.environ.get("RAY_CLUSTER_HEAD_URL", "")
+RAY_HEAD_URL = os.environ.get("RAY_CLUSTER_HEAD_URL", "").strip()
+# Fall back to the deterministic head ingress URL so this app is self-sufficient
+# and launch order does not matter (the target is simply DOWN until the head is
+# up). CDSW_DOMAIN is present in every CML workload/app in the project.
+if not RAY_HEAD_URL:
+    _cdsw_domain = os.environ.get("CDSW_DOMAIN", "").strip()
+    _head_sub = os.environ.get("RAY_HEAD_SUBDOMAIN", "ray-cluster-head")
+    if _cdsw_domain:
+        RAY_HEAD_URL = f"https://{_head_sub}.{_cdsw_domain}"
+METRICS_BEARER = os.environ.get("RAY_METRICS_BEARER_TOKEN", "").strip()
 APP_PORT = int(os.environ.get("CDSW_APP_PORT", "8090"))
 PROM_PORT = 9090
 
@@ -60,44 +75,58 @@ def download_prometheus():
     print(f"Installed Prometheus to {INSTALL_DIR}")
 
 
+def _auth_lines() -> str:
+    """Optional Bearer auth block (2-space indented under a job), or empty."""
+    if not METRICS_BEARER:
+        return ""
+    return (
+        "  authorization:\n"
+        "    type: Bearer\n"
+        f"    credentials: '{METRICS_BEARER}'\n"
+    )
+
+
+def _ingress_job(name: str, host: str, scheme: str, metrics_path: str,
+                 interval: str) -> str:
+    """Build one static scrape job against the head's HTTPS ingress."""
+    return (
+        f"- job_name: '{name}'\n"
+        f"  scheme: {scheme}\n"
+        f"  metrics_path: {metrics_path}\n"
+        f"  scrape_interval: {interval}\n"
+        f"  static_configs:\n"
+        f"    - targets: ['{host}']\n"
+        f"  tls_config:\n"
+        f"    insecure_skip_verify: true\n"
+        f"{_auth_lines()}"
+    )
+
+
 def write_config():
     # Always self-scrape so the config is valid and Prometheus starts even
     # before a Ray head URL is configured.
-    jobs = textwrap.dedent(f"""\
-          - job_name: 'prometheus'
-            static_configs:
-              - targets: ['127.0.0.1:{PROM_PORT}']
-    """)
+    jobs = (
+        "- job_name: 'prometheus'\n"
+        "  static_configs:\n"
+        f"    - targets: ['127.0.0.1:{PROM_PORT}']\n"
+    )
 
     if RAY_HEAD_URL:
         parsed = urlparse(RAY_HEAD_URL)
         scheme = parsed.scheme or "https"
-        host_port = (
-            f"{parsed.hostname}:{parsed.port}" if parsed.port else parsed.hostname
-        )
-        jobs += textwrap.dedent(f"""\
-          - job_name: 'ray-nodes'
-            http_sd_configs:
-              - url: '{RAY_HEAD_URL}/api/v1/metrics/discovery'
-                refresh_interval: 15s
-            metrics_path: /metrics
-            scrape_interval: 15s
-            scrape_timeout: 10s
-            scheme: http
-
-          - job_name: 'ray-aggregated'
-            static_configs:
-              - targets: ['{host_port}']
-            metrics_path: /metrics
-            scrape_interval: 30s
-            scrape_timeout: 15s
-            scheme: {scheme}
-            tls_config:
-              insecure_skip_verify: true
-    """)
+        host = f"{parsed.hostname}:{parsed.port}" if parsed.port else parsed.hostname
+        # Scrape the head's public ingress routes (reachable across CML apps).
+        # /metrics is an nginx alias for /api/v1/metrics/all (all nodes).
+        jobs += _ingress_job("ray-cluster", host, scheme, "/metrics", "15s")
+        jobs += _ingress_job("ray-serve-apps", host, scheme,
+                             "/api/v1/metrics/apps", "30s")
+        if not METRICS_BEARER:
+            print("NOTE: RAY_METRICS_BEARER_TOKEN not set — if the head app "
+                  "requires auth, scrapes will 401. Set it or make the head "
+                  "app bypass authentication.")
     else:
-        print("WARNING: RAY_CLUSTER_HEAD_URL not set — only self-scrape configured; "
-              "set it so Prometheus can discover Ray nodes")
+        print("WARNING: RAY_CLUSTER_HEAD_URL not set — only self-scrape "
+              "configured; set it so Prometheus can scrape the Ray head.")
 
     config = textwrap.dedent("""\
         global:
@@ -106,7 +135,7 @@ def write_config():
           evaluation_interval: 15s
 
         scrape_configs:
-    """) + jobs
+        """) + jobs
     CONFIG_FILE.write_text(config)
     print(f"Wrote Prometheus config: {CONFIG_FILE}")
 
