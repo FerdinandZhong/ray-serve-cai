@@ -20,6 +20,7 @@ import subprocess
 import sys
 import tarfile
 import threading
+import time
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 from pathlib import Path
 from urllib.request import urlopen, urlretrieve
@@ -30,7 +31,11 @@ APP_PORT = int(os.environ.get("CDSW_APP_PORT", "8091"))
 GF_PORT = 3000
 
 INSTALL_DIR = Path("/home/cdsw/.local/grafana")
-DATA_DIR = Path("/home/cdsw/grafana_data")
+# Grafana's SQLite DB (and plugin dir) MUST live on local disk, not NFS.
+# /home/cdsw is NFS-backed in CML and SQLite locking is unreliable over NFS,
+# which surfaces as fatal "database is locked" provisioning errors. State here
+# is disposable: datasources/dashboards are re-provisioned from files each boot.
+DATA_DIR = Path(os.environ.get("GRAFANA_DATA_DIR", "/tmp/grafana_data"))
 PROVISION_DIR = Path("/home/cdsw/grafana_provisioning")
 DASHBOARD_DIR = PROVISION_DIR / "dashboards"
 
@@ -177,11 +182,73 @@ class _ProxyHandler(BaseHTTPRequestHandler):
         pass  # silent
 
 
+_GF_PROC_PATTERNS = (
+    # Anchor on the install path so we never match this launcher's own cmdline
+    # or unrelated processes; covers both `grafana server` and legacy binary.
+    str(INSTALL_DIR / "bin" / "grafana"),
+    str(INSTALL_DIR / "bin" / "grafana-server"),
+)
+
+
+def _grafana_running() -> bool:
+    for pat in _GF_PROC_PATTERNS:
+        try:
+            if subprocess.run(["pgrep", "-f", pat], check=False).returncode == 0:
+                return True
+        except FileNotFoundError:
+            return False  # pgrep unavailable; assume none
+    return False
+
+
+def _kill_stale_grafana(timeout: float = 15.0):
+    """Reap any Grafana left over from a previous run in this kernel and WAIT
+    for it to exit before returning.
+
+    Re-running the launcher inside the same workbench session otherwise leaves
+    an old grafana holding both the SQLite DB and port 3000, so the new process
+    fails with "database is locked" or "address already in use". We SIGTERM,
+    poll until the process is gone, then escalate to SIGKILL. CML app
+    containers are single-tenant, so reaping lingering grafana here is safe."""
+    try:
+        for pat in _GF_PROC_PATTERNS:
+            subprocess.run(["pkill", "-f", pat], check=False)
+    except FileNotFoundError:
+        return  # pkill unavailable; nothing to do
+
+    deadline = time.monotonic() + timeout
+    while time.monotonic() < deadline:
+        if not _grafana_running():
+            return
+        time.sleep(0.5)
+
+    # Graceful shutdown didn't finish in time — force kill and wait briefly.
+    for pat in _GF_PROC_PATTERNS:
+        subprocess.run(["pkill", "-9", "-f", pat], check=False)
+    hard_deadline = time.monotonic() + 5.0
+    while time.monotonic() < hard_deadline:
+        if not _grafana_running():
+            return
+        time.sleep(0.25)
+    print("WARNING: stale Grafana process may still be running", file=sys.stderr)
+
+
 def main():
+    _kill_stale_grafana()
     download_grafana()
     provision_datasource()
     provision_dashboards()
-    DATA_DIR.mkdir(parents=True, exist_ok=True)
+    # Start from a clean local DB so a stale/locked NFS-era DB never blocks boot.
+    # Guard against wiping a dangerous/shared path if GRAFANA_DATA_DIR is
+    # overridden to something like /, /tmp, or the home directory.
+    _protected = {Path("/"), Path("/tmp"), Path.home(), Path("/home/cdsw")}
+    if DATA_DIR.resolve() in {p.resolve() for p in _protected}:
+        raise RuntimeError(
+            f"Refusing to wipe GRAFANA_DATA_DIR={DATA_DIR}: pick a dedicated "
+            f"disposable directory (e.g. /tmp/grafana_data)"
+        )
+    shutil.rmtree(DATA_DIR, ignore_errors=True)
+    for sub in (DATA_DIR, DATA_DIR / "log", DATA_DIR / "plugins"):
+        sub.mkdir(parents=True, exist_ok=True)
 
     class _ReusableServer(ThreadingHTTPServer):
         allow_reuse_address = True
@@ -202,6 +269,10 @@ def main():
         **os.environ,
         "GF_PATHS_HOME": str(INSTALL_DIR),
         "GF_PATHS_DATA": str(DATA_DIR),
+        # Logs and plugins default to <homepath>/data/* (on NFS); pin them under
+        # the local DATA_DIR so all mutable state stays off NFS and consistent.
+        "GF_PATHS_LOGS": str(DATA_DIR / "log"),
+        "GF_PATHS_PLUGINS": str(DATA_DIR / "plugins"),
         "GF_PATHS_PROVISIONING": str(PROVISION_DIR),
         "GF_SERVER_HTTP_PORT": str(GF_PORT),
         "GF_SERVER_ROOT_URL": "%(protocol)s://%(domain)s/",
@@ -212,6 +283,10 @@ def main():
         "GF_AUTH_DISABLE_LOGIN_FORM": "true",
         # Allow embedding in iframes (Ray Dashboard metrics tab)
         "GF_SECURITY_ALLOW_EMBEDDING": "true",
+        # Don't background-install the default apps (pyroscope, lokiexplore):
+        # they need network to grafana.com, fail signature validation, and add
+        # SQLite write contention. We only need the Prometheus datasource.
+        "GF_PLUGINS_PREINSTALL_DISABLED": "true",
     }
 
     # Grafana 10+ ships a single `grafana` binary that requires the `server`
