@@ -113,6 +113,7 @@ def create_ray_launcher_scripts(
     proxy_health_check_timeout_s: float = None,
     proxy_ready_check_timeout_s: float = None,
     proxy_min_draining_period_s: float = None,
+    monitoring: dict = None,
 ) -> tuple:
     """
     Render and write the head launcher and one worker launcher per group.
@@ -159,6 +160,11 @@ def create_ray_launcher_scripts(
         "proxy_health_check_timeout_s": proxy_health_check_timeout_s,
         "proxy_ready_check_timeout_s":  proxy_ready_check_timeout_s,
         "proxy_min_draining_period_s":  proxy_min_draining_period_s,
+        # Monitoring env vars (set before ray start so dashboard inherits them)
+        "prometheus_host":    (monitoring or {}).get('prometheus_host'),
+        "grafana_host":       (monitoring or {}).get('grafana_host'),
+        "grafana_iframe_host": (monitoring or {}).get('grafana_iframe_host'),
+        "grafana_org_id":     (monitoring or {}).get('grafana_org_id', '1'),
     }
     head_script_path = project_dir / "ray_head_launcher.py"
     head_script_path.write_text(
@@ -221,6 +227,13 @@ def load_config():
         'proxy_health_check_timeout_s': None,
         'proxy_ready_check_timeout_s':  None,
         'proxy_min_draining_period_s':  None,
+        # Monitoring — set by monitoring: block in ray_cluster_config.yaml
+        'monitoring': {
+            'prometheus_host':     None,
+            'grafana_host':        None,
+            'grafana_iframe_host': None,
+            'grafana_org_id':      '1',
+        },
     }
 
     # ── Step 2: YAML overrides defaults ─────────────────────────────────────
@@ -242,6 +255,13 @@ def load_config():
                 config['head_runtime_identifier'] = cai_section['head_runtime_identifier']
             if 'worker_runtime_identifier' in cai_section:
                 config['worker_runtime_identifier'] = cai_section['worker_runtime_identifier']
+            monitoring_section = file_config.get('monitoring', {}) or {}
+            config['monitoring'] = {
+                'prometheus_host':     monitoring_section.get('prometheus_host'),
+                'grafana_host':        monitoring_section.get('grafana_host'),
+                'grafana_iframe_host': monitoring_section.get('grafana_iframe_host'),
+                'grafana_org_id':      str(monitoring_section.get('grafana_org_id') or '1'),
+            }
             print(f"Loaded configuration from {config_path}")
         except Exception as e:
             print(f"Warning: could not load config file: {e}")
@@ -279,6 +299,36 @@ def load_config():
         val = os.environ.get(env_var)
         if val is not None:
             config[key] = float(val)
+
+    _mon = config.setdefault('monitoring', {
+        'prometheus_host': None, 'grafana_host': None,
+        'grafana_iframe_host': None, 'grafana_org_id': '1',
+    })
+    for _env_var, _key in [
+        ('MONITORING_PROMETHEUS_HOST',     'prometheus_host'),
+        ('MONITORING_GRAFANA_HOST',        'grafana_host'),
+        ('MONITORING_GRAFANA_IFRAME_HOST', 'grafana_iframe_host'),
+        ('MONITORING_GRAFANA_ORG_ID',      'grafana_org_id'),
+    ]:
+        _v = os.environ.get(_env_var)
+        if _v is not None:
+            _mon[_key] = _v
+
+    # ── Break the launch-order cycle via deterministic URLs ──────────────────
+    # The monitoring apps use fixed subdomains, so their URLs are predictable
+    # from CDSW_DOMAIN *before* they exist. Derive them when not set explicitly
+    # so the head can be launched first: the Ray dashboard just needs the URL
+    # values, and Grafana/Prometheus become reachable once they come up.
+    _cdsw_domain = os.environ.get("CDSW_DOMAIN", "").strip()
+    if _cdsw_domain:
+        _prom_sub = os.environ.get("PROMETHEUS_SUBDOMAIN", "prometheus-server")
+        _graf_sub = os.environ.get("GRAFANA_SUBDOMAIN", "grafana-server")
+        if not _mon.get('prometheus_host'):
+            _mon['prometheus_host'] = f"https://{_prom_sub}.{_cdsw_domain}"
+        if not _mon.get('grafana_host'):
+            _mon['grafana_host'] = f"https://{_graf_sub}.{_cdsw_domain}"
+        if not _mon.get('grafana_iframe_host'):
+            _mon['grafana_iframe_host'] = _mon['grafana_host']
 
     return config
 
@@ -433,6 +483,7 @@ def main():
             proxy_health_check_timeout_s=ray_config['proxy_health_check_timeout_s'],
             proxy_ready_check_timeout_s=ray_config['proxy_ready_check_timeout_s'],
             proxy_min_draining_period_s=ray_config['proxy_min_draining_period_s'],
+            monitoring=ray_config.get('monitoring'),
         )
 
         # Initialize CAI cluster manager
