@@ -160,6 +160,39 @@ def _requires_param(cls, param: str) -> bool:
     return param in inspect.signature(cls.__init__).parameters
 
 
+def _extract_serving_kwargs(engine_config: Dict[str, Any]) -> Dict[str, Any]:
+    """Pop vLLM FrontendArgs (tool calling / reasoning) out of *engine_config*
+    and map them to the serving-layer constructor kwargs, exactly as vLLM's own
+    ``api_server.init_app_state`` does:
+
+        enable_auto_tool_choice -> enable_auto_tools
+        tool_call_parser        -> tool_parser
+        reasoning_parser        -> reasoning_parser  (+ enable_reasoning for <0.9)
+
+    These are FrontendArgs, NOT AsyncEngineArgs, so they must be removed before
+    ``AsyncEngineArgs(**engine_config)`` or the engine rejects them. In vLLM
+    0.26 ``OpenAIServingChat`` builds its own output parser from these
+    (``self.parser_cls = ParserManager.get_parser(tool_parser, reasoning_parser,
+    enable_auto_tools)``) and gates ``tool_calls`` on
+    ``self.enable_auto_tools`` + ``parser_cls.tool_parser_cls`` — so they must be
+    passed to the chat serving class, not only the renderer.
+
+    Mutates *engine_config* (pops the keys) and returns the serving kwargs.
+    """
+    serving_kwargs: Dict[str, Any] = {}
+    if engine_config.pop("enable_auto_tool_choice", False):
+        serving_kwargs["enable_auto_tools"] = True
+    if (tp := engine_config.pop("tool_call_parser", None)):
+        serving_kwargs["tool_parser"] = tp
+    if (rp := engine_config.pop("reasoning_parser", None)):
+        serving_kwargs["reasoning_parser"] = rp
+        # Older vLLM (0.6-0.8) gated reasoning behind a separate boolean; newer
+        # versions infer it from reasoning_parser. Set both — the unsupported
+        # one is filtered out by _accepted_kwargs at the call site.
+        serving_kwargs["enable_reasoning"] = True
+    return serving_kwargs
+
+
 def _normalize_vllm_stream_result(result: Any, *, op_name: str) -> Any:
     """
     Ensure FastAPI / Ray Serve never try to json-encode a streaming payload.
@@ -269,9 +302,10 @@ def _build_serving_render(engine_args: AsyncEngineArgs, model_name: str,
         "chat_template_content_format": content_format,
     }
     if tool_kwargs:
-        # Tool-calling / reasoning live on the renderer in this layout — see
-        # vLLM api_server init_app_state. _accepted_kwargs drops any the
-        # installed version doesn't declare.
+        # Defensive only: tool/reasoning parsers actually run in
+        # OpenAIServingChat, not the renderer. _accepted_kwargs drops these
+        # here (the renderer doesn't declare them) — they are applied on
+        # OpenAIServingChat in VLLMEngine.__init__.
         kw.update(tool_kwargs)
     return OpenAIServingRender(**_accepted_kwargs(OpenAIServingRender, kw))
 
@@ -316,9 +350,10 @@ def _build_online_renderer(engine, engine_args: AsyncEngineArgs, model_name: str
         "chat_template_content_format": content_format,
     }
     if tool_kwargs:
-        # OnlineRenderer is where vLLM's api_server sets enable_auto_tools /
-        # tool_parser / reasoning_parser (see init_app_state). _accepted_kwargs
-        # drops any the installed version doesn't declare.
+        # Defensive only: tool/reasoning parsers actually run in
+        # OpenAIServingChat, not the renderer. _accepted_kwargs drops these
+        # here (OnlineRenderer doesn't declare them) — they are applied on
+        # OpenAIServingChat in VLLMEngine.__init__.
         kw.update(tool_kwargs)
     return OnlineRenderer(**_accepted_kwargs(OnlineRenderer, kw))
 
@@ -526,19 +561,13 @@ class VLLMEngine:
                 os.environ["VLLM_ATTENTION_BACKEND"] = attention_backend
                 logger.info("Set VLLM_ATTENTION_BACKEND=%s", attention_backend)
 
-            # Serving-layer flags (tool calling / reasoning). vLLM defines these
-            # in FrontendArgs (not AsyncEngineArgs) and wires them onto the
-            # renderer in api_server.init_app_state. Pop them before building the
-            # engine and map FrontendArgs field -> serving kwarg exactly as vLLM
-            # does: enable_auto_tool_choice->enable_auto_tools,
-            # tool_call_parser->tool_parser, reasoning_parser->reasoning_parser.
-            serving_kwargs: Dict[str, Any] = {}
-            if engine_config.pop("enable_auto_tool_choice", False):
-                serving_kwargs["enable_auto_tools"] = True
-            if (tp := engine_config.pop("tool_call_parser", None)):
-                serving_kwargs["tool_parser"] = tp
-            if (rp := engine_config.pop("reasoning_parser", None)):
-                serving_kwargs["reasoning_parser"] = rp
+            # Serving-layer flags (tool calling / reasoning). See
+            # _extract_serving_kwargs for the FrontendArgs->serving mapping and
+            # why these must be popped before AsyncEngineArgs. They are forwarded
+            # to BOTH the renderer (input validation) and OpenAIServingChat
+            # (output extraction) below; _accepted_kwargs drops any the installed
+            # vLLM doesn't declare.
+            serving_kwargs: Dict[str, Any] = _extract_serving_kwargs(engine_config)
 
             self.engine_args = AsyncEngineArgs(**engine_config)
 
@@ -625,6 +654,17 @@ class VLLMEngine:
                         "request_logger":               None,
                         "chat_template":                engine_config.get("chat_template"),
                         "chat_template_content_format": content_format,
+                        # REQUIRED for output tool-call/reasoning extraction. In
+                        # vLLM 0.26 OpenAIServingChat builds its OWN parser:
+                        # self.parser_cls = ParserManager.get_parser(tool_parser,
+                        # reasoning_parser, enable_auto_tools) and gates tool_calls
+                        # on self.enable_auto_tools + parser_cls.tool_parser_cls
+                        # (chat_completion/serving.py:152-159, 867-945). The
+                        # renderer only validates INPUT (raises the 400); without
+                        # these on the chat class, tool calls leak into `content`
+                        # with tool_calls=null. So they must be set on BOTH the
+                        # renderer (above, via tool_kwargs) and here.
+                        **serving_kwargs,
                     })
                 )
 
