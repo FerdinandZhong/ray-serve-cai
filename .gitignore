@@ -57,3 +57,9 @@ file.txt
 
 .claude
 .omc
+
+# Presentation decks — binaries + rendered assets (incl. headless-Chrome
+# profile junk under assets/.chrome-profile). Not source-controlled.
+docs/decks/
+scripts/build_inferencing_deck_v2.py.deckbuild/
+.deckbuild

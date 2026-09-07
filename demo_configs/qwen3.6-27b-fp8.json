@@ -12,6 +12,9 @@
     "max_model_len": 16384,
     "gpu_memory_utilization": 0.90,
     "enable_prefix_caching": true,
-    "trust_remote_code": true
+    "trust_remote_code": true,
+    "enable_auto_tool_choice": true,
+    "tool_call_parser": "qwen3_xml",
+    "reasoning_parser": "qwen3"
   }
 }

@@ -78,6 +78,76 @@ def main():
         print(f"⚠️  vLLM import check failed: {result.stderr[:200]}")
         sys.exit(1)
 
+    # Verify `ninja` is actually RESOLVABLE (not merely installed). FlashInfer /
+    # torch.compile shell out to the `ninja` binary at engine startup. Some
+    # `ninja` wheels install the real binary only into the package's BIN_DIR and
+    # skip the <venv>/bin console-script shim, so PATH lookups fail with
+    # `FileNotFoundError: 'ninja'` even though the package IS installed (and thus
+    # passes the _PRESENCE_CRITICAL check). Catch + repair that here at build
+    # time rather than at deploy time.
+    if not _ensure_ninja_resolvable(venv_python, _VENV_DIR):
+        sys.exit(1)
+
+
+def _ensure_ninja_resolvable(venv_python: str, venv_dir: str) -> bool:
+    """Ensure the `ninja` binary is on PATH for the venv; repair a missing shim.
+
+    Returns True if ninja is (now) resolvable, False if it is genuinely absent
+    (caller should fail the job). Mirrors the runtime BIN_DIR fallback in
+    vllm_engine.VLLMEngine.__init__.
+    """
+    import json
+    import subprocess
+
+    probe = (
+        "import json, os, shutil\n"
+        "info = {'which': shutil.which('ninja'), 'bin_dir': None, 'bin_exists': False}\n"
+        "try:\n"
+        "    import ninja\n"
+        "    bd = getattr(ninja, 'BIN_DIR', None)\n"
+        "    info['bin_dir'] = bd\n"
+        "    if bd:\n"
+        "        p = os.path.join(bd, 'ninja')\n"
+        "        info['bin_exists'] = os.path.exists(p) or os.path.exists(p + '.exe')\n"
+        "except Exception as e:\n"
+        "    info['error'] = repr(e)\n"
+        "print(json.dumps(info))\n"
+    )
+    res = subprocess.run([venv_python, "-c", probe], capture_output=True, text=True)
+    try:
+        info = json.loads((res.stdout or "").strip().splitlines()[-1])
+    except Exception:
+        print(f"⚠️  ninja probe failed: {res.stderr[:200] or res.stdout[:200]}")
+        return False
+
+    if info.get("which"):
+        print(f"✅ ninja resolvable on PATH: {info['which']}")
+        return True
+
+    bin_dir = info.get("bin_dir")
+    if info.get("bin_exists") and bin_dir:
+        # Shim-missing case: create <venv>/bin/ninja -> <BIN_DIR>/ninja so every
+        # consumer (torch, FlashInfer) resolves it via PATH, not just our engine.
+        src = os.path.join(bin_dir, "ninja")
+        dst = os.path.join(venv_dir, "bin", "ninja")
+        try:
+            os.makedirs(os.path.dirname(dst), exist_ok=True)
+            if os.path.islink(dst) or os.path.exists(dst):
+                os.remove(dst)
+            os.symlink(src, dst)
+            print(f"🔧 ninja shim missing from venv bin — linked {dst} -> {src}")
+            return True
+        except Exception as e:
+            print(f"❌ Failed to create ninja shim {dst} -> {src}: {e}")
+            return False
+
+    print(
+        "❌ ninja is not installed/resolvable in .venv-vllm "
+        f"(probe: {info}). FlashInfer/torch.compile will fail at startup. "
+        "Rerun with SETUP_FORCE_RECREATE=1 to rebuild the venv."
+    )
+    return False
+
 
 if __name__ == "__main__":
     main()

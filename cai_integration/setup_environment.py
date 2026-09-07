@@ -602,7 +602,12 @@ _RAY_BASE = [
 # CML jobs import from here rather than redefining their own lists, so a change to
 # _RAY_BASE (e.g. a Ray bump) propagates to every engine venv automatically.
 _ENGINE_PACKAGES = {
-    "vllm":    _RAY_BASE + ["vllm>=0.13.0", "ninja"],
+    # flashinfer-python is pinned to >=0.6.16.post4: 0.6.16 through post3
+    # annotate `array.array[int]` in flashinfer/comm/fd_exchange.py, which is only
+    # subscriptable on Python 3.12+. On the 3.11 runtime that import raises
+    # `TypeError: type 'array.array' is not subscriptable`, killing vLLM's
+    # EngineCore at startup. post4 adds `from __future__ import annotations`.
+    "vllm":    _RAY_BASE + ["vllm>=0.13.0", "flashinfer-python>=0.6.16.post4", "ninja"],
     "sglang":  _RAY_BASE + ["sglang>=0.5.7"],
     "yolo":    _RAY_BASE + ["ultralytics>=8.0.0", "Pillow>=9.0.0", "opencv-python-headless>=4.8.0"],
     "mcp":     _RAY_BASE + ["mcp>=1.0.0", "httpx>=0.27.0"],
