@@ -541,18 +541,44 @@ class VLLMEngine:
             import os
             import sys
 
-            # FlashInfer JIT-compiles CUDA kernels at first use by shelling out to
-            # `ninja` (a console script installed into this venv's bin/). Ray's
-            # py_executable swaps the interpreter but NOT PATH, so the venv bin is
-            # not searched and the EngineCore subprocess dies with
-            # `FileNotFoundError: 'ninja'`. Prepend the venv bin so ninja (and any
-            # other venv console tool) resolves. This must happen here — before
-            # the engine core subprocess starts — and cannot be done via the
-            # deploy payload (PATH is denylisted in SchedulingConfig.env_vars).
-            _venv_bin = os.path.dirname(sys.executable)
-            if _venv_bin and _venv_bin not in os.environ.get("PATH", "").split(os.pathsep):
-                os.environ["PATH"] = _venv_bin + os.pathsep + os.environ.get("PATH", "")
-                logger.info("Prepended %s to PATH (FlashInfer JIT needs ninja)", _venv_bin)
+            # FlashInfer / torch.compile JIT-compile CUDA kernels by shelling out
+            # to `ninja`. In recent vLLM (0.26) + FlashInfer this happens during
+            # engine STARTUP (cudagraph capture / VLLM_COMPILE), not at first
+            # inference. Ray's py_executable swaps the interpreter but NOT PATH,
+            # so the venv bin isn't searched and the EngineCore subprocess dies
+            # with `FileNotFoundError: 'ninja'`. Make ninja resolvable before the
+            # engine (and its subprocesses, which inherit os.environ) start. This
+            # can't be done via the deploy payload (PATH is denylisted in
+            # SchedulingConfig.env_vars).
+            import shutil
+
+            def _prepend_path(d: str) -> None:
+                if d and d not in os.environ.get("PATH", "").split(os.pathsep):
+                    os.environ["PATH"] = d + os.pathsep + os.environ.get("PATH", "")
+
+            # 1) venv bin — where the `ninja` console-script normally lands.
+            _prepend_path(os.path.dirname(sys.executable))
+
+            # 2) Fallback: the `ninja` PyPI package bundles the real binary in its
+            #    own BIN_DIR. Some wheel installs don't drop the console-script
+            #    shim into <venv>/bin, so step 1 alone won't resolve ninja — add
+            #    the package's BIN_DIR too. This is the recurrence guard.
+            if shutil.which("ninja") is None:
+                try:
+                    import ninja  # provided by the `ninja` PyPI package
+                    _prepend_path(getattr(ninja, "BIN_DIR", ""))
+                except Exception as _exc:
+                    logger.warning("`ninja` python package not importable: %s", _exc)
+
+            _ninja_path = shutil.which("ninja")
+            if _ninja_path:
+                logger.info("ninja resolved at %s (FlashInfer/torch JIT)", _ninja_path)
+            else:
+                logger.error(
+                    "ninja NOT found on PATH or via the `ninja` package — FlashInfer/"
+                    "torch.compile will fail at startup. Ensure `ninja` is installed in "
+                    ".venv-vllm (it is listed in _ENGINE_PACKAGES['vllm'])."
+                )
 
             # attention_backend must be set as an env var before the engine
             # starts — vLLM's EngineCore subprocess inherits it from us.
