@@ -1021,6 +1021,20 @@ def create_vllm_deployment(
             _b.update(_affinity)
         logger.info("Merged scheduling resources into explicit bundles: %s", _affinity)
 
+    # vLLM v1's Ray executor rejects any bundle with >1 GPU (one shard per
+    # bundle). This applies to caller-supplied bundles too — the auto-generated
+    # ones above already satisfy it, but a payload like {"GPU":2} would
+    # otherwise only fail deep inside the Ray worker actor.
+    if placement_group_bundles is not None:
+        for _b in placement_group_bundles:
+            if _b.get("GPU", 0) > 1:
+                raise ValueError(
+                    f"placement_group_bundles: bundle {_b} requests GPU>1 "
+                    "(vLLM's Ray executor allows at most 1 GPU per bundle) — "
+                    "use one {\"GPU\":1,...} bundle per tensor-parallel shard "
+                    "instead of a single fat bundle."
+                )
+
     # ── Actor-level affinity (only when there is NO placement group) ──────────
     # With a placement group active the affinity is carried by the GPU bundles
     # above; injecting it onto the actor too would require the actor's assigned
