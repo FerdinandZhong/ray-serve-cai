@@ -910,15 +910,16 @@ def create_vllm_deployment(
                 tensor_parallel_size, tensor_parallel_size,
             )
         else:
-            # Single-node TP: actor holds all GPU/CPU resources in one bundle.
-            # vLLM spawns internal Ray workers for TP shards on the same node.
-            ray_actor_options = {
-                "num_cpus": tensor_parallel_size,
-                "num_gpus": tensor_parallel_size,
-            }
+            # Single-node TP: same scheduler↔executor split as multi-node, just
+            # STRICT_PACK'd onto one node (see placement group below).  The
+            # deployment actor is the scheduler ONLY (no GPU); each TP shard gets
+            # its own {GPU:1} bundle.  vLLM v1's Ray executor requires exactly
+            # 1 GPU per placement-group bundle — a single fat {GPU:tp} bundle
+            # raises "Placement group bundle cannot have more than 1 GPU".
+            ray_actor_options = {"num_cpus": 4, "num_gpus": 0}
             logger.info(
-                "Single-node tensor-parallel deployment: %d GPU(s) per replica "
-                "(vLLM spawns internal Ray workers for TP)",
+                "Single-node tensor-parallel deployment: scheduler-only actor + "
+                "%d×[GPU:1] worker bundle(s), STRICT_PACK on one node",
                 tensor_parallel_size,
             )
     elif gpu_fraction is not None:
@@ -981,19 +982,23 @@ def create_vllm_deployment(
                 tensor_parallel_size,
             )
         elif tensor_parallel_size > 1:
-            # Single-node TP: all shards forced onto one node via STRICT_PACK.
-            # Affinity lives in the bundle (not the actor) so the actor request
-            # stays a subset of the bundle it is captured into.
-            placement_group_bundles = [
-                {"GPU": float(tensor_parallel_size),
-                 "CPU": float(tensor_parallel_size), **_affinity}
+            # Single-node TP: one {GPU:1} bundle per shard (vLLM v1's Ray executor
+            # requires ≤1 GPU per bundle) plus a CPU-only scheduler bundle 0 for
+            # the deployment actor.  STRICT_PACK forces every bundle onto ONE node
+            # so the TP collective stays intra-pod (loopback), never crossing the
+            # Istio sidecar boundary.  Affinity goes on the GPU (executor) bundles.
+            engine_bundle: Dict[str, float] = {"CPU": 4.0}
+            executor_bundle: Dict[str, float] = {"GPU": 1.0, **_affinity}
+            placement_group_bundles = [engine_bundle] + [
+                dict(executor_bundle) for _ in range(tensor_parallel_size)
             ]
             placement_group_strategy = placement_group_strategy or "STRICT_PACK"
             logger.info(
-                "Auto placement group (single-node): STRICT_PACK bundle "
-                "GPU=%d CPU=%d%s for TP=%d",
-                tensor_parallel_size, tensor_parallel_size,
-                "".join(f" +{k}" for k in _affinity), tensor_parallel_size,
+                "Auto placement group (single-node): STRICT_PACK [engine{CPU:4}] + "
+                "%d×[executor{GPU:1%s}] for TP=%d",
+                tensor_parallel_size,
+                "".join(f",{k}" for k in _affinity),
+                tensor_parallel_size,
             )
         elif gpu_fraction is not None and gpu_fraction < 1.0:
             # Bin-pack fractional replicas onto the same node's GPU pool.
@@ -1027,12 +1032,25 @@ def create_vllm_deployment(
 
     # ── Runtime env: venv + scheduling env_vars ──────────────────────────────
     rt_env: Dict[str, Any] = {}
+    env_vars: Dict[str, str] = dict(scheduling_env_vars or {})
     if venv_path:
         rt_env["py_executable"] = f"{venv_path}/bin/python"
-        logger.info("Using isolated venv: %s", venv_path)
-    if scheduling_env_vars:
-        rt_env["env_vars"] = scheduling_env_vars
-        logger.info("Scheduling env_vars applied: %s", list(scheduling_env_vars.keys()))
+        # Ray's py_executable swaps the interpreter but NOT PATH, and vLLM's Ray
+        # worker actors (RayWorkerProc) don't run VLLMEngine.__init__'s PATH
+        # preflight — so console-scripts in the venv bin (notably `ninja`, which
+        # FlashInfer/torch.compile shell out to during startup) aren't found and
+        # the worker dies with `FileNotFoundError: 'ninja'`. Put the venv bin on
+        # PATH via the runtime_env: this IS propagated to the worker actors (same
+        # channel as py_executable). PATH is denylisted in SchedulingConfig.env_vars,
+        # so it can only be injected here in code, not via the deploy payload.
+        import os as _os
+        env_vars.setdefault(
+            "PATH", f"{venv_path}/bin{_os.pathsep}{_os.environ.get('PATH', '')}"
+        )
+        logger.info("Using isolated venv: %s (venv bin prepended to worker PATH)", venv_path)
+    if env_vars:
+        rt_env["env_vars"] = env_vars
+        logger.info("Runtime env_vars applied: %s", list(env_vars.keys()))
     if rt_env:
         ray_actor_options["runtime_env"] = rt_env
 
