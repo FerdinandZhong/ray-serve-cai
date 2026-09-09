@@ -31,15 +31,15 @@ ray_cluster:
   # runtime_identifier: overrides cai.worker_runtime_identifier per group.
   #        Use the standard (non-CUDA) image for CPU-only groups.
   worker_groups:
-    - name:      l40-gpu-workers
-      node_type: l40-gpu-worker
-      count:     2   # 2 L40S workers currently running (g6e.4xlarge)
-      cpu:       12
-      memory:    64   # GB  (object_store ~12.8 GB + memory ~46.4 GB ≈ 64 GB request)
-      gpus:      1
-      accelerator_type: L40S  # Ray accelerator_type label (matches nvidia-smi GPU name)
-      node_label:             # K8s node selector for pod placement
-        nvidia.com/gpu.product: "NVIDIA-L40S"
+    - name:      rtxpro6000-gpu-workers
+      node_type: rtxpro6000-gpu-worker
+      count:     1   # 1 dual-GPU RTX PRO 6000 worker currently running (g7e.12xlarge)
+      cpu:       44
+      memory:    320  # GB  (object_store ~44 GB + memory ~328 GB ≈ 340 GB request)
+      gpus:      2
+      accelerator_type: RTX-PRO-6000  # Ray accelerator_type label (matches nvidia-smi GPU name)
+      # node_label: unset — real nvidia.com/gpu.product value for this SKU not
+      # yet confirmed; add it once known (see l40-gpu-workers below for the pattern).
       # inherits cai.worker_runtime_identifier (CUDA image)
 
     - name:      cpu-workers
