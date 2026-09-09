@@ -55,3 +55,12 @@ jobs:
     cpu: 2
     memory: 8
     description: "Start Ray cluster with configured head and worker nodes"
+
+  launch_monitoring:
+    name: "Launch Monitoring Dashboards"
+    script: "cai_integration/launch_monitoring_job.py"
+    parent_job_key: "launch_ray_cluster"
+    timeout: 900       # create 2 CML apps + health-poll (2×300s) + Ray dashboard provisioning
+    cpu: 2
+    memory: 8
+    description: "Create Prometheus + Grafana CML apps and provision Ray dashboards"
