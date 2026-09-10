@@ -1,0 +1,603 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>Ray Serve · Model Chat</title>
+<style>
+  :root {
+    --bg: #0f1117;
+    --panel: #171a23;
+    --panel-2: #1e222d;
+    --border: #2a2f3d;
+    --text: #e6e8ee;
+    --muted: #8b91a3;
+    --accent: #5b8cff;
+    --accent-dim: #34406b;
+    --user: #23324f;
+    --assistant: #1e222d;
+    --think: #171a23;
+    --danger: #ff6b6b;
+    --ok: #4ade80;
+  }
+  * { box-sizing: border-box; }
+  html, body { height: 100%; margin: 0; }
+  body {
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+    background: var(--bg);
+    color: var(--text);
+    display: flex;
+    flex-direction: column;
+    height: 100vh;
+  }
+  header {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    padding: 10px 16px;
+    background: var(--panel);
+    border-bottom: 1px solid var(--border);
+    flex-wrap: wrap;
+  }
+  header h1 { font-size: 15px; margin: 0; font-weight: 600; letter-spacing: .2px; }
+  header .status { font-size: 12px; color: var(--muted); display: flex; align-items: center; gap: 6px; }
+  .dot { width: 8px; height: 8px; border-radius: 50%; background: var(--muted); }
+  .dot.ok { background: var(--ok); }
+  .dot.err { background: var(--danger); }
+  header .spacer { flex: 1; }
+  button, select, input, textarea {
+    font-family: inherit;
+    font-size: 13px;
+    color: var(--text);
+    background: var(--panel-2);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    padding: 7px 10px;
+    outline: none;
+  }
+  button { cursor: pointer; transition: background .15s, border-color .15s; }
+  button:hover { border-color: var(--accent-dim); }
+  button.primary { background: var(--accent); border-color: var(--accent); color: #fff; font-weight: 600; }
+  button.primary:hover { background: #6f9bff; }
+  button:disabled { opacity: .5; cursor: not-allowed; }
+  button.icon { padding: 7px 9px; }
+
+  .layout { display: flex; flex: 1; min-height: 0; }
+  .settings {
+    width: 300px;
+    background: var(--panel);
+    border-right: 1px solid var(--border);
+    padding: 16px;
+    overflow-y: auto;
+    display: flex;
+    flex-direction: column;
+    gap: 14px;
+  }
+  .settings.collapsed { display: none; }
+  .field { display: flex; flex-direction: column; gap: 5px; }
+  .field label { font-size: 12px; color: var(--muted); font-weight: 500; }
+  .field input[type="text"], .field textarea, .field select { width: 100%; }
+  .field textarea { resize: vertical; min-height: 60px; line-height: 1.4; }
+  .field .row { display: flex; align-items: center; gap: 8px; }
+  .field .row input[type="range"] { flex: 1; }
+  .field .val { font-variant-numeric: tabular-nums; color: var(--text); min-width: 42px; text-align: right; font-size: 12px; }
+  .toggle { display: flex; align-items: center; gap: 8px; font-size: 13px; }
+
+  .chat-area { flex: 1; display: flex; flex-direction: column; min-width: 0; }
+  .messages { flex: 1; overflow-y: auto; padding: 20px; display: flex; flex-direction: column; gap: 16px; }
+  .msg { display: flex; gap: 12px; max-width: 900px; width: 100%; margin: 0 auto; }
+  .msg .avatar {
+    width: 28px; height: 28px; border-radius: 6px; flex-shrink: 0;
+    display: flex; align-items: center; justify-content: center;
+    font-size: 12px; font-weight: 700;
+  }
+  .msg.user .avatar { background: var(--user); color: #a9c2ff; }
+  .msg.assistant .avatar { background: var(--accent-dim); color: #cdd9ff; }
+  .msg .body { flex: 1; min-width: 0; }
+  .msg .role { font-size: 11px; color: var(--muted); margin-bottom: 4px; text-transform: uppercase; letter-spacing: .5px; }
+  .msg .content { line-height: 1.6; white-space: pre-wrap; word-wrap: break-word; }
+  .msg .content pre {
+    background: #0b0d13; border: 1px solid var(--border); border-radius: 8px;
+    padding: 12px; overflow-x: auto; margin: 8px 0; white-space: pre;
+  }
+  .msg .content code { background: #0b0d13; padding: 1px 5px; border-radius: 4px; font-size: 12.5px; }
+  .msg .content pre code { background: none; padding: 0; }
+  .think {
+    background: var(--think); border: 1px dashed var(--border); border-radius: 8px;
+    padding: 8px 10px; margin-bottom: 8px; font-size: 12.5px; color: var(--muted);
+  }
+  .think summary { cursor: pointer; color: var(--muted); font-weight: 500; user-select: none; }
+  .think[open] summary { margin-bottom: 6px; }
+  .think .think-body { white-space: pre-wrap; line-height: 1.5; }
+
+  .composer {
+    border-top: 1px solid var(--border);
+    padding: 12px 16px;
+    background: var(--panel);
+    display: flex;
+    gap: 10px;
+    align-items: flex-end;
+  }
+  .composer textarea {
+    flex: 1; resize: none; max-height: 200px; min-height: 24px; line-height: 1.5;
+    padding: 10px 12px; overflow-y: auto;
+  }
+  .composer .send-col { display: flex; flex-direction: column; gap: 6px; }
+  .hint { font-size: 11px; color: var(--muted); text-align: center; }
+  .empty {
+    flex: 1; display: flex; flex-direction: column; align-items: center; justify-content: center;
+    color: var(--muted); gap: 8px; text-align: center;
+  }
+  .empty h2 { color: var(--text); font-weight: 600; margin: 0; }
+  .metrics { font-size: 11px; color: var(--muted); margin-top: 6px; font-variant-numeric: tabular-nums; }
+  .err-banner {
+    background: #2a1518; border: 1px solid var(--danger); color: #ffb3b3;
+    padding: 8px 12px; border-radius: 8px; margin: 0 auto; max-width: 900px; width: 100%;
+    font-size: 13px; white-space: pre-wrap;
+  }
+</style>
+</head>
+<body>
+<header>
+  <button class="icon" id="toggleSettings" title="Toggle settings">☰</button>
+  <h1>Ray Serve · Model Chat</h1>
+  <div class="status"><span class="dot" id="statusDot"></span><span id="statusText">not connected</span></div>
+  <div class="spacer"></div>
+  <button id="clearBtn" title="Clear conversation">Clear chat</button>
+</header>
+
+<div class="layout">
+  <aside class="settings" id="settings">
+    <div class="field">
+      <label>Base URL</label>
+      <input type="text" id="baseUrl" placeholder="https://…cloudera.site" />
+    </div>
+    <div class="field">
+      <label>Route prefix</label>
+      <input type="text" id="prefix" placeholder="qwen3-35b" />
+    </div>
+    <div class="field">
+      <label>API key</label>
+      <input type="password" id="apiKey" placeholder="sent as Authorization: Bearer …" />
+    </div>
+    <div class="field">
+      <label>Model <button class="icon" id="refreshModels" style="float:right;padding:2px 7px;font-size:11px;">↻ load</button></label>
+      <select id="model"><option value="">(load models)</option></select>
+    </div>
+    <div class="field">
+      <label>System prompt</label>
+      <textarea id="systemPrompt" placeholder="You are a helpful assistant."></textarea>
+    </div>
+    <div class="field">
+      <label>Temperature <span class="val" id="tempVal">0.7</span></label>
+      <div class="row"><input type="range" id="temp" min="0" max="2" step="0.05" value="0.7" /></div>
+    </div>
+    <div class="field">
+      <label>Max tokens <span class="val" id="maxTokVal">1024</span></label>
+      <div class="row"><input type="range" id="maxTok" min="64" max="8192" step="64" value="1024" /></div>
+    </div>
+    <div class="field">
+      <label>Top P <span class="val" id="topPVal">1.00</span></label>
+      <div class="row"><input type="range" id="topP" min="0" max="1" step="0.01" value="1.0" /></div>
+    </div>
+    <label class="toggle"><input type="checkbox" id="streamToggle" checked /> Stream responses</label>
+    <div class="hint" style="text-align:left">Settings are saved in your browser. The API is OpenAI-compatible (<code>/v1/chat/completions</code>).</div>
+  </aside>
+
+  <div class="chat-area">
+    <div class="messages" id="messages">
+      <div class="empty" id="empty">
+        <h2>Chat with your deployed model</h2>
+        <div>Set the base URL &amp; prefix on the left, load the model, and start typing.</div>
+      </div>
+    </div>
+    <div class="composer">
+      <textarea id="input" rows="1" placeholder="Send a message…  (Enter to send, Shift+Enter for newline)"></textarea>
+      <div class="send-col">
+        <button class="primary" id="sendBtn">Send</button>
+        <button id="stopBtn" style="display:none">Stop</button>
+      </div>
+    </div>
+    <div class="hint">Enter = send · Shift+Enter = newline</div>
+  </div>
+</div>
+
+<script>
+(() => {
+  "use strict";
+
+  // ---- Config / persistence ---------------------------------------------
+  const LS_KEY = "ray-serve-chat-cfg";
+  const REMOTE_BASE = "https://ray-cluster-head.ml-e8a34ebc-1ec.qzhong-1.a465-9q4k.cloudera.site";
+  // Served through serve.py (http/https) -> talk to this origin so the local
+  // proxy forwards requests (no CORS). Opened as file:// -> hit remote directly.
+  const IS_PROXIED = location.protocol === "http:" || location.protocol === "https:";
+  const DEFAULTS = {
+    baseUrl: IS_PROXIED ? location.origin : REMOTE_BASE,
+    prefix: "qwen3-35b",
+    apiKey: "",
+    model: "",
+    systemPrompt: "",
+    temp: 0.7,
+    maxTok: 1024,
+    topP: 1.0,
+    stream: true,
+  };
+
+  const $ = (id) => document.getElementById(id);
+  const els = {
+    baseUrl: $("baseUrl"), prefix: $("prefix"), apiKey: $("apiKey"), model: $("model"),
+    systemPrompt: $("systemPrompt"), temp: $("temp"), tempVal: $("tempVal"),
+    maxTok: $("maxTok"), maxTokVal: $("maxTokVal"), topP: $("topP"), topPVal: $("topPVal"),
+    streamToggle: $("streamToggle"), messages: $("messages"), empty: $("empty"),
+    input: $("input"), sendBtn: $("sendBtn"), stopBtn: $("stopBtn"),
+    clearBtn: $("clearBtn"), refreshModels: $("refreshModels"),
+    statusDot: $("statusDot"), statusText: $("statusText"),
+    settings: $("settings"), toggleSettings: $("toggleSettings"),
+  };
+
+  function loadCfg() {
+    try { return { ...DEFAULTS, ...JSON.parse(localStorage.getItem(LS_KEY) || "{}") }; }
+    catch { return { ...DEFAULTS }; }
+  }
+  function saveCfg() {
+    const cfg = {
+      baseUrl: els.baseUrl.value.trim(), prefix: els.prefix.value.trim(),
+      apiKey: els.apiKey.value.trim(),
+      model: els.model.value, systemPrompt: els.systemPrompt.value,
+      temp: parseFloat(els.temp.value), maxTok: parseInt(els.maxTok.value, 10),
+      topP: parseFloat(els.topP.value), stream: els.streamToggle.checked,
+    };
+    localStorage.setItem(LS_KEY, JSON.stringify(cfg));
+    return cfg;
+  }
+
+  const cfg = loadCfg();
+  // When served through serve.py (http/https), the ONLY thing that works from a
+  // browser is same-origin (the proxy) — a saved remote Base URL would hit CORS.
+  // Force it to this origin, overriding any stale localStorage value.
+  if (IS_PROXIED && cfg.baseUrl !== location.origin) cfg.baseUrl = location.origin;
+  els.baseUrl.value = cfg.baseUrl;
+  els.prefix.value = cfg.prefix;
+  els.apiKey.value = cfg.apiKey || "";
+  els.systemPrompt.value = cfg.systemPrompt;
+  els.temp.value = cfg.temp; els.tempVal.textContent = (+cfg.temp).toFixed(2);
+  els.maxTok.value = cfg.maxTok; els.maxTokVal.textContent = cfg.maxTok;
+  els.topP.value = cfg.topP; els.topPVal.textContent = (+cfg.topP).toFixed(2);
+  els.streamToggle.checked = cfg.stream;
+
+  // ---- URL helpers -------------------------------------------------------
+  function apiBase() {
+    // When served through the proxy, ALWAYS go same-origin regardless of what
+    // the Base URL field says — a cross-origin call would be blocked by CORS.
+    const base = IS_PROXIED
+      ? location.origin
+      : els.baseUrl.value.trim().replace(/\/+$/, "");
+    const prefix = els.prefix.value.trim().replace(/^\/+|\/+$/g, "");
+    return prefix ? `${base}/${prefix}` : base;
+  }
+
+  // Authorization header for model endpoints, when an API key is configured.
+  function authHeaders() {
+    const key = els.apiKey.value.trim();
+    return key ? { "Authorization": "Bearer " + key } : {};
+  }
+
+  function setStatus(state, text) {
+    els.statusDot.className = "dot" + (state === "ok" ? " ok" : state === "err" ? " err" : "");
+    els.statusText.textContent = text;
+  }
+
+  // ---- Model list --------------------------------------------------------
+  async function loadModels() {
+    const url = apiBase() + "/v1/models";
+    setStatus("", "loading models…");
+    try {
+      const res = await fetch(url, { headers: { "Accept": "application/json", ...authHeaders() } });
+      if (!res.ok) throw new Error(`HTTP ${res.status}`);
+      const data = await res.json();
+      const models = (data.data || []).map((m) => m.id);
+      els.model.innerHTML = "";
+      if (!models.length) {
+        els.model.innerHTML = '<option value="">(no models returned)</option>';
+      } else {
+        for (const id of models) {
+          const opt = document.createElement("option");
+          opt.value = id; opt.textContent = id;
+          els.model.appendChild(opt);
+        }
+        // restore saved selection if present, else first
+        els.model.value = models.includes(cfg.model) ? cfg.model : models[0];
+      }
+      setStatus("ok", `connected · ${models.length} model${models.length === 1 ? "" : "s"}`);
+      saveCfg();
+    } catch (e) {
+      setStatus("err", "connection failed");
+      els.model.innerHTML = '<option value="">(failed to load)</option>';
+      showError(`Could not load models from ${url}\n${e.message}\n\nIf this is a CORS error, the browser blocked the cross-origin request — see the note at the bottom of this file.`);
+    }
+  }
+
+  // ---- Rendering ---------------------------------------------------------
+  const conversation = []; // {role, content}
+
+  function escapeHtml(s) {
+    return s.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;");
+  }
+
+  // minimal markdown: fenced code blocks + inline code, rest escaped & preserved
+  function renderContent(text) {
+    const parts = text.split(/```/);
+    let html = "";
+    for (let i = 0; i < parts.length; i++) {
+      if (i % 2 === 1) {
+        const body = parts[i].replace(/^[\w-]*\n/, ""); // strip leading lang tag
+        html += `<pre><code>${escapeHtml(body)}</code></pre>`;
+      } else {
+        let seg = escapeHtml(parts[i]).replace(/`([^`]+)`/g, "<code>$1</code>");
+        html += seg;
+      }
+    }
+    return html;
+  }
+
+  function hideEmpty() { if (els.empty) els.empty.style.display = "none"; }
+
+  function addMessage(role, content) {
+    hideEmpty();
+    const wrap = document.createElement("div");
+    wrap.className = "msg " + role;
+    const avatar = role === "user" ? "You" : "AI";
+    wrap.innerHTML =
+      `<div class="avatar">${avatar}</div>` +
+      `<div class="body"><div class="role">${role}</div>` +
+      `<div class="think-slot"></div>` +
+      `<div class="content"></div>` +
+      `<div class="metrics"></div></div>`;
+    els.messages.appendChild(wrap);
+    const contentEl = wrap.querySelector(".content");
+    if (content != null) contentEl.innerHTML = renderContent(content);
+    scrollToBottom();
+    return wrap;
+  }
+
+  function scrollToBottom() {
+    els.messages.scrollTop = els.messages.scrollHeight;
+  }
+
+  function showError(msg) {
+    hideEmpty();
+    const b = document.createElement("div");
+    b.className = "err-banner";
+    b.textContent = msg;
+    els.messages.appendChild(b);
+    scrollToBottom();
+  }
+
+  // Split out <think>…</think> reasoning (Qwen emits these) into a collapsible.
+  function splitThink(full) {
+    let think = "";
+    let visible = full;
+    const openTag = "<think>", closeTag = "</think>";
+    const start = visible.indexOf(openTag);
+    if (start !== -1) {
+      const end = visible.indexOf(closeTag);
+      if (end !== -1) {
+        think = visible.slice(start + openTag.length, end).trim();
+        visible = (visible.slice(0, start) + visible.slice(end + closeTag.length)).trim();
+      } else {
+        // still streaming inside think block
+        think = visible.slice(start + openTag.length).trim();
+        visible = "";
+      }
+    }
+    return { think, visible };
+  }
+
+  function updateAssistant(wrap, full, reasoning) {
+    const { think, visible } = splitThink(full);
+    const combinedThink = [reasoning, think].filter(Boolean).join("\n").trim();
+    const thinkSlot = wrap.querySelector(".think-slot");
+    if (combinedThink) {
+      let det = thinkSlot.querySelector("details");
+      if (!det) {
+        det = document.createElement("details");
+        det.className = "think";
+        det.innerHTML = `<summary>💭 reasoning</summary><div class="think-body"></div>`;
+        thinkSlot.appendChild(det);
+      }
+      det.querySelector(".think-body").textContent = combinedThink;
+    }
+    wrap.querySelector(".content").innerHTML = renderContent(visible || (combinedThink ? "" : full));
+  }
+
+  // ---- Send --------------------------------------------------------------
+  let controller = null;
+
+  function setSending(on) {
+    els.sendBtn.disabled = on;
+    els.stopBtn.style.display = on ? "block" : "none";
+    els.input.disabled = on;
+  }
+
+  async function send() {
+    const text = els.input.value.trim();
+    if (!text) return;
+    const model = els.model.value;
+    if (!model) { showError("Pick a model first (↻ load in the sidebar)."); return; }
+
+    saveCfg();
+    addMessage("user", text);
+    conversation.push({ role: "user", content: text });
+    els.input.value = "";
+    autosize();
+
+    const messages = [];
+    const sys = els.systemPrompt.value.trim();
+    if (sys) messages.push({ role: "system", content: sys });
+    for (const m of conversation) messages.push({ role: m.role, content: m.content });
+
+    const stream = els.streamToggle.checked;
+    const payload = {
+      model,
+      messages,
+      temperature: parseFloat(els.temp.value),
+      max_tokens: parseInt(els.maxTok.value, 10),
+      top_p: parseFloat(els.topP.value),
+      stream,
+    };
+
+    const wrap = addMessage("assistant", stream ? "" : null);
+    const contentEl = wrap.querySelector(".content");
+    const metricsEl = wrap.querySelector(".metrics");
+    if (!stream) contentEl.textContent = "…";
+
+    setSending(true);
+    controller = new AbortController();
+    const t0 = performance.now();
+
+    try {
+      const res = await fetch(apiBase() + "/v1/chat/completions", {
+        method: "POST",
+        headers: { "Content-Type": "application/json", "Accept": stream ? "text/event-stream" : "application/json", ...authHeaders() },
+        body: JSON.stringify(payload),
+        signal: controller.signal,
+      });
+
+      if (!res.ok) {
+        const errText = await res.text();
+        throw new Error(`HTTP ${res.status}: ${errText.slice(0, 500)}`);
+      }
+
+      let full = "";
+      let reasoning = "";
+      let firstTokenMs = null;
+      let tokenCount = 0;
+
+      if (stream) {
+        const reader = res.body.getReader();
+        const decoder = new TextDecoder();
+        let buffer = "";
+        while (true) {
+          const { value, done } = await reader.read();
+          if (done) break;
+          buffer += decoder.decode(value, { stream: true });
+          const lines = buffer.split("\n");
+          buffer = lines.pop();
+          for (const line of lines) {
+            const trimmed = line.trim();
+            if (!trimmed || !trimmed.startsWith("data:")) continue;
+            const data = trimmed.slice(5).trim();
+            if (data === "[DONE]") continue;
+            let json;
+            try { json = JSON.parse(data); } catch { continue; }
+            const delta = json.choices && json.choices[0] && json.choices[0].delta || {};
+            if (delta.reasoning_content) reasoning += delta.reasoning_content;
+            if (delta.content) {
+              if (firstTokenMs === null) firstTokenMs = performance.now() - t0;
+              full += delta.content;
+              tokenCount++;
+            }
+            updateAssistant(wrap, full, reasoning);
+            scrollToBottom();
+          }
+        }
+      } else {
+        const json = await res.json();
+        const choice = json.choices && json.choices[0] || {};
+        reasoning = (choice.message && choice.message.reasoning_content) || "";
+        full = (choice.message && choice.message.content) || "";
+        updateAssistant(wrap, full, reasoning);
+        if (json.usage) tokenCount = json.usage.completion_tokens || 0;
+      }
+
+      conversation.push({ role: "assistant", content: splitThink(full).visible || full });
+
+      const dt = (performance.now() - t0) / 1000;
+      const bits = [`${dt.toFixed(1)}s`];
+      if (tokenCount) bits.push(`${tokenCount} tok`);
+      if (firstTokenMs !== null) bits.push(`TTFT ${(firstTokenMs / 1000).toFixed(2)}s`);
+      if (tokenCount && stream && dt > 0) bits.push(`${(tokenCount / dt).toFixed(1)} tok/s`);
+      metricsEl.textContent = bits.join(" · ");
+    } catch (e) {
+      if (e.name === "AbortError") {
+        metricsEl.textContent = "stopped";
+      } else {
+        contentEl.innerHTML = "";
+        showError(`Request failed:\n${e.message}`);
+        // roll back the empty assistant turn from history
+      }
+    } finally {
+      setSending(false);
+      controller = null;
+      els.input.focus();
+    }
+  }
+
+  function stop() { if (controller) controller.abort(); }
+
+  function clearChat() {
+    conversation.length = 0;
+    els.messages.innerHTML = "";
+    els.messages.appendChild(els.empty);
+    els.empty.style.display = "";
+  }
+
+  // ---- Composer autosize -------------------------------------------------
+  function autosize() {
+    els.input.style.height = "auto";
+    els.input.style.height = Math.min(els.input.scrollHeight, 200) + "px";
+  }
+
+  // ---- Events ------------------------------------------------------------
+  els.temp.addEventListener("input", () => { els.tempVal.textContent = (+els.temp.value).toFixed(2); saveCfg(); });
+  els.maxTok.addEventListener("input", () => { els.maxTokVal.textContent = els.maxTok.value; saveCfg(); });
+  els.topP.addEventListener("input", () => { els.topPVal.textContent = (+els.topP.value).toFixed(2); saveCfg(); });
+  els.streamToggle.addEventListener("change", saveCfg);
+  els.systemPrompt.addEventListener("change", saveCfg);
+  els.model.addEventListener("change", saveCfg);
+  [els.baseUrl, els.prefix].forEach((el) => el.addEventListener("change", saveCfg));
+
+  els.refreshModels.addEventListener("click", loadModels);
+  els.sendBtn.addEventListener("click", send);
+  els.stopBtn.addEventListener("click", stop);
+  els.clearBtn.addEventListener("click", clearChat);
+  els.toggleSettings.addEventListener("click", () => els.settings.classList.toggle("collapsed"));
+
+  els.input.addEventListener("input", autosize);
+  els.input.addEventListener("keydown", (e) => {
+    if (e.key === "Enter" && !e.shiftKey) { e.preventDefault(); send(); }
+  });
+
+  // ---- Init --------------------------------------------------------------
+  autosize();
+  loadModels();
+})();
+</script>
+
+<!--
+  ============================================================================
+  CORS NOTE
+  ============================================================================
+  This page calls the model endpoint directly from the browser. The vLLM
+  FastAPI app is wrapped with CORSMiddleware(allow_origins=["*"]) so browser
+  requests should work when opened as a local file (file://) or served from
+  any origin.
+
+  If you DO hit a CORS error (check the browser console), serve this file over
+  http and/or run it from a machine that can reach the cluster. As a quick
+  local option:
+
+      cd ui && python3 -m http.server 8080
+      # then open http://localhost:8080/chat.html
+
+  If CORS is still blocked (e.g. the ingress strips the header), run a tiny
+  same-origin proxy or use curl. The API itself is standard OpenAI-compatible:
+
+      curl $BASE/$PREFIX/v1/chat/completions \
+        -H 'Content-Type: application/json' \
+        -d '{"model":"...","messages":[{"role":"user","content":"hi"}]}'
+  ============================================================================
+-->
+</body>
+</html>

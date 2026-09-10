@@ -20,7 +20,9 @@ declarative scheduling block.
 
 ## Table of Contents
 
-- [Why this exists](#why-this-exists)
+- [Overview](#overview)
+- [Target Audience](#target-audience)
+- [Use Cases](#use-cases)
 - [Architecture](#architecture)
 - [Installation](#installation)
 - [Concepts](#concepts)
@@ -30,6 +32,7 @@ declarative scheduling block.
   - [3. Deploy a model](#3-deploy-a-model)
   - [4. Query it](#4-query-it)
 - [Supported engines](#supported-engines)
+- [Performance](#performance)
 - [The Management REST API](#the-management-rest-api)
   - [Applications](#applications--apiv1applications)
   - [Scheduling & placement groups](#scheduling--placement-groups)
@@ -47,7 +50,7 @@ declarative scheduling block.
 
 ---
 
-## Why this exists
+## Overview
 
 Serving models on CAI/CML has three recurring pain points that this project solves:
 
@@ -64,6 +67,25 @@ Serving models on CAI/CML has three recurring pain points that this project solv
    GPUs, or a fractional-GPU + KV-cache topology onto one node, normally means
    hand-writing Ray placement groups. This project derives sensible placement
    groups automatically and lets you override any part of them declaratively.
+
+## Target Audience
+
+- **ML Engineers** deploying LLMs or vision models at scale on Cloudera AI
+- **Data Scientists** who need GPU-backed inference without managing Kubernetes directly
+- **Platform Engineers** operating CAI workbench clusters and needing multi-engine, multi-tenant serving
+- **Application Developers** building services on top of OpenAI-compatible inference endpoints
+
+## Use Cases
+
+| Use case | How this project covers it |
+|---|---|
+| **LLM serving microservice** | Deploy vLLM or SGLang behind a stable HTTP route; query via OpenAI client |
+| **Multi-model A/B or routing** | Deploy N models simultaneously; route traffic at the application layer via LiteLLM gateway |
+| **Large-model tensor parallelism** | Spread a 27B–70B+ model across 2+ GPUs with one declarative `tensor_parallel_size` field |
+| **Fractional-GPU multi-tenancy** | Pack multiple small models onto one GPU node with `gpu_fraction` |
+| **Vision / multi-modal inference** | YOLO object detection engine; batched image requests via the same REST API |
+| **Tool servers (MCP)** | Host Model Context Protocol servers as Ray Serve apps on the same cluster |
+| **Cost-optimised batch routing** | Use LiteLLM to route to cheaper external providers when GPU capacity is at peak |
 
 ## Architecture
 
@@ -197,22 +219,43 @@ python -m ray_serve_cai.management.app
 Everything deploys through one endpoint — `POST /api/v1/applications`:
 
 ```bash
+# Strong model (27B FP8, TP=2 across 2 GPUs) — confirmed working on RTX PRO 6000 / L40s
 curl -X POST http://<head>/api/v1/applications \
   -H 'Content-Type: application/json' \
   -d '{
-        "name": "llama3-8b",
+        "name": "qwen3-27b",
         "engine_type": "vllm",
-        "model": "meta-llama/Llama-3.1-8B-Instruct",
-        "route_prefix": "/llama3",
+        "model": "Qwen/Qwen3.8-27B-FP8",
+        "route_prefix": "/qwen3",
+        "tensor_parallel_size": 2,
+        "engine_config": {
+          "dtype": "auto",
+          "max_model_len": 131072,
+          "gpu_memory_utilization": 0.95,
+          "enable_prefix_caching": true,
+          "trust_remote_code": true
+        },
+        "scheduling": {
+          "resources": {"node_type:rtxpro6000-gpu-worker": 0.001}
+        }
+      }'
+
+# Smaller model (7B, single GPU) — for lighter workloads or development
+curl -X POST http://<head>/api/v1/applications \
+  -H 'Content-Type: application/json' \
+  -d '{
+        "name": "qwen2-7b",
+        "engine_type": "vllm",
+        "model": "Qwen/Qwen2.5-7B-Instruct",
+        "route_prefix": "/qwen2",
         "tensor_parallel_size": 1,
         "engine_config": {"dtype": "bfloat16", "gpu_memory_utilization": 0.9},
         "scheduling": {"resources": {"node_type:l40-gpu-worker": 0.001}}
       }'
 ```
 
-Deployment is asynchronous for large models: the call returns `deploying` and Ray
-Serve continues to bring the replica up in the background. Poll
-`GET /api/v1/applications/llama3-8b` for status.
+Deployment is asynchronous: the call returns `deploying` and Ray Serve brings the replica
+up in the background. Poll `GET /api/v1/applications/qwen3-27b` for status.
 
 ### 4. Query it
 
@@ -221,10 +264,10 @@ Each LLM engine serves OpenAI-compatible routes under its `route_prefix`:
 ```python
 from openai import OpenAI
 
-client = OpenAI(base_url="http://<head>/llama3/v1", api_key="not-required")
+client = OpenAI(base_url="http://<head>/qwen3/v1", api_key="not-required")
 resp = client.chat.completions.create(
-    model="meta-llama/Llama-3.1-8B-Instruct",
-    messages=[{"role": "user", "content": "Hello!"}],
+    model="Qwen/Qwen3.8-27B-FP8",
+    messages=[{"role": "user", "content": "Explain tensor parallelism in two sentences."}],
 )
 print(resp.choices[0].message.content)
 ```
@@ -243,6 +286,26 @@ Available per deployment: `POST {prefix}/v1/completions`,
 | **YOLO** | `yolo` | ✅ Stable | Ultralytics object detection; batched inference. |
 | **MCP** | `mcp` | ✅ Stable | Model Context Protocol tool servers. |
 | **Custom** | *(your name)* | 🔌 Extensible | Register your own via the engine registry. |
+
+## Performance
+
+Benchmark results on `Qwen/Qwen3.8-27B-FP8` with `tensor_parallel_size=2` on 2× NVIDIA RTX PRO 6000 (96 GB, sm_120), measured with the Locust chat benchmark at 10 concurrent users over 60 seconds:
+
+| Metric | Value |
+|---|---|
+| Requests | 312 over 60 s |
+| Failures | 0 |
+| Median TTFT | 330 ms |
+| Median E2E latency | 3.0 s |
+| Throughput | ~5.2 req/s |
+
+Optimisations active in this run: FP8 weight quantisation, prefix caching (`enable_prefix_caching: true`), CUDA graph capture, and Ray placement group pinning to the GPU worker pool. To reproduce:
+
+```bash
+cd ray-serve-cai-bench
+# set BASE_URL, VLLM_ROUTE=/qwen3, VLLM_MODEL=Qwen/Qwen3.8-27B-FP8 in configs/cluster.env
+locust -f locust/locustfile_chat.py --headless -u 10 -r 2 -t 60s
+```
 
 ## The Management REST API
 
@@ -312,7 +375,7 @@ scenario:
 
 | Scenario | Auto placement group |
 |----------|----------------------|
-| `tensor_parallel_size > 1`, single-node | one `{GPU: tp, CPU: tp}` bundle, `STRICT_PACK` |
+| `tensor_parallel_size > 1`, single-node | scheduler `{CPU:4}` + `tp × {GPU:1}` bundles, `STRICT_PACK` |
 | `tensor_parallel_size > 1`, `multi_node: true` | `{CPU:4}` scheduler + `tp × {GPU:1}` executor bundles, `PACK` |
 | `gpu_fraction < 1` | one `{GPU: fraction, CPU: 2}` bundle, `PACK` |
 | plain single GPU / CPU | no placement group |
