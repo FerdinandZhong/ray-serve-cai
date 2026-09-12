@@ -37,6 +37,9 @@ declarative scheduling block.
   - [4. Query it](#4-query-it)
 - [Supported engines](#supported-engines)
 - [Performance](#performance)
+- [Optimizations](#optimizations)
+- [Cost](#cost)
+- [Multi-modal (YOLO)](#multi-modal-yolo)
 - [The Management REST API](#the-management-rest-api)
   - [Applications](#applications--apiv1applications)
   - [Scheduling & placement groups](#scheduling--placement-groups)
@@ -381,6 +384,88 @@ cd ray-serve-cai-bench
 # set BASE_URL, VLLM_ROUTE=/qwen3, VLLM_MODEL=Qwen/Qwen3.8-27B-FP8 in configs/cluster.env
 locust -f locust/locustfile_chat.py --headless -u 10 -r 2 -t 60s
 ```
+
+## Optimizations
+
+Throughput and latency come from a stack of orthogonal knobs — most are
+enabled by the deployment payload, none require code changes:
+
+| Optimization | What it does | How to enable |
+|---|---|---|
+| **FP8 quantisation** | Halves weight memory vs BF16 → bigger batch + longer context per GPU | use an FP8 model checkpoint (e.g. `Qwen3.8-27B-FP8`) with `"dtype": "auto"` |
+| **Tensor parallelism** | Splits one model across N GPUs → models too big for one card, and more KV-cache headroom | `"tensor_parallel_size": 2` |
+| **Prefix caching** | Reuses KV blocks shared across requests (system prompts, few-shot) | `"enable_prefix_caching": true` |
+| **CUDA graphs** | Captures the decode loop as a graph → removes per-step kernel-launch overhead | on by default in vLLM v1 |
+| **Chunked prefill** | Interleaves long-prefill and decode work → stable TTFT under mixed load | on by default in vLLM v1 |
+| **Fractional GPU** | Packs multiple small models on one GPU | `"gpu_fraction": 0.5` |
+| **venv isolation** | vLLM and SGLang coexist on one cluster (conflicting deps) | automatic — per-engine virtualenvs |
+| **Node pinning** | Shards land on the right GPU node, not just the scheduler | `scheduling.resources` (merged into GPU bundles) |
+
+Measured effect of the first three in the [Performance](#performance) run:
+27B FP8 at TP=2 sustains ~5 req/s at 10 concurrent users with a 330 ms
+median TTFT.
+
+## Cost
+
+Inference cost is dominated by GPU-hours, so the levers are **model size,
+quantisation, parallelism, and packing** — not framework overhead:
+
+| Scenario | GPUs used | When it's the right call |
+|---|---|---|
+| 7B BF16, TP=1, single L40s | 1 × 48 GB (can share at `gpu_fraction`) | dev / low traffic; cheapest per token |
+| 27B FP8, TP=2 | 2 × 96 GB on one node | strong answers, one pod; confirmed at ~5 req/s |
+| 27B BF16, TP=2 | needs 2 × 96 GB *minimum* (≈54 GB weights + KV) | avoid — FP8 gets the same model in half the memory |
+| 2 × 7B replicas, TP=1 each | 2 × 48 GB | higher *aggregate* throughput at lower quality than one 27B |
+
+Rules of thumb:
+
+- **FP8 first.** For a given GPU budget, an FP8 27B beats a BF16 7B on both
+  quality and tokens/GPU-hour.
+- **TP=2 on one dual-GPU node, not two single-GPU nodes.** Cross-pod tensor
+  parallelism over the CML network is blocked by Istio (see
+  [Troubleshooting](#troubleshooting)); single-pod TP is the supported path.
+- **Off-peak to external APIs.** Route bulk/low-urgency traffic through the
+  LiteLLM engine to a hosted provider instead of holding a GPU idle for it.
+- **Right-size the head.** The head is CPU-only by design — don't pay for
+  GPUs you never use.
+
+To price a deployment, multiply its GPU count by your node's $/GPU-hour
+(ask your platform team for the internal rate) and the time served; divide by
+the sustained token throughput from a [Locust](#performance) run for a
+$/1M-tokens figure to compare against hosted API pricing.
+
+## Multi-modal (YOLO)
+
+Object detection runs on the same cluster with the same API surface:
+
+```bash
+curl -X POST http://<head>/api/v1/applications \
+  -H 'Content-Type: application/json' \
+  -d '{
+        "name": "yolo-detect",
+        "engine_type": "yolo",
+        "route_prefix": "/yolo",
+        "engine_config": {
+          "model_path": "yolo11n.pt",
+          "conf_threshold": 0.25,
+          "iou_threshold": 0.45,
+          "device": "cuda:0"
+        },
+        "scheduling": {"resources": {"node_type:rtxpro6000-gpu-worker": 0.001}}
+      }'
+```
+
+Then run detection (multipart image upload) — the engine batches concurrent
+images to maximise GPU utilisation:
+
+```bash
+curl -X POST http://<head>/yolo/v1/detect -F "file=@street.jpg"
+# → {"detections": [{"label": "car", "confidence": 0.91, "location": ...}, ...]}
+```
+
+`GET /yolo/info` returns model metadata; interactive Swagger at `/yolo/docs`.
+YOLO-nano class models run comfortably at `gpu_fraction: 0.25` alongside an
+LLM deployment on the same GPU.
 
 ## The Management REST API
 
