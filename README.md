@@ -21,10 +21,14 @@ declarative scheduling block.
 ## Table of Contents
 
 - [Overview](#overview)
+- [Demo](#demo)
 - [Target Audience](#target-audience)
 - [Use Cases](#use-cases)
+- [Key Features](#key-features)
 - [Architecture](#architecture)
 - [Installation](#installation)
+- [Prerequisites](#prerequisites)
+- [Hardware Requirements](#hardware-requirements)
 - [Concepts](#concepts)
 - [Quick start](#quick-start)
   - [1. Launch a cluster](#1-launch-a-cluster)
@@ -45,6 +49,8 @@ declarative scheduling block.
 - [Configuration reference](#configuration-reference)
 - [Project layout](#project-layout)
 - [Development](#development)
+- [Troubleshooting](#troubleshooting)
+  - [Ray cluster pods fail to connect — Istio STRICT mTLS](#ray-cluster-pods-fail-to-connect--istio-strict-mtls)
 - [Documentation](#documentation)
 - [License](#license)
 
@@ -68,6 +74,25 @@ Serving models on CAI/CML has three recurring pain points that this project solv
    hand-writing Ray placement groups. This project derives sensible placement
    groups automatically and lets you override any part of them declaratively.
 
+## Demo
+
+The fastest way to see this running is a one-click AMP import:
+
+1. **Import as a prototype** — in CAI Workbench, create a project from this
+   repository. The [`.project-metadata.yaml`](.project-metadata.yaml) manifest
+   then runs the full chain automatically: base venv → vLLM venv → LiteLLM
+   venv → Ray cluster (head + GPU workers) → Prometheus/Grafana, and finally
+   deploys `VLLM_MODEL_ID` (default `Qwen/Qwen3.8-27B-FP8`, TP=2) and runs a
+   sample query.
+2. **Open the head app** — `https://ray-cluster-head.<CDSW_DOMAIN>`: chat UI
+   at `/`, interactive Swagger at `/docs`.
+3. **Deploy & query any model** — `POST /api/v1/applications` with any
+   HuggingFace model ID, then query it with the OpenAI client
+   (see [Quick start](#quick-start)).
+
+> 🎬 A recorded Reprise walkthrough of this flow is planned — the link will be
+> added here once the AMP import is validated on a live workbench.
+
 ## Target Audience
 
 - **ML Engineers** deploying LLMs or vision models at scale on Cloudera AI
@@ -87,43 +112,69 @@ Serving models on CAI/CML has three recurring pain points that this project solv
 | **Tool servers (MCP)** | Host Model Context Protocol servers as Ray Serve apps on the same cluster |
 | **Cost-optimised batch routing** | Use LiteLLM to route to cheaper external providers when GPU capacity is at peak |
 
+## Key Features
+
+- **Engine isolation** — vLLM and SGLang (conflicting `llguidance` deps) coexist
+  on one cluster via per-engine virtualenvs on shared NFS.
+- **Declarative GPU placement** — tensor parallelism, fractional GPU, node
+  affinity, and placement-group strategy in one `scheduling` block.
+- **Single Management REST API** — deploy, scale, place, and monitor every
+  engine through `/api/v1/*`, with Swagger at `/docs`.
+- **OpenAI-compatible serving** — every LLM deployment exposes
+  `/v1/chat/completions`, `/v1/completions`, `/v1/models`, `/metrics`.
+- **Built-in monitoring** — Prometheus + Grafana CML apps provisioned by the
+  same job chain that launches the cluster.
+- **Multi-modal & tool servers** — YOLO vision and MCP tool engines run on the
+  same cluster as the LLMs.
+
 ## Architecture
 
-The repository is a **library + deployment template** with a clean split:
+The repository is a **library + deployment template** with a clean split —
+`cai_integration` depends on `ray_serve_cai` one-way:
 
-```
-┌───────────────────────────────────────────────┐
-│  ray_serve_cai/                                 │  Generic, platform-neutral
-│    engines/       engine registry + factories   │  Ray Serve orchestration.
-│    management/    FastAPI Management REST API    │  Works on any Ray cluster.
-│    ray_backend.py programmatic Python API        │
-│    launch_cluster.py  cluster CLI                │
-└───────────────────────────────────────────────┘
-                    ▲
-                    │ imports
-                    │
-┌───────────────────────────────────────────────┐
-│  cai_integration/                               │  CML-specific: launches Ray
-│    launch_ray_cluster.py  head + worker apps     │  head/workers as CML Apps,
-│    templates/             worker launcher (j2)   │  sets up nginx, venvs, NFS.
-│    setup_environment.py   per-engine venv builds │
-└───────────────────────────────────────────────┘
+```mermaid
+flowchart LR
+    subgraph CML["cai_integration/ — CML/CAI-specific"]
+        direction TB
+        L["launch_ray_cluster.py<br/>head + worker CML apps"]
+        T["templates/<br/>worker launcher (Jinja2)"]
+        S["setup_environment.py<br/>per-engine venv builds"]
+    end
+    subgraph GENERIC["ray_serve_cai/ — generic, platform-neutral"]
+        direction TB
+        E["engines/<br/>registry + factories (vllm · sglang · litellm · yolo · mcp)"]
+        M["management/<br/>FastAPI Management REST API"]
+        B["ray_backend.py<br/>programmatic Python API"]
+        C["launch_cluster.py<br/>cluster CLI"]
+    end
+    CML -->|"imports (one-way)"| GENERIC
 ```
 
-At runtime the pieces fit together like this:
+At runtime everything lives inside the Cloudera AI workbench: the head CML app
+serves the Management API and runs Ray's head; GPU worker CML apps run the
+Serve deployment actors, each under its own isolated venv from shared NFS:
 
-```
-                    ┌─────────────────────────────────────────┐
-   HTTP client ───► │  Management API (FastAPI)  /api/v1/...    │
-                    │  deploy · scale · place · monitor         │
-                    └───────────────┬───────────────────────────┘
-                                    │  ray.serve.run / ray.nodes / CML API
-                    ┌───────────────▼───────────────────────────┐
-                    │            Ray cluster (on CAI)            │
-                    │  head (no GPU)  ·  worker₁ … workerₙ (GPU) │
-                    │  each Serve deployment → actor in its own  │
-                    │  venv, pinned by a placement group          │
-                    └────────────────────────────────────────────┘
+```mermaid
+flowchart TB
+    CLIENT["Users & applications<br/>(OpenAI client · chat UI · curl)"]
+
+    subgraph CAI["Cloudera AI Workbench — CML project"]
+        subgraph HEAD["CML app: ray-cluster-head (CPU-only)"]
+            MGMT["Management API (FastAPI)<br/>/api/v1/* · Swagger /docs"]
+            GCS["Ray head<br/>GCS · dashboard · Serve proxy"]
+        end
+        subgraph WORKERS["CML apps: GPU workers (e.g. 2× RTX PRO 6000)"]
+            A1["Serve deployment → actor<br/>under .venv-vllm, pinned by placement group"]
+            A2["Serve deployment → actor<br/>under .venv-litellm / .venv-sglang"]
+        end
+        MON["Prometheus + Grafana CML apps"]
+    end
+
+    CLIENT -->|"HTTPS via CML ingress"| MGMT
+    MGMT -->|"ray.serve.run · placement groups"| GCS
+    GCS -->|"Ray gRPC (intra-cluster)"| A1
+    GCS -->|"Ray gRPC"| A2
+    GCS -.->|"metrics"| MON
 ```
 
 ## Installation
@@ -149,6 +200,30 @@ pip install -e ".[docs]"     # mkdocs-material
 > On a running cluster this is handled for you by the [Environments API](#environments--apiv1environments).
 
 GPU inference additionally needs CUDA 11.8+ and a compatible driver on the worker nodes.
+
+## Prerequisites
+
+- **Cloudera AI Workbench** project with GPU node access for inference (or a
+  bare Python 3.9+ machine for local development).
+- **Ray[serve] ≥ 2.53.0** — installed for you by the setup jobs.
+- **Compatible CUDA driver** on GPU nodes — CUDA ≥ 12.9 for Blackwell GPUs
+  (toolchain details in `docs/BLACKWELL_CUDA_NVCC_NCCL.md`).
+- **Cluster-admin access** (platform team) to apply the Istio
+  `PeerAuthentication` fix in [Troubleshooting](#troubleshooting) **before the
+  first cluster launch** — worker pods will not stay connected without it.
+- **HuggingFace token** only for gated models.
+
+## Hardware Requirements
+
+| Deployment | Head (CPU-only) | GPU workers | Notes |
+|---|---|---|---|
+| **Minimum (demo)** | 12 CPU / 32 GB | 1× dual-GPU node (2× RTX PRO 6000 96 GB; 44 CPU / 320 GB) | serves 27B FP8 at TP=2 |
+| **Development** | 8 CPU / 16 GB | 1× single-GPU (L40s 48 GB or T4 16 GB) | 7–8B models at TP=1 |
+| **Production** | 32 CPU / 64 GB | N × dual-GPU nodes | scale via `POST /api/v1/resources/nodes/add` |
+
+Rough per-model GPU memory: ~16 GB for 7B (BF16); ~30 GB for 27B FP8 (TP=1 on
+48 GB, or TP=2); ~80–100 GB for 70B FP8 (TP=2 on 2× 48 GB or a 96 GB GPU —
+KV cache included).
 
 ## Concepts
 
@@ -596,6 +671,49 @@ export CML_API_KEY="your-api-key"
 export CML_PROJECT_ID="your-project-id"
 python tests/test_cluster_deployment.py --workers 2
 ```
+
+## Troubleshooting
+
+### Ray cluster pods fail to connect — Istio STRICT mTLS
+
+> ⚠️ **Cluster-level prerequisite.** If worker pods join then get disconnected
+> (Ray logs show GCS failing to health-check worker NodeManagers), this is
+> almost always Istio mTLS — not a Ray, network, or resource problem. The fix
+> requires **cluster-admin access** and must be applied by your platform team.
+
+**Root cause of worker connection failure:**
+
+CML pods run in namespace `mlx-user-2` with Istio sidecar injection enabled
+(`istio-injection=enabled`). CML typically creates a namespace-wide **STRICT**
+mTLS `PeerAuthentication` (e.g. `auth-policy-mlx-user-2`). This blocks Ray's
+plain gRPC on all ports — including the **dynamic ports** that the GCS uses to
+health-check each worker's `NodeManager`.
+
+> **Critical:** a pod-level `PERMISSIVE` policy does **NOT** override a
+> namespace-wide `STRICT` policy. In Istio, the namespace-wide policy sets the
+> baseline for unlisted ports; a pod-selector policy can only *narrow* scope
+> within that baseline — it **cannot relax STRICT to PERMISSIVE** for ports not
+> covered by `portLevelMtls`. Since Ray uses dynamic ports, `portLevelMtls`
+> cannot cover them all. The only working fix is changing the namespace-wide
+> policy itself.
+
+**Fix — change the namespace-wide policy to PERMISSIVE:**
+
+```bash
+# Step 1: Check existing policies
+kubectl get peerauthentication -n mlx-user-2 -o custom-columns=NAME:.metadata.name,SELECTOR:.spec.selector,MODE:.spec.mtls.mode
+
+# Step 2: Patch the namespace-wide STRICT policy to PERMISSIVE
+kubectl patch peerauthentication auth-policy-mlx-user-2 -n mlx-user-2 \
+  --type merge -p '{"spec":{"mtls":{"mode":"PERMISSIVE"}}}'
+
+# Step 3: Clean up any leftover port-specific policies (superseded)
+kubectl delete peerauthentication ray-ports-permissive -n mlx-user-2 2>/dev/null || true
+```
+
+After the patch, restart the Ray cluster (`stop-cai` then `start-cai`, or re-run
+the `launch_ray_cluster` job) and confirm all workers report alive in
+`GET /api/v1/resources`.
 
 ## Documentation
 

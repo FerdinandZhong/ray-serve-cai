@@ -1,0 +1,26 @@
+# =============================================================================
+# Cloudera Blueprints catalog metadata
+# (structure per https://github.com/kevinbtalbert/Cloudera-Blueprints-Standard)
+# Adjust field names to match the catalog site's schema if it differs.
+# =============================================================================
+
+name: ray-serve-cai
+title: Ray Cluster on CAI for Micro Services
+description: >-
+  Multi-engine model inference on Cloudera AI Workbench: a Ray cluster
+  (head + GPU workers) behind a single Management REST API, with vLLM and
+  LiteLLM engines in isolated virtualenvs, declarative GPU placement, and
+  Prometheus/Grafana monitoring. One-click deployable as a Cloudera AMP.
+author: Cloudera Engineering
+category: machine-learning
+tags:
+  - ray
+  - ray-serve
+  - vllm
+  - llm
+  - inference
+  - gpu
+  - cloudera-ai
+repository_url: https://github.com/<org>/ray-serve-cai
+image: assets/ray-serve-cai.png   # add a catalog-card screenshot here
+last_updated: '2026-09-12'
