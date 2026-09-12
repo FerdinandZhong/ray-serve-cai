@@ -1,0 +1,155 @@
+#!/usr/bin/env python3
+"""
+AMP demo task: deploy a model via the Management API and run one sample query.
+
+Runs as the final `run_session` task in `.project-metadata.yaml`, i.e. after
+the Ray cluster is up. Uses only workbench-injected env vars:
+
+    CDSW_DOMAIN        → head URL  https://ray-cluster-head.<CDSW_DOMAIN>
+    CDSW_APIV2_KEY     → Authorization: Bearer for the Management API
+
+Configurable (AMP environment_variables, see .project-metadata.yaml):
+    VLLM_MODEL_ID           (default Qwen/Qwen3.8-27B-FP8)
+    TENSOR_PARALLEL_SIZE    (default 2)
+    GPU_NODE_TYPE           (default rtxpro6000-gpu-worker)
+    HUGGING_FACE_HUB_TOKEN  (default "" — gated models only)
+
+Exit codes: 0 = success OR model still loading (non-blocking by design, so a
+slow HF download can never wedge an AMP import); 1 = hard error (missing env
+vars, cluster unreachable).
+"""
+
+import os
+import sys
+import time
+from pathlib import Path
+
+# Re-exec under the base venv (has `requests`), same pattern as
+# test_list_applications.py — only if we aren't already running under it.
+_VENV_PYTHON = Path("/home/cdsw/.venv/bin/python")
+if _VENV_PYTHON.exists() and Path(sys.executable).resolve() != _VENV_PYTHON.resolve():
+    os.execv(str(_VENV_PYTHON), [str(_VENV_PYTHON)] + sys.argv)
+
+import requests
+
+# ── Config ───────────────────────────────────────────────────────────────────
+HEAD_APP_NAME = "ray-cluster-head"   # must match configs/ray_cluster_config.yaml
+MODEL_NAME = "qwen3-27b-demo"
+ROUTE_PREFIX = "/qwen3-demo"
+
+READY_POLL_S = 10
+READY_TIMEOUT_S = 600       # Management API should be up within 10 min
+DEPLOY_TIMEOUT_S = 1800     # 27B FP8 download + load; longer → exit 0 w/ hint
+
+def main() -> int:
+    domain = os.environ.get("CDSW_DOMAIN", "").strip()
+    api_key = os.environ.get("CDSW_APIV2_KEY", "").strip()
+    if not domain or not api_key:
+        print("❌ CDSW_DOMAIN / CDSW_APIV2_KEY missing — this script must run "
+              "inside a workbench job/session.")
+        return 1
+
+    base = f"https://{HEAD_APP_NAME}.{domain}"
+    headers = {"Authorization": f"Bearer {api_key}",
+               "Content-Type": "application/json"}
+    model = os.environ.get("VLLM_MODEL_ID", "Qwen/Qwen3.8-27B-FP8")
+    tp = int(os.environ.get("TENSOR_PARALLEL_SIZE", "2"))
+    node_type = os.environ.get("GPU_NODE_TYPE", "rtxpro6000-gpu-worker")
+    hf_token = os.environ.get("HUGGING_FACE_HUB_TOKEN", "").strip()
+
+    print(f"Management API : {base}")
+    print(f"Model          : {model} (tp={tp}, node_type={node_type})")
+
+    # ── 1. Wait for the Management API ───────────────────────────────────────
+    deadline = time.time() + READY_TIMEOUT_S
+    while time.time() < deadline:
+        try:
+            r = requests.get(f"{base}/api/health", headers=headers, timeout=10)
+            if r.status_code < 500:
+                print(f"✅ Management API ready (HTTP {r.status_code})")
+                break
+        except requests.RequestException:
+            pass
+        print(f"  … waiting for {base} ({int(deadline - time.time())}s left)")
+        time.sleep(READY_POLL_S)
+    else:
+        print(f"❌ Management API not reachable at {base} — check the "
+              f"launch_ray_cluster job logs.")
+        return 1
+
+    # ── 2. Deploy the model (idempotent: reuse if already deployed) ──────────
+    existing = requests.get(f"{base}/api/v1/applications/{MODEL_NAME}",
+                            headers=headers, timeout=15)
+    if existing.status_code == 200:
+        print(f"ℹ️  {MODEL_NAME} already deployed — skipping deploy.")
+    else:
+        deploy = {
+            "name": MODEL_NAME,
+            "engine_type": "vllm",
+            "model": model,
+            "route_prefix": ROUTE_PREFIX,
+            "tensor_parallel_size": tp,
+            "engine_config": {
+                "dtype": "auto",
+                "max_model_len": 131072,
+                "gpu_memory_utilization": 0.95,
+                "enable_prefix_caching": True,
+                "trust_remote_code": True,
+            },
+            "scheduling": {"resources": {f"node_type:{node_type}": 0.001}},
+        }
+        if hf_token:
+            deploy["scheduling"]["env_vars"] = {"HUGGING_FACE_HUB_TOKEN": hf_token}
+        r = requests.post(f"{base}/api/v1/applications",
+                          headers=headers, json=deploy, timeout=30)
+        if r.status_code not in (200, 201, 202):
+            print(f"❌ deploy failed: HTTP {r.status_code}: {r.text[:500]}")
+            return 1
+        print(f"✅ deploy accepted ({r.status_code}) — polling for RUNNING…")
+
+    # ── 3. Poll until RUNNING (non-fatal timeout) ────────────────────────────
+    deadline = time.time() + DEPLOY_TIMEOUT_S
+    status = ""
+    while time.time() < deadline:
+        r = requests.get(f"{base}{ROUTE_PREFIX}/v1/models",
+                         headers=headers, timeout=15)
+        if r.status_code == 200:
+            status = "RUNNING"
+            break
+        r = requests.get(f"{base}/api/v1/applications/{MODEL_NAME}",
+                         headers=headers, timeout=15)
+        status = (r.json().get("status", "?") if r.status_code == 200 else "?")
+        print(f"  … {MODEL_NAME} status={status} ({int(deadline - time.time())}s left)")
+        time.sleep(30)
+
+    if status != "RUNNING":
+        print(f"⚠️  {MODEL_NAME} still loading (status={status}) — not blocking "
+              f"the import. Track it at {base}/docs → GET /api/v1/applications/{MODEL_NAME}")
+        return 0
+
+    # ── 4. Sample query ──────────────────────────────────────────────────────
+    print("✅ model is serving — running sample query…")
+    r = requests.post(
+        f"{base}{ROUTE_PREFIX}/v1/chat/completions",
+        headers=headers,
+        json={
+            "model": model,
+            "messages": [{"role": "user",
+                          "content": "In one sentence, what is tensor parallelism?"}],
+            "max_tokens": 128,
+        },
+        timeout=120,
+    )
+    if r.status_code != 200:
+        print(f"❌ query failed: HTTP {r.status_code}: {r.text[:500]}")
+        return 1
+    reply = r.json()["choices"][0]["message"]["content"]
+    print("\n" + "─" * 60)
+    print("ASSISTANT:", reply.strip())
+    print("─" * 60)
+    print(f"\n🎉 Demo complete. Explore at {base}/ (UI) or {base}/docs (Swagger).")
+    return 0
+
+
+if __name__ == "__main__":
+    sys.exit(main())

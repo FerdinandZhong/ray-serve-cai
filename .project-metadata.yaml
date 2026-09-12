@@ -1,0 +1,135 @@
+# =============================================================================
+# AMP (Applied ML Prototype) project metadata
+#
+# This manifest makes the repo a one-click deployable Cloudera AMP:
+# importing it creates and runs the same CML job chain that
+# `cai_integration/create_jobs.py` + GitHub Actions run imperatively
+# (see cai_integration/jobs_config.yaml for the source of truth on
+# resources/timeouts).
+#
+#   Stage 1  setup_base_env       /home/cdsw/.venv        (ray + core, no engines)
+#   Stage 2  setup_vllm_env       /home/cdsw/.venv-vllm   (vllm + ninja)
+#   Stage 3  setup_litellm_env    /home/cdsw/.venv-litellm
+#   Stage 4  launch_ray_cluster   head + worker CML apps, Management API up
+#   Stage 5  launch_monitoring    Prometheus + Grafana CML apps
+#   Stage 6  amp_demo             deploy VLLM_MODEL_ID + one sample query
+#
+# Workbench-injected vars (CDSW_DOMAIN, CDSW_APIV2_KEY, CDSW_PROJECT_ID,
+# CDSW_APP_*) are available to every task at runtime and are therefore NOT
+# declared below — only user-configurable values are prompted at import.
+#
+# After import, open:
+#   https://ray-cluster-head.<CDSW_DOMAIN>/          (chat UI)
+#   https://ray-cluster-head.<CDSW_DOMAIN>/docs      (Swagger — Management API)
+# =============================================================================
+
+name: Ray Cluster on CAI for Micro Services
+description: >-
+  Multi-engine model inference on Cloudera AI Workbench: a Ray cluster
+  (head + GPU workers) behind a single Management REST API, with vLLM and
+  LiteLLM engines in isolated virtualenvs, declarative GPU placement, and
+  Prometheus/Grafana monitoring. Includes a demo task that deploys
+  VLLM_MODEL_ID and runs a sample query.
+author: Cloudera Engineering
+date: '2026-09-12'
+specification_version: 1.0
+prototype_version: 1.0
+
+environment_variables:
+  VLLM_MODEL_ID:
+    default: "Qwen/Qwen3.8-27B-FP8"
+    description: >-
+      HuggingFace model ID deployed by the demo task (open models only,
+      or pair with HUGGING_FACE_HUB_TOKEN for gated models).
+    required: false
+  TENSOR_PARALLEL_SIZE:
+    default: "2"
+    description: Tensor-parallel size for the demo deployment (2 = one dual-GPU worker).
+    required: false
+  GPU_NODE_TYPE:
+    default: "rtxpro6000-gpu-worker"
+    description: Ray node_type label the demo deployment is pinned to.
+    required: false
+  HUGGING_FACE_HUB_TOKEN:
+    default: ""
+    description: HF token for gated models (leave blank for open-weights models).
+    required: false
+
+tasks:
+  # ── Stage 1: base venv ─────────────────────────────────────────────────────
+  - type: create_job
+    name: setup_base_env
+    entity_label: amp-setup-base-env
+    script: cai_integration/setup_environment.py
+    kernel: python3
+    cpu: 4
+    memory: 16
+    timeout: 900
+    description: "Create /home/cdsw/.venv with Ray and core deps (no inference engines)"
+  - type: run_job
+    entity_label: amp-setup-base-env
+    wait_for: true
+
+  # ── Stage 2: vLLM venv ─────────────────────────────────────────────────────
+  - type: create_job
+    name: setup_vllm_env
+    entity_label: amp-setup-vllm-env
+    script: cai_integration/setup_vllm_env.py
+    kernel: python3
+    cpu: 4
+    memory: 16
+    timeout: 1800
+    description: "Create /home/cdsw/.venv-vllm with vllm + ninja"
+  - type: run_job
+    entity_label: amp-setup-vllm-env
+    wait_for: true
+
+  # ── Stage 3: LiteLLM venv ──────────────────────────────────────────────────
+  - type: create_job
+    name: setup_litellm_env
+    entity_label: amp-setup-litellm-env
+    script: cai_integration/setup_litellm_env.py
+    kernel: python3
+    cpu: 2
+    memory: 8
+    timeout: 600
+    description: "Create /home/cdsw/.venv-litellm with litellm"
+  - type: run_job
+    entity_label: amp-setup-litellm-env
+    wait_for: true
+
+  # ── Stage 4: Ray cluster (head + workers + Management API) ─────────────────
+  - type: create_job
+    name: launch_ray_cluster
+    entity_label: amp-launch-ray-cluster
+    script: cai_integration/launch_ray_cluster_job.py
+    kernel: python3
+    cpu: 2
+    memory: 8
+    timeout: 1200
+    description: "Start Ray cluster with configured head and worker nodes"
+  - type: run_job
+    entity_label: amp-launch-ray-cluster
+    wait_for: true
+
+  # ── Stage 5: monitoring ────────────────────────────────────────────────────
+  - type: create_job
+    name: launch_monitoring
+    entity_label: amp-launch-monitoring
+    script: cai_integration/launch_monitoring_job.py
+    kernel: python3
+    cpu: 2
+    memory: 8
+    timeout: 900
+    description: "Create Prometheus + Grafana CML apps and provision Ray dashboards"
+  - type: run_job
+    entity_label: amp-launch-monitoring
+    wait_for: true
+
+  # ── Stage 6: LLM demo (R3: deploy a model and query it) ────────────────────
+  # Exits 0 (non-blocking) if the model does not finish loading in time —
+  # the cluster + Management API are already up; open /docs to deploy manually.
+  - type: run_session
+    name: amp_llm_demo
+    script: cai_integration/amp_demo.py
+    kernel: python3
