@@ -1,18 +1,28 @@
-# =============================================================================
-# Cloudera Blueprints catalog metadata
-# (structure per https://github.com/kevinbtalbert/Cloudera-Blueprints-Standard)
-# Adjust field names to match the catalog site's schema if it differs.
-# =============================================================================
+# Cloudera Blueprint catalog metadata
+# Schema: https://github.com/kevinbtalbert/Cloudera-Blueprints-Standard
 
-name: ray-serve-cai
-title: Ray Cluster on CAI for Micro Services
+# --- Identity ---
+name: "Ray Cluster on CAI for Micro Services"
+slug: "ray-serve-cai"
 description: >-
   Multi-engine model inference on Cloudera AI Workbench: a Ray cluster
   (head + GPU workers) behind a single Management REST API, with vLLM and
   LiteLLM engines in isolated virtualenvs, declarative GPU placement, and
   Prometheus/Grafana monitoring. One-click deployable as a Cloudera AMP.
-author: Cloudera Engineering
-category: machine-learning
+reprise_link: "" # Add the published recording URL when available.
+
+# --- Classification ---
+catalog_classification:
+  - Launchable (AMP)
+launchable: true
+lifecycle_status: Active
+
+# --- Industry & alignment ---
+industry: General
+industry_alignment: Horizontal
+target_vertical: ""
+
+# --- Tags ---
 tags:
   - ray
   - ray-serve
@@ -21,6 +31,25 @@ tags:
   - inference
   - gpu
   - cloudera-ai
-repository_url: https://github.com/<org>/ray-serve-cai
-image: assets/ray-serve-cai.png   # add a catalog-card screenshot here
-last_updated: '2026-09-12'
+
+# --- Relationships ---
+product_mapping:
+  - Cloudera Machine Learning
+  - Cloudera AI Inference Service
+model_dependencies:
+  - Qwen/Qwen3.8-27B-FP8
+
+# --- Provenance ---
+publisher: cloudera
+source: Internal
+
+# --- Repository & assets ---
+public_github_link: "" # Populate only with the authoritative public repository URL.
+
+# --- Ownership ---
+maintainer_name: "Cloudera Engineering"
+
+# --- Dates ---
+date_created: "2026-01-13"
+date_updated: "2026-09-13"
+published_date: ""

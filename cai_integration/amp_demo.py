@@ -2,7 +2,7 @@
 """
 AMP demo task: deploy a model via the Management API and run one sample query.
 
-Runs as the final `run_session` task in `.project-metadata.yaml`, i.e. after
+Runs as the final create/run job pair in `.project-metadata.yaml`, i.e. after
 the Ray cluster is up. Uses only workbench-injected env vars:
 
     CDSW_DOMAIN        → head URL  https://ray-cluster-head.<CDSW_DOMAIN>
@@ -14,9 +14,8 @@ Configurable (AMP environment_variables, see .project-metadata.yaml):
     GPU_NODE_TYPE           (default rtxpro6000-gpu-worker)
     HUGGING_FACE_HUB_TOKEN  (default "" — gated models only)
 
-Exit codes: 0 = success OR model still loading (non-blocking by design, so a
-slow HF download can never wedge an AMP import); 1 = hard error (missing env
-vars, cluster unreachable).
+Exit codes: 0 = the model reached RUNNING and returned a non-empty completion;
+1 = readiness, deployment, or inference failed (including timeouts).
 """
 
 import os
@@ -27,10 +26,17 @@ from pathlib import Path
 # Re-exec under the base venv (has `requests`), same pattern as
 # test_list_applications.py — only if we aren't already running under it.
 _VENV_PYTHON = Path("/home/cdsw/.venv/bin/python")
-if _VENV_PYTHON.exists() and Path(sys.executable).resolve() != _VENV_PYTHON.resolve():
+
+
+def _running_in_venv(venv_python: Path) -> bool:
+    """Check the active environment, not interpreter symlink identity."""
+    return Path(sys.prefix).resolve() == venv_python.parent.parent.resolve()
+
+
+if _VENV_PYTHON.exists() and not _running_in_venv(_VENV_PYTHON):
     os.execv(str(_VENV_PYTHON), [str(_VENV_PYTHON)] + sys.argv)
 
-import requests
+import requests  # noqa: E402 - the venv re-exec above must happen before import
 
 # ── Config ───────────────────────────────────────────────────────────────────
 HEAD_APP_NAME = "ray-cluster-head"   # must match configs/ray_cluster_config.yaml
@@ -39,7 +45,19 @@ ROUTE_PREFIX = "/qwen3-demo"
 
 READY_POLL_S = 10
 READY_TIMEOUT_S = 600       # Management API should be up within 10 min
-DEPLOY_TIMEOUT_S = 1800     # 27B FP8 download + load; longer → exit 0 w/ hint
+DEPLOY_TIMEOUT_S = 1800     # 27B FP8 download + load
+TERMINAL_FAILURE_STATES = {"DEPLOY_FAILED", "UNHEALTHY"}
+
+
+def _application_status(response) -> str:
+    """Return a normalized Ray status, tolerating malformed API responses."""
+    if response.status_code != 200:
+        return "?"
+    payload = response.json()
+    if not isinstance(payload, dict):
+        return "?"
+    status = str(payload.get("status", "?")).upper()
+    return status.rsplit(".", 1)[-1]
 
 def main() -> int:
     domain = os.environ.get("CDSW_DOMAIN", "").strip()
@@ -65,7 +83,7 @@ def main() -> int:
     while time.time() < deadline:
         try:
             r = requests.get(f"{base}/api/health", headers=headers, timeout=10)
-            if r.status_code < 500:
+            if r.status_code == 200:
                 print(f"✅ Management API ready (HTTP {r.status_code})")
                 break
         except requests.RequestException:
@@ -78,11 +96,15 @@ def main() -> int:
         return 1
 
     # ── 2. Deploy the model (idempotent: reuse if already deployed) ──────────
-    existing = requests.get(f"{base}/api/v1/applications/{MODEL_NAME}",
-                            headers=headers, timeout=15)
+    try:
+        existing = requests.get(f"{base}/api/v1/applications/{MODEL_NAME}",
+                                headers=headers, timeout=15)
+    except requests.RequestException as exc:
+        print(f"❌ could not check existing deployment: {exc}")
+        return 1
     if existing.status_code == 200:
         print(f"ℹ️  {MODEL_NAME} already deployed — skipping deploy.")
-    else:
+    elif existing.status_code == 404:
         deploy = {
             "name": MODEL_NAME,
             "engine_type": "vllm",
@@ -100,50 +122,76 @@ def main() -> int:
         }
         if hf_token:
             deploy["scheduling"]["env_vars"] = {"HUGGING_FACE_HUB_TOKEN": hf_token}
-        r = requests.post(f"{base}/api/v1/applications",
-                          headers=headers, json=deploy, timeout=30)
+        try:
+            r = requests.post(f"{base}/api/v1/applications",
+                              headers=headers, json=deploy, timeout=30)
+        except requests.RequestException as exc:
+            print(f"❌ deploy request failed: {exc}")
+            return 1
         if r.status_code not in (200, 201, 202):
             print(f"❌ deploy failed: HTTP {r.status_code}: {r.text[:500]}")
             return 1
         print(f"✅ deploy accepted ({r.status_code}) — polling for RUNNING…")
+    else:
+        print(f"❌ could not check existing deployment: HTTP "
+              f"{existing.status_code}: {existing.text[:500]}")
+        return 1
 
-    # ── 3. Poll until RUNNING (non-fatal timeout) ────────────────────────────
+    # ── 3. Poll until RUNNING ────────────────────────────────────────────────
     deadline = time.time() + DEPLOY_TIMEOUT_S
     status = ""
     while time.time() < deadline:
-        r = requests.get(f"{base}{ROUTE_PREFIX}/v1/models",
-                         headers=headers, timeout=15)
-        if r.status_code == 200:
-            status = "RUNNING"
-            break
-        r = requests.get(f"{base}/api/v1/applications/{MODEL_NAME}",
-                         headers=headers, timeout=15)
-        status = (r.json().get("status", "?") if r.status_code == 200 else "?")
+        try:
+            r = requests.get(f"{base}{ROUTE_PREFIX}/v1/models",
+                             headers=headers, timeout=15)
+            if r.status_code == 200:
+                status = "RUNNING"
+                break
+            r = requests.get(f"{base}/api/v1/applications/{MODEL_NAME}",
+                             headers=headers, timeout=15)
+            status = _application_status(r)
+        except (requests.RequestException, ValueError) as exc:
+            status = "?"
+            print(f"  … transient status check failure: {exc}")
+        if status in TERMINAL_FAILURE_STATES:
+            print(f"❌ {MODEL_NAME} entered terminal failure state {status}")
+            return 1
         print(f"  … {MODEL_NAME} status={status} ({int(deadline - time.time())}s left)")
         time.sleep(30)
 
     if status != "RUNNING":
-        print(f"⚠️  {MODEL_NAME} still loading (status={status}) — not blocking "
-              f"the import. Track it at {base}/docs → GET /api/v1/applications/{MODEL_NAME}")
-        return 0
+        print(f"❌ {MODEL_NAME} did not become ready within {DEPLOY_TIMEOUT_S}s "
+              f"(last status={status}). Check {base}/docs → "
+              f"GET /api/v1/applications/{MODEL_NAME}")
+        return 1
 
     # ── 4. Sample query ──────────────────────────────────────────────────────
     print("✅ model is serving — running sample query…")
-    r = requests.post(
-        f"{base}{ROUTE_PREFIX}/v1/chat/completions",
-        headers=headers,
-        json={
-            "model": model,
-            "messages": [{"role": "user",
-                          "content": "In one sentence, what is tensor parallelism?"}],
-            "max_tokens": 128,
-        },
-        timeout=120,
-    )
+    try:
+        r = requests.post(
+            f"{base}{ROUTE_PREFIX}/v1/completions",
+            headers=headers,
+            json={
+                "model": model,
+                "prompt": "In one sentence, what is tensor parallelism?",
+                "max_tokens": 128,
+            },
+            timeout=120,
+        )
+    except requests.RequestException as exc:
+        print(f"❌ query request failed: {exc}")
+        return 1
     if r.status_code != 200:
         print(f"❌ query failed: HTTP {r.status_code}: {r.text[:500]}")
         return 1
-    reply = r.json()["choices"][0]["message"]["content"]
+    try:
+        reply = r.json()["choices"][0]["text"]
+    except (ValueError, KeyError, IndexError, TypeError) as exc:
+        print(f"❌ query returned an invalid completion payload: {exc}")
+        return 1
+    if not isinstance(reply, str) or not reply.strip():
+        print("❌ query returned an empty completion")
+        return 1
     print("\n" + "─" * 60)
     print("ASSISTANT:", reply.strip())
     print("─" * 60)

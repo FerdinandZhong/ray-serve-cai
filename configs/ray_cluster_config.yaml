@@ -34,8 +34,8 @@ ray_cluster:
     - name:      rtxpro6000-gpu-workers
       node_type: rtxpro6000-gpu-worker
       count:     1   # 1 dual-GPU RTX PRO 6000 worker currently running (g7e.12xlarge)
-      cpu:       44
-      memory:    320  # GB  (object_store ~44 GB + memory ~328 GB ≈ 340 GB request)
+      cpu:       20
+      memory:    200  # GB  (object_store ~44 GB + memory ~328 GB ≈ 340 GB request)
       gpus:      2
       accelerator_type: RTX-PRO-6000  # Ray accelerator_type label (matches nvidia-smi GPU name)
       # node_label: unset — real nvidia.com/gpu.product value for this SKU not

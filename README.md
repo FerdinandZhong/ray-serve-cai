@@ -135,6 +135,12 @@ The fastest way to see this running is a one-click AMP import:
 The repository is a **library + deployment template** with a clean split —
 `cai_integration` depends on `ray_serve_cai` one-way:
 
+![Ray Cluster on Cloudera AI architecture](assets/ray-serve-cai.png)
+
+The graphic shows the intended Qwen serving path: clients reach the Management
+API on the Ray head, which schedules the tensor-parallel GPU workers; the same
+AMP job chain provisions Prometheus and Grafana for monitoring.
+
 ```mermaid
 flowchart LR
     subgraph CML["cai_integration/ — CML/CAI-specific"]
@@ -367,21 +373,19 @@ Available per deployment: `POST {prefix}/v1/completions`,
 
 ## Performance
 
-Benchmark results on `Qwen/Qwen3.8-27B-FP8` with `tensor_parallel_size=2` on 2× NVIDIA RTX PRO 6000 (96 GB, sm_120), measured with the Locust chat benchmark at 10 concurrent users over 60 seconds:
+The existing `Qwen/Qwen3.8-27B-FP8` deployment passed an authenticated completion
+check on 2026-09-13. See the [sanitized validation record](docs/validation/qwen_live_validation_2026-09-13.md).
+That single request establishes functional inference only. A reproducible load
+benchmark has not yet been retained, so throughput and TTFT figures are not
+published here.
 
-| Metric | Value |
-|---|---|
-| Requests | 312 over 60 s |
-| Failures | 0 |
-| Median TTFT | 330 ms |
-| Median E2E latency | 3.0 s |
-| Throughput | ~5.2 req/s |
-
-Optimisations active in this run: FP8 weight quantisation, prefix caching (`enable_prefix_caching: true`), CUDA graph capture, and Ray placement group pinning to the GPU worker pool. To reproduce:
+For the planned benchmark, record the exact deployment payload, GPU SKU/count,
+Ray/vLLM/torch/CUDA versions, sampler mode, prompt/output token counts, concurrency,
+duration, failures, and TTFT/E2E percentiles. In the separate benchmark checkout:
 
 ```bash
 cd ray-serve-cai-bench
-# set BASE_URL, VLLM_ROUTE=/qwen3, VLLM_MODEL=Qwen/Qwen3.8-27B-FP8 in configs/cluster.env
+# set BASE_URL, VLLM_ROUTE=/qwen3-8, VLLM_MODEL=Qwen/Qwen3.8-27B-FP8 in configs/cluster.env
 locust -f locust/locustfile_chat.py --headless -u 10 -r 2 -t 60s
 ```
 
@@ -401,9 +405,9 @@ enabled by the deployment payload, none require code changes:
 | **venv isolation** | vLLM and SGLang coexist on one cluster (conflicting deps) | automatic — per-engine virtualenvs |
 | **Node pinning** | Shards land on the right GPU node, not just the scheduler | `scheduling.resources` (merged into GPU bundles) |
 
-Measured effect of the first three in the [Performance](#performance) run:
-27B FP8 at TP=2 sustains ~5 req/s at 10 concurrent users with a 330 ms
-median TTFT.
+The table describes available configuration options. Their performance effects
+must be measured with the benchmark configuration described above; the existing
+Qwen functional check does not establish an optimization speedup.
 
 ## Cost
 
@@ -413,14 +417,14 @@ quantisation, parallelism, and packing** — not framework overhead:
 | Scenario | GPUs used | When it's the right call |
 |---|---|---|
 | 7B BF16, TP=1, single L40s | 1 × 48 GB (can share at `gpu_fraction`) | dev / low traffic; cheapest per token |
-| 27B FP8, TP=2 | 2 × 96 GB on one node | strong answers, one pod; confirmed at ~5 req/s |
-| 27B BF16, TP=2 | needs 2 × 96 GB *minimum* (≈54 GB weights + KV) | avoid — FP8 gets the same model in half the memory |
+| 27B FP8, TP=2 | Example deployment: 2 × 96 GB on one node | one-pod TP; measure throughput and cost for your workload |
+| 27B BF16, TP=2 | ≈54 GB weights plus KV cache and runtime overhead across the GPUs | size for the required context and concurrency; compare with FP8 |
 | 2 × 7B replicas, TP=1 each | 2 × 48 GB | higher *aggregate* throughput at lower quality than one 27B |
 
 Rules of thumb:
 
-- **FP8 first.** For a given GPU budget, an FP8 27B beats a BF16 7B on both
-  quality and tokens/GPU-hour.
+- **Evaluate FP8.** Compare task quality and tokens/GPU-hour against smaller
+  models using the same workload before selecting the deployment.
 - **TP=2 on one dual-GPU node, not two single-GPU nodes.** Cross-pod tensor
   parallelism over the CML network is blocked by Istio (see
   [Troubleshooting](#troubleshooting)); single-pod TP is the supported path.

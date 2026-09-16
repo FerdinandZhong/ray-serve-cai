@@ -5,7 +5,7 @@
 # importing it creates and runs the same CML job chain that
 # `cai_integration/create_jobs.py` + GitHub Actions run imperatively
 # (see cai_integration/jobs_config.yaml for the source of truth on
-# resources/timeouts).
+# resources; this manifest expresses job timeouts in minutes).
 #
 #   Stage 1  setup_base_env       /home/cdsw/.venv        (ray + core, no engines)
 #   Stage 2  setup_vllm_env       /home/cdsw/.venv-vllm   (vllm + ninja)
@@ -31,9 +31,15 @@ description: >-
   Prometheus/Grafana monitoring. Includes a demo task that deploys
   VLLM_MODEL_ID and runs a sample query.
 author: Cloudera Engineering
-date: '2026-09-12'
-specification_version: 1.0
-prototype_version: 1.0
+date: '2026-09-16'
+specification_version: "1.0"
+prototype_version: "1.0"
+
+# Match the Python minor used by the configured head/worker runtime images.
+runtimes:
+  - editor: JupyterLab
+    kernel: Python 3.11
+    edition: Standard
 
 environment_variables:
   VLLM_MODEL_ID:
@@ -48,7 +54,10 @@ environment_variables:
     required: false
   GPU_NODE_TYPE:
     default: "rtxpro6000-gpu-worker"
-    description: Ray node_type label the demo deployment is pinned to.
+    description: >-
+      Ray node_type label the demo deployment is pinned to. Must match a GPU
+      worker group in configs/ray_cluster_config.yaml; this input does not
+      create or rename worker groups.
     required: false
   HUGGING_FACE_HUB_TOKEN:
     default: ""
@@ -64,7 +73,7 @@ tasks:
     kernel: python3
     cpu: 4
     memory: 16
-    timeout: 900
+    timeout: 15
     description: "Create /home/cdsw/.venv with Ray and core deps (no inference engines)"
   - type: run_job
     entity_label: amp-setup-base-env
@@ -78,7 +87,7 @@ tasks:
     kernel: python3
     cpu: 4
     memory: 16
-    timeout: 1800
+    timeout: 30
     description: "Create /home/cdsw/.venv-vllm with vllm + ninja"
   - type: run_job
     entity_label: amp-setup-vllm-env
@@ -92,7 +101,7 @@ tasks:
     kernel: python3
     cpu: 2
     memory: 8
-    timeout: 600
+    timeout: 10
     description: "Create /home/cdsw/.venv-litellm with litellm"
   - type: run_job
     entity_label: amp-setup-litellm-env
@@ -106,7 +115,7 @@ tasks:
     kernel: python3
     cpu: 2
     memory: 8
-    timeout: 1200
+    timeout: 20
     description: "Start Ray cluster with configured head and worker nodes"
   - type: run_job
     entity_label: amp-launch-ray-cluster
@@ -120,16 +129,23 @@ tasks:
     kernel: python3
     cpu: 2
     memory: 8
-    timeout: 900
+    timeout: 15
     description: "Create Prometheus + Grafana CML apps and provision Ray dashboards"
   - type: run_job
     entity_label: amp-launch-monitoring
     wait_for: true
 
   # ── Stage 6: LLM demo (R3: deploy a model and query it) ────────────────────
-  # Exits 0 (non-blocking) if the model does not finish loading in time —
-  # the cluster + Management API are already up; open /docs to deploy manually.
-  - type: run_session
+  # Completes only after the model is RUNNING and returns a non-empty completion.
+  - type: create_job
     name: amp_llm_demo
+    entity_label: amp-llm-demo
     script: cai_integration/amp_demo.py
     kernel: python3
+    cpu: 1
+    memory: 2
+    gpu: 0
+    timeout: 45
+  - type: run_job
+    entity_label: amp-llm-demo
+    wait_for: true

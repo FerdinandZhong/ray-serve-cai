@@ -13,14 +13,17 @@ startup crash we hit and the fix, so it doesn't have to be re-derived.
   is **FlashInfer's runtime JIT**, not PyTorch. Torch is fine.
 - FlashInfer JIT-compiles kernels against the **local CUDA toolkit / `nvcc`
   it finds via `CUDA_HOME`** — *not* torch's bundled CUDA runtime.
-- Fix: install a CUDA 13 `nvcc` toolkit into the shared `.venv-vllm` and set
-  `CUDA_HOME` for the engine (via the deploy payload). Quick unblock without a
-  toolkit: `VLLM_USE_FLASHINFER_SAMPLER=0`.
+- Fix: install the constrained CUDA toolkit bundle into shared `.venv-vllm`.
+  The deployment factory places the discovered `CUDA_HOME` in Ray's runtime
+  environment before actors start. If no toolkit is found in the configured
+  venv, it defaults to `VLLM_USE_FLASHINFER_SAMPLER=0` on any GPU. Explicit
+  deployment settings take precedence.
 - The venv lives on **shared project NFS** (`/home/cdsw`), so you install the
   toolkit **once** and every worker pod sees it.
 - `CUDA_HOME` must point at the toolkit **root** (dir with `bin/` + `include/`),
-  not the `nvcc` binary, and must be set via the **deploy payload** so it
-  propagates to every TP worker — a shell `export` does not reach the workers.
+  not the `nvcc` binary. The factory uses `runtime_env.env_vars` for the scheduler
+  and its child Ray actors. The actor also has a local discovery fallback. A
+  shell `export` alone does not configure Ray workers.
 
 ---
 
@@ -252,16 +255,33 @@ The two GPUs live on **two separate single-GPU pods/nodes**, so `TP=2` here is
 
 ---
 
-## Planned permanent fix (code)
+## Setup safeguards (implemented; GPU acceptance pending)
 
-To make Blackwell work out-of-the-box on every deploy / worker pod:
+The blueprint owns these settings so users do not need to enter a CUDA path:
 
-1. ✅ **Done.** `cai_integration/setup_environment.py` now pins
+1. `cai_integration/setup_environment.py` constrains
    `nvidia-cuda-nvcc==13.0.*`, `nvidia-cuda-runtime==13.0.*`,
    `nvidia-cuda-cccl==13.0.*` in `_ENGINE_PACKAGES["vllm"]` (matching torch's cu130
    and keeping nvcc↔headers on the same minor), and caps
    `flashinfer-python>=0.6.16.post4,<0.6.17`.
-2. `ray_serve_cai/engines/vllm_engine.py` (`VLLMEngine.__init__`) — detect
-   sm_120 (device capability ≥ 12.0); if a `nvidia/cu*/bin/nvcc` toolkit is
-   present in the venv, set `CUDA_HOME` to its root; otherwise fall back to
-   `VLLM_USE_FLASHINFER_SAMPLER=0`. Mirrors the existing `ninja`-PATH guard.
+2. `ray_serve_cai/engines/vllm_engine.py` finds the toolkit under the configured
+   venv and adds `CUDA_HOME` to `runtime_env.env_vars`, alongside the existing
+   ninja PATH setting. This avoids depending on GPU detection inside the
+   GPU-less TP scheduler. Both generated and caller-supplied placement groups
+   use this runtime environment.
+3. When the configured venv has no discovered toolkit, the factory defaults to
+   the native sampler (`VLLM_USE_FLASHINFER_SAMPLER=0`), including on L40S.
+   Explicit sampler and CUDA_HOME values are preserved. Operators can explicitly
+   enable the sampler for a canary after validating their toolchain.
+4. Actor-side fallback uses the active venv prefix without resolving the Python
+   executable symlink into the system installation.
+
+Local regression tests verify discovery and the generated runtime environment;
+they do not execute FlashInfer kernels. A fresh CAI GPU deployment must verify
+the environment in the actual TP workers and exercise inference. Toolkit presence
+alone is not a successful JIT test. See
+[blueprint acceptance](validation/blueprint_acceptance.md).
+
+`<0.6.17` intentionally means the proven `0.6.16.*` line; it does not claim
+that `0.6.17` is known-bad. Any future bound increase must first validate a
+real FlashInfer JIT build with the corresponding CUDA toolkit and CCCL wheels.

@@ -83,7 +83,7 @@ def main():
     # `ninja` wheels install the real binary only into the package's BIN_DIR and
     # skip the <venv>/bin console-script shim, so PATH lookups fail with
     # `FileNotFoundError: 'ninja'` even though the package IS installed (and thus
-    # passes the _PRESENCE_CRITICAL check). Catch + repair that here at build
+    # passes package-version checks). Catch + repair that here at build
     # time rather than at deploy time.
     if not _ensure_ninja_resolvable(venv_python, _VENV_DIR):
         sys.exit(1)

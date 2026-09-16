@@ -148,11 +148,13 @@ def main():
         bypass_authentication=True,
         environment=prom_env or None,
     )
-    print(f"  Polling {prom_url} ...")
-    if prom_url and _wait_healthy(prom_url, timeout=300):
-        print(f"  Prometheus healthy")
+    prom_health_url = f"{prom_url.rstrip('/')}/-/ready" if prom_url else ""
+    print(f"  Polling {prom_health_url} ...")
+    if prom_health_url and _wait_healthy(prom_health_url, timeout=300):
+        print("  Prometheus healthy")
     else:
-        print(f"  WARNING: Prometheus did not respond within 5 min — check app logs")
+        print("  ERROR: Prometheus did not respond within 5 min — check app logs")
+        return 1
 
     # ── 2. Grafana ────────────────────────────────────────────────────────────
     print("\n[2/2] Creating Grafana application...")
@@ -171,11 +173,13 @@ def main():
         bypass_authentication=True,
         environment=grafana_env or None,
     )
-    print(f"  Polling {grafana_url} ...")
-    if grafana_url and _wait_healthy(grafana_url, timeout=300):
-        print(f"  Grafana healthy")
+    grafana_health_url = f"{grafana_url.rstrip('/')}/api/health" if grafana_url else ""
+    print(f"  Polling {grafana_health_url} ...")
+    if grafana_health_url and _wait_healthy(grafana_health_url, timeout=300):
+        print("  Grafana healthy")
     else:
-        print(f"  WARNING: Grafana did not respond within 5 min — check app logs")
+        print("  ERROR: Grafana did not respond within 5 min — check app logs")
+        return 1
 
     # ── Summary ───────────────────────────────────────────────────────────────
     print("\n" + "=" * 70)
@@ -189,7 +193,7 @@ def main():
     print(f"  grafana_iframe_host: {grafana_url}")
     print("=" * 70)
     if ray_head_url:
-        print(f"\nTo provision Ray dashboards:")
+        print("\nTo provision Ray dashboards:")
         print(f"  GRAFANA_HOST={grafana_url} python cai_integration/provision_monitoring.py")
     return 0
 

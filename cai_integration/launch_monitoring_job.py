@@ -9,8 +9,7 @@ jobs_config.yaml (child of launch_ray_cluster).
 
 Steps:
   1. launch_monitoring.py   — create the Prometheus + Grafana CML applications.
-  2. provision_monitoring.py — import Ray's built-in Grafana dashboards
-                               (best-effort; failure does not fail the job).
+  2. provision_monitoring.py — import Ray's built-in Grafana dashboards.
 
 Inside a CML job, CDSW_DOMAIN / CDSW_APIV2_KEY / CDSW_PROJECT_ID are injected
 automatically, so no secrets need to be passed here.
@@ -56,7 +55,7 @@ def main() -> int:
         print(f"❌ launch_monitoring.py failed (rc={rc})")
         return rc
 
-    # ── 2. Provision Ray's built-in Grafana dashboards (best-effort) ───────────
+    # ── 2. Provision Ray's built-in Grafana dashboards ────────────────────────
     domain = os.environ.get("CDSW_DOMAIN", "").strip()
     grafana_sub = os.environ.get("GRAFANA_SUBDOMAIN", "grafana-server")
     grafana_host = os.environ.get("GRAFANA_HOST", "").strip() or (
@@ -65,8 +64,8 @@ def main() -> int:
 
     print("\n[2/2] cai_integration/provision_monitoring.py")
     if not grafana_host:
-        print("⚠️  CDSW_DOMAIN/GRAFANA_HOST unset — skipping Ray dashboard provisioning")
-        return 0
+        print("❌ CDSW_DOMAIN/GRAFANA_HOST unset — cannot provision Ray dashboards")
+        return 1
 
     prov_rc = subprocess.run(
         [str(venv_python), "-u",
@@ -75,11 +74,10 @@ def main() -> int:
         env=dict(os.environ, GRAFANA_HOST=grafana_host),
     ).returncode
     if prov_rc != 0:
-        # Dashboards apps are up; only the Ray-panel import failed. Don't fail
-        # the whole job — the Grafana app is still usable and can be re-provisioned.
-        print(f"⚠️  provision_monitoring.py failed (rc={prov_rc}) — "
-              "Grafana/Prometheus are up, but Ray panels were not imported")
+        print(f"❌ provision_monitoring.py failed (rc={prov_rc})")
+        return prov_rc
 
+    print("✅ Monitoring services are healthy and Ray dashboards were provisioned")
     return 0
 
 
