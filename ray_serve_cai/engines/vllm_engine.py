@@ -1146,17 +1146,23 @@ def create_vllm_deployment(
         _cuda_toolkit = _find_venv_cuda_toolkit_root(Path(venv_path))
         if _cuda_toolkit is not None:
             env_vars.setdefault("CUDA_HOME", str(_cuda_toolkit))
-        else:
-            # The scheduler actor has no visible GPU for TP deployments, so it
-            # cannot reliably identify Blackwell. A missing pinned toolkit is a
-            # sufficient reason to use vLLM's native sampler on every GPU; an
-            # explicit caller value still takes precedence via setdefault.
-            env_vars.setdefault("VLLM_USE_FLASHINFER_SAMPLER", "0")
-            logger.warning(
-                "No CUDA toolkit wheel found under %s; disabling the FlashInfer "
-                "sampler in the Ray worker runtime environment",
-                venv_path,
-            )
+        # The published vLLM 0.28.0 package requires FlashInfer 0.6.16.post3,
+        # whose Python-3.11 sampler path is not suitable for this prototype.
+        # Use vLLM's native sampler by default on every GPU. An explicit caller
+        # setting still supports a tested FlashInfer canary.
+        if "VLLM_USE_FLASHINFER_SAMPLER" not in env_vars:
+            env_vars["VLLM_USE_FLASHINFER_SAMPLER"] = "0"
+            if _cuda_toolkit is None:
+                logger.warning(
+                    "No CUDA toolkit wheel found under %s; disabling the FlashInfer "
+                    "sampler in the Ray worker runtime environment",
+                    venv_path,
+                )
+            else:
+                logger.info(
+                    "Using vLLM native sampler by default; set "
+                    "VLLM_USE_FLASHINFER_SAMPLER=1 only after a FlashInfer canary",
+                )
         logger.info("Using isolated venv: %s (venv bin prepended to worker PATH)", venv_path)
     if env_vars:
         rt_env["env_vars"] = env_vars

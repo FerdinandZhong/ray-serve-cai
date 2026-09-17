@@ -640,18 +640,13 @@ _RAY_BASE = [
 # CML jobs import from here rather than redefining their own lists, so a change to
 # _RAY_BASE (e.g. a Ray bump) propagates to every engine venv automatically.
 _ENGINE_PACKAGES = {
-    # flashinfer-python is capped to the 0.6.16 line (>=post4, <0.6.17):
-    #   - Lower bound post4: 0.6.16 through post3 annotate `array.array[int]` in
-    #     flashinfer/comm/fd_exchange.py, only subscriptable on Python 3.12+. On the
-    #     3.11 runtime that import raises `TypeError: type 'array.array' is not
-    #     subscriptable`, killing EngineCore. post4 adds `from __future__ import
-    #     annotations`.
-    #   - Upper bound <0.6.17: without it, pip drifts to 0.6.18.x, which bundles a
-    #     newer CCCL whose cuda_toolkit.h enforces a strict nvcc==runtime-headers
-    #     version guard. Combined with the unpinned CUDA wheels below that drifted to
-    #     mismatched minors, this fired `CUDA compiler and CUDA toolkit headers are
-    #     incompatible` during FlashInfer's sm_120 JIT on Blackwell. Staying on the
-    #     0.6.16 line also matches what vLLM 0.28.x expects (==0.6.16.post3).
+    # vLLM must be pinned with its declared FlashInfer dependency.  An open
+    # ``vllm>=`` constraint now selects vLLM 0.29, which requires
+    # flashinfer-python==0.6.18 and is incompatible with the conservative 0.6.16
+    # line used by this prototype.  Conversely, vLLM 0.28.0 explicitly requires
+    # 0.6.16.post3, so asking the resolver for post4 produces an unsatisfiable
+    # set.  Keep the published pair intact; the deployment factory disables the
+    # FlashInfer sampler by default for this Qwen/Blackwell prototype.
     #
     # nvidia-cuda-{nvcc,runtime,cccl}==13.0.*: Blackwell/sm_120 needs a CUDA >=12.9
     # toolkit for FlashInfer/torch.compile JIT (see docs/BLACKWELL_CUDA_NVCC_NCCL.md).
@@ -661,8 +656,8 @@ _ENGINE_PACKAGES = {
     # (what the guard checks), aligns with torch's cu130 build, and survives patch yanks.
     # CUDA_HOME still must point at the wheel toolkit root at deploy time (payload env).
     "vllm":    _RAY_BASE + [
-        "vllm>=0.13.0",
-        "flashinfer-python>=0.6.16.post4,<0.6.17",
+        "vllm==0.28.0",
+        "flashinfer-python==0.6.16.post3",
         "nvidia-cuda-nvcc==13.0.*",
         "nvidia-cuda-runtime==13.0.*",
         "nvidia-cuda-cccl==13.0.*",
