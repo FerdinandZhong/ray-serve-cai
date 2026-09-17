@@ -13,11 +13,11 @@ startup crash we hit and the fix, so it doesn't have to be re-derived.
   is **FlashInfer's runtime JIT**, not PyTorch. Torch is fine.
 - FlashInfer JIT-compiles kernels against the **local CUDA toolkit / `nvcc`
   it finds via `CUDA_HOME`** — *not* torch's bundled CUDA runtime.
-- Fix: install the constrained CUDA toolkit bundle into shared `.venv-vllm`.
-  The deployment factory places the discovered `CUDA_HOME` in Ray's runtime
-  environment before actors start. If no toolkit is found in the configured
-  venv, it defaults to `VLLM_USE_FLASHINFER_SAMPLER=0` on any GPU. Explicit
-  deployment settings take precedence.
+- The prototype keeps the CUDA toolkit bundle available in shared `.venv-vllm`,
+  but defaults to vLLM's native sampler (`VLLM_USE_FLASHINFER_SAMPLER=0`) on
+  every GPU. The currently supported Qwen deployment therefore does not invoke
+  the incompatible FlashInfer sampler. Explicit deployment settings take
+  precedence for a tested canary.
 - The venv lives on **shared project NFS** (`/home/cdsw`), so you install the
   toolkit **once** and every worker pod sees it.
 - `CUDA_HOME` must point at the toolkit **root** (dir with `bin/` + `include/`),
@@ -262,17 +262,18 @@ The blueprint owns these settings so users do not need to enter a CUDA path:
 1. `cai_integration/setup_environment.py` constrains
    `nvidia-cuda-nvcc==13.0.*`, `nvidia-cuda-runtime==13.0.*`,
    `nvidia-cuda-cccl==13.0.*` in `_ENGINE_PACKAGES["vllm"]` (matching torch's cu130
-   and keeping nvcc↔headers on the same minor), and caps
-   `flashinfer-python>=0.6.16.post4,<0.6.17`.
+   and keeping nvcc↔headers on the same minor), and pins the published,
+   resolver-compatible vLLM pair: `vllm==0.29.0` with
+   `flashinfer-python==0.6.18`.
 2. `ray_serve_cai/engines/vllm_engine.py` finds the toolkit under the configured
    venv and adds `CUDA_HOME` to `runtime_env.env_vars`, alongside the existing
    ninja PATH setting. This avoids depending on GPU detection inside the
    GPU-less TP scheduler. Both generated and caller-supplied placement groups
    use this runtime environment.
-3. When the configured venv has no discovered toolkit, the factory defaults to
-   the native sampler (`VLLM_USE_FLASHINFER_SAMPLER=0`), including on L40S.
-   Explicit sampler and CUDA_HOME values are preserved. Operators can explicitly
-   enable the sampler for a canary after validating their toolchain.
+3. The factory defaults to the native sampler (`VLLM_USE_FLASHINFER_SAMPLER=0`),
+   including when a toolkit is present and on L40S. Explicit sampler and
+   CUDA_HOME values are preserved. Operators can explicitly enable the sampler
+   for a canary after validating their toolchain.
 4. Actor-side fallback uses the active venv prefix without resolving the Python
    executable symlink into the system installation.
 
@@ -282,6 +283,6 @@ the environment in the actual TP workers and exercise inference. Toolkit presenc
 alone is not a successful JIT test. See
 [blueprint acceptance](validation/blueprint_acceptance.md).
 
-`<0.6.17` intentionally means the proven `0.6.16.*` line; it does not claim
-that `0.6.17` is known-bad. Any future bound increase must first validate a
-real FlashInfer JIT build with the corresponding CUDA toolkit and CCCL wheels.
+Do not loosen either member of this vLLM/FlashInfer pair independently. A future
+upgrade must first resolve the publisher-declared dependency pair, then validate
+a real FlashInfer JIT build with the corresponding CUDA toolkit and CCCL wheels.

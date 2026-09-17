@@ -170,7 +170,7 @@ def test_cuda_home_is_generated_in_tp_runtime_env(
     bundles = options["placement_group_bundles"]
 
     assert runtime_env["env_vars"]["CUDA_HOME"] == str(toolkit)
-    assert "VLLM_USE_FLASHINFER_SAMPLER" not in runtime_env["env_vars"]
+    assert runtime_env["env_vars"]["VLLM_USE_FLASHINFER_SAMPLER"] == "0"
     assert bundles[0].get("GPU", 0) == 0
     assert all(bundle.get("GPU", 0) <= 1 for bundle in bundles)
 
