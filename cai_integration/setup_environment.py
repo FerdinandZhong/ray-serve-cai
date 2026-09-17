@@ -640,13 +640,11 @@ _RAY_BASE = [
 # CML jobs import from here rather than redefining their own lists, so a change to
 # _RAY_BASE (e.g. a Ray bump) propagates to every engine venv automatically.
 _ENGINE_PACKAGES = {
-    # vLLM must be pinned with its declared FlashInfer dependency.  An open
-    # ``vllm>=`` constraint now selects vLLM 0.29, which requires
-    # flashinfer-python==0.6.18 and is incompatible with the conservative 0.6.16
-    # line used by this prototype.  Conversely, vLLM 0.28.0 explicitly requires
-    # 0.6.16.post3, so asking the resolver for post4 produces an unsatisfiable
-    # set.  Keep the published pair intact; the deployment factory disables the
-    # FlashInfer sampler by default for this Qwen/Blackwell prototype.
+    # vLLM and FlashInfer are an atomic, publisher-declared release pair. Use
+    # vLLM 0.29.0 with its matching FlashInfer 0.6.18 instead of combining
+    # vLLM 0.28.0's Python-3.11-incompatible 0.6.16.post3 with post4. The
+    # deployment factory still defaults to vLLM's native sampler: installing
+    # this pair does not claim FlashInfer JIT is validated on Blackwell.
     #
     # nvidia-cuda-{nvcc,runtime,cccl}==13.0.*: Blackwell/sm_120 needs a CUDA >=12.9
     # toolkit for FlashInfer/torch.compile JIT (see docs/BLACKWELL_CUDA_NVCC_NCCL.md).
@@ -656,8 +654,8 @@ _ENGINE_PACKAGES = {
     # (what the guard checks), aligns with torch's cu130 build, and survives patch yanks.
     # CUDA_HOME still must point at the wheel toolkit root at deploy time (payload env).
     "vllm":    _RAY_BASE + [
-        "vllm==0.28.0",
-        "flashinfer-python==0.6.16.post3",
+        "vllm==0.29.0",
+        "flashinfer-python==0.6.18",
         "nvidia-cuda-nvcc==13.0.*",
         "nvidia-cuda-runtime==13.0.*",
         "nvidia-cuda-cccl==13.0.*",

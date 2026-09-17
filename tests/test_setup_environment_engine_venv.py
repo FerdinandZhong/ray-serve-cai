@@ -23,8 +23,8 @@ def test_clean_engine_setup_fails_when_required_bundle_install_fails(
         "vllm", setup_environment._ENGINE_PACKAGES["vllm"], venv_base=str(tmp_path)
     )
     assert len(installs) == 1
-    assert "vllm==0.28.0" in installs[0][1]
-    assert "flashinfer-python==0.6.16.post3" in installs[0][1]
+    assert "vllm==0.29.0" in installs[0][1]
+    assert "flashinfer-python==0.6.18" in installs[0][1]
     assert "nvidia-cuda-nvcc==13.0.*" in installs[0][1]
 
 
@@ -34,7 +34,7 @@ def test_existing_vllm_venv_repairs_full_bundle_in_one_transaction(
     versions = {
         "ray": "2.56.1",
         "fastapi": "0.136.3",
-        "vllm": "0.28.0",
+        "vllm": "0.29.0",
         "flashinfer-python": "0.6.18",
         "nvidia-cuda-nvcc": "12.9.0",
         "nvidia-cuda-runtime": "13.0.1",
@@ -57,7 +57,7 @@ def test_existing_vllm_venv_repairs_full_bundle_in_one_transaction(
         installed.append(specs)
         versions.update(
             {
-                "flashinfer-python": "0.6.16.post3",
+                "flashinfer-python": "0.6.18",
                 "nvidia-cuda-nvcc": "13.0.0",
             }
         )
@@ -79,8 +79,8 @@ def test_existing_vllm_venv_repairs_full_bundle_in_one_transaction(
         "ray[serve]==2.56.1",
         "protobuf>=5.29.6,<7.0",
         "fastapi==0.136.3",
-        "vllm==0.28.0",
-        "flashinfer-python==0.6.16.post3",
+        "vllm==0.29.0",
+        "flashinfer-python==0.6.18",
         "nvidia-cuda-nvcc==13.0.*",
         "nvidia-cuda-runtime==13.0.*",
         "nvidia-cuda-cccl==13.0.*",
@@ -154,11 +154,11 @@ def test_bundle_install_quotes_and_uses_one_resolver_call(monkeypatch):
     )
 
     assert setup_environment._pip_install_bundle_into_venv(
-        "/tmp/engine", ["vllm==0.28.0", "flashinfer-python==0.6.16.post3"]
+        "/tmp/engine", ["vllm==0.29.0", "flashinfer-python==0.6.18"]
     )
     assert len(commands) == 1
-    assert "vllm==0.28.0" in commands[0]
-    assert "flashinfer-python==0.6.16.post3" in commands[0]
+    assert "vllm==0.29.0" in commands[0]
+    assert "flashinfer-python==0.6.18" in commands[0]
 
 
 def test_dependency_check_without_uv_is_read_only(monkeypatch):

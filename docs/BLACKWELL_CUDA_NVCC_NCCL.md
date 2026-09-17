@@ -263,8 +263,8 @@ The blueprint owns these settings so users do not need to enter a CUDA path:
    `nvidia-cuda-nvcc==13.0.*`, `nvidia-cuda-runtime==13.0.*`,
    `nvidia-cuda-cccl==13.0.*` in `_ENGINE_PACKAGES["vllm"]` (matching torch's cu130
    and keeping nvcc↔headers on the same minor), and pins the published,
-   resolver-compatible vLLM pair: `vllm==0.28.0` with
-   `flashinfer-python==0.6.16.post3`.
+   resolver-compatible vLLM pair: `vllm==0.29.0` with
+   `flashinfer-python==0.6.18`.
 2. `ray_serve_cai/engines/vllm_engine.py` finds the toolkit under the configured
    venv and adds `CUDA_HOME` to `runtime_env.env_vars`, alongside the existing
    ninja PATH setting. This avoids depending on GPU detection inside the
