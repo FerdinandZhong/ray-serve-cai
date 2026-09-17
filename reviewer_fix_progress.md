@@ -138,19 +138,26 @@ runtime, GPU-worker environment inheritance, FlashInfer JIT, fresh AMP import,
 live dashboard panels, benchmark, and Reprise remain acceptance work. See
 `docs/validation/blueprint_acceptance.md`.
 
-Final AMP verification added two manifest contract tests and corrected the
-task/time-budget configuration above; the 98-test result above includes them.
+Final AMP verification added manifest contract tests and corrected the
+task/time-budget configuration above; the earlier 98-test result predates the
+zero-worker AMP input refinement described below.
 
 ## 5. Key facts for Track A (from `configs/ray_cluster_config.yaml`)
 
-- Head: `head_cpu:12`, `head_memory:32`; Management API `cpu:6/mem:16`.
-- Worker group `rtxpro6000-gpu-workers`: node_type `rtxpro6000-gpu-worker`, count 1, cpu 44, mem 320, gpus 2, accelerator_type RTX-PRO-6000. (`node_label` still unset — TODO.)
+- Head: `head_cpu:12`, `head_memory:32`; Management API derives a safe half-head
+  allocation after an AMP head-resource override (or can be explicitly set with
+  `RAY_MANAGEMENT_API_CPU` / `RAY_MANAGEMENT_API_MEMORY`).
+- Worker group `rtxpro6000-gpu-workers` is a zero-count AMP input template:
+  `RAY_WORKER_NODE_TYPE`, CPU, memory, GPU, and accelerator inputs define it at
+  import time. No worker is launched until the user calls the Management API.
 - CPU worker group `cpu-workers`: count 0, cpu 16, mem 32.
 - Runtimes: head = `...ml-runtime-pbj-jupyterlab-python3.11-standard:2026.04.1-b7`; worker = `...python3.11-cuda:2026.04.1-b7`.
 - `project_name: ray-cluster`; `head_app_name: ray-cluster-head` → URL `https://ray-cluster-head.<CDSW_DOMAIN>`.
-- Env overrides supported: `RAY_HEAD_CPU`, `RAY_WORKER_GPUS`, `MONITORING_*`, etc.
+- Env overrides supported: `RAY_HEAD_CPU`, `RAY_HEAD_MEMORY`,
+  `RAY_WORKER_NODE_TYPE`, `RAY_WORKER_{CPU,MEMORY,GPUS}`, `MONITORING_*`, etc.
 - Ports: ray 6379, dashboard 8265.
 
 AMP resource/timeout: setup_base_env 15min/4cpu/16GiB; setup_vllm_env 30min/4/16;
 setup_litellm_env 10min/2/8; launch_ray_cluster 20min/2/8;
-launch_monitoring 15min/2/8; amp_llm_demo 45min/1/2.
+launch_monitoring 15min/2/8; `amp_llm_demo` is created (45min/1/2) but manually
+run only after the user provisions a compatible worker.

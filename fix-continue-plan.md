@@ -56,9 +56,10 @@ Final AMP contract verification used the
 [Cloudera AMP specification](https://docs.cloudera.com/machine-learning/1.5.5/applied-ml-prototypes/topics/ml-amp-project-spec.html)
 and [JupyterLab runtime guidance](https://docs.cloudera.com/machine-learning/1.5.5/runtimes-release-notes/topics/ml-runtimes-whats-new-2025-01-1.html).
 It corrected second-valued job timeouts to minutes and replaced the final
-session with a 1 CPU/2 GiB, 45-minute job. There are now six sequential create/run
-pairs (12 tasks), with Python 3.11 runtime recommendations. The new manifest
-tests verify stage order, budgets, scripts, pairing, and default worker capacity.
+session with a 1 CPU/2 GiB, 45-minute job. There are five sequential create/run
+pairs (10 automatic tasks) plus a manually runnable Qwen demo job, with Python
+3.11 runtime recommendations. The manifest tests verify stage order, budgets,
+scripts, pairing, and a zero-worker configurable node-type template.
 Historical 11-task parse results above describe the earlier manifest only.
 Final combined regression run with the manifest tests: **98 tests passed**.
 Scoped lint and `git diff --check` passed. No fresh CAI import was run.
@@ -70,7 +71,10 @@ Scoped lint and `git diff --check` passed. No fresh CAI import was run.
   the native sampler on any isolated GPU deployment; caller overrides remain.
 - Setup enforces full package constraints in a single resolver transaction,
   reconciles existing environments, and checks transitive dependencies.
-- AMP fails on terminal deployment errors, timeouts, and invalid/empty inference.
+- The AMP import launches no workers. It accepts head CPU/memory and a
+  zero-worker worker-type template; users add their own workers through the
+  Management API before manually running the Qwen demo, which fails on terminal
+  deployment errors, timeouts, and invalid/empty inference.
   Monitoring fails when service readiness or dashboard provisioning fails.
 - README no longer presents unsupported benchmark numbers or derived cost claims.
 
@@ -108,7 +112,8 @@ reference is broken, and metadata uses the public standard-template schema.
 ### P2 — In progress: generate the Qwen empirical proof and Reprise demo
 
 1. In a sanctioned CAI project, import the AMP and retain sanitized logs for
-   the five job stages, including `launch_monitoring`, and `amp_llm_demo`.
+   five automatic job stages, including `launch_monitoring`, then add a worker
+   and run `amp_llm_demo` manually.
 2. Use the supplied running `qwen3-8-27b` application as the sole example.
    Swagger, application status, intent configuration, and a successful
    completion are now captured in

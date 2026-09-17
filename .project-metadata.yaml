@@ -10,9 +10,9 @@
 #   Stage 1  setup_base_env       /home/cdsw/.venv        (ray + core, no engines)
 #   Stage 2  setup_vllm_env       /home/cdsw/.venv-vllm   (vllm + ninja)
 #   Stage 3  setup_litellm_env    /home/cdsw/.venv-litellm
-#   Stage 4  launch_ray_cluster   head + worker CML apps, Management API up
+#   Stage 4  launch_ray_cluster   configurable head + zero-worker templates, Management API up
 #   Stage 5  launch_monitoring    Prometheus + Grafana CML apps
-#   Stage 6  amp_demo             deploy VLLM_MODEL_ID + one sample query
+#   Stage 6  amp_llm_demo         created for manual execution after a worker is added
 #
 # Workbench-injected vars (CDSW_DOMAIN, CDSW_APIV2_KEY, CDSW_PROJECT_ID,
 # CDSW_APP_*) are available to every task at runtime and are therefore NOT
@@ -26,10 +26,10 @@
 name: Ray Cluster on CAI for Micro Services
 description: >-
   Multi-engine model inference on Cloudera AI Workbench: a Ray cluster
-  (head + GPU workers) behind a single Management REST API, with vLLM and
+  (head + user-provisioned workers) behind a single Management REST API, with vLLM and
   LiteLLM engines in isolated virtualenvs, declarative GPU placement, and
-  Prometheus/Grafana monitoring. Includes a demo task that deploys
-  VLLM_MODEL_ID and runs a sample query.
+  Prometheus/Grafana monitoring. Import starts no workers; use the API to add
+  your own worker node type, then run the optional demo job.
 author: Cloudera Engineering
 date: '2026-09-16'
 specification_version: "1.0"
@@ -52,12 +52,34 @@ environment_variables:
     default: "2"
     description: Tensor-parallel size for the demo deployment (2 = one dual-GPU worker).
     required: false
-  GPU_NODE_TYPE:
-    default: "rtxpro6000-gpu-worker"
+  RAY_HEAD_CPU:
+    default: "12"
+    description: CPU cores requested for the Ray head CML Application.
+    required: false
+  RAY_HEAD_MEMORY:
+    default: "32"
+    description: Memory in GB requested for the Ray head CML Application.
+    required: false
+  RAY_WORKER_NODE_TYPE:
+    default: "gpu-worker"
     description: >-
-      Ray node_type label the demo deployment is pinned to. Must match a GPU
-      worker group in configs/ray_cluster_config.yaml; this input does not
-      create or rename worker groups.
+      Node type registered as a zero-worker template. No worker is launched
+      at import; add this type yourself through Swagger before running the demo.
+  RAY_WORKER_CPU:
+    default: "20"
+    description: Default CPU cores for workers added from the AMP node-type template.
+    required: false
+  RAY_WORKER_MEMORY:
+    default: "200"
+    description: Default memory in GB for workers added from the AMP node-type template.
+    required: false
+  RAY_WORKER_GPUS:
+    default: "2"
+    description: Default GPU count for workers added from the AMP node-type template.
+    required: false
+  RAY_WORKER_ACCELERATOR_TYPE:
+    default: "RTX-PRO-6000"
+    description: Optional Ray accelerator_type label for the worker template (for example L40S).
     required: false
   HUGGING_FACE_HUB_TOKEN:
     default: ""
@@ -116,7 +138,7 @@ tasks:
     cpu: 2
     memory: 8
     timeout: 20
-    description: "Start Ray cluster with configured head and worker nodes"
+    description: "Start configurable Ray head and register zero-worker node-type templates"
   - type: run_job
     entity_label: amp-launch-ray-cluster
     wait_for: true
@@ -135,8 +157,9 @@ tasks:
     entity_label: amp-launch-monitoring
     wait_for: true
 
-  # ── Stage 6: LLM demo (R3: deploy a model and query it) ────────────────────
-  # Completes only after the model is RUNNING and returns a non-empty completion.
+  # ── Stage 6: manual LLM demo ───────────────────────────────────────────────
+  # Deliberately created but not run: import allocates no worker capacity.
+  # Add a worker via Swagger, then run this job to deploy and query VLLM_MODEL_ID.
   - type: create_job
     name: amp_llm_demo
     entity_label: amp-llm-demo
@@ -146,6 +169,3 @@ tasks:
     memory: 2
     gpu: 0
     timeout: 45
-  - type: run_job
-    entity_label: amp-llm-demo
-    wait_for: true

@@ -23,6 +23,7 @@ Usage:
 import json
 import logging
 import os
+import re
 import sys
 import time
 import yaml
@@ -273,6 +274,8 @@ def load_config():
         ('RAY_NUM_WORKERS',    'num_workers'),
         ('RAY_HEAD_CPU',       'head_cpu'),
         ('RAY_HEAD_MEMORY',    'head_memory'),
+        ('RAY_MANAGEMENT_API_CPU', 'management_api_cpu'),
+        ('RAY_MANAGEMENT_API_MEMORY', 'management_api_memory'),
         ('RAY_WORKER_CPU',     'worker_cpu'),
         ('RAY_WORKER_MEMORY',  'worker_memory'),
         ('RAY_WORKER_GPUS',    'worker_gpus'),
@@ -331,6 +334,65 @@ def load_config():
             _mon['grafana_iframe_host'] = _mon['grafana_host']
 
     return config
+
+
+def build_worker_groups(ray_config: dict) -> list[WorkerGroupConfig]:
+    """Build worker-group launch templates from configuration.
+
+    An explicit YAML ``worker_groups`` list describes the supported node types.
+    A group marked ``input_template: true`` is a zero-worker template whose
+    shape can be selected at AMP import using ``RAY_WORKER_*`` variables.  It
+    is registered on the head, but never creates a CML worker by itself.
+    """
+    if not ray_config.get('worker_groups'):
+        node_type = (
+            ray_config['worker_node_type']
+            or ("gpu-worker" if ray_config['worker_gpus'] > 0 else "cpu-worker")
+        )
+        return [WorkerGroupConfig(
+            name="workers",
+            node_type=node_type,
+            count=ray_config['num_workers'],
+            cpu=ray_config['worker_cpu'],
+            memory=ray_config['worker_memory'],
+            gpus=ray_config['worker_gpus'],
+        )]
+
+    groups = []
+    for definition in ray_config['worker_groups']:
+        group = WorkerGroupConfig(
+            name=definition['name'],
+            node_type=definition['node_type'],
+            count=definition['count'],
+            cpu=definition['cpu'],
+            memory=definition['memory'],
+            gpus=definition.get('gpus', 0),
+            accelerator_type=definition.get('accelerator_type'),
+            node_label=definition.get('node_label'),
+            runtime_identifier=definition.get('runtime_identifier'),
+        )
+        if definition.get('input_template'):
+            # These are intentionally applied only to the marked template.
+            # Other YAML groups remain stable cluster administrator defaults.
+            input_node_type = os.environ.get('RAY_WORKER_NODE_TYPE', group.node_type)
+            if not re.fullmatch(r"[A-Za-z0-9._-]+", input_node_type):
+                raise ValueError(
+                    "RAY_WORKER_NODE_TYPE must contain only letters, digits, '.', '-', '_'"
+                )
+            group.node_type = input_node_type
+            for env_var, attr in [
+                ('RAY_WORKER_CPU', 'cpu'),
+                ('RAY_WORKER_MEMORY', 'memory'),
+                ('RAY_WORKER_GPUS', 'gpus'),
+            ]:
+                value = os.environ.get(env_var)
+                if value is not None:
+                    setattr(group, attr, int(value))
+            group.accelerator_type = os.environ.get(
+                'RAY_WORKER_ACCELERATOR_TYPE', group.accelerator_type
+            )
+        groups.append(group)
+    return groups
 
 
 def _wait_for_management_api(cluster_info: dict, timeout: int = 300) -> str:
@@ -427,38 +489,17 @@ def main():
     head_memory = ray_config['head_memory']
     mgmt_cpu    = ray_config['management_api_cpu']    or max(1, head_cpu // 2)
     mgmt_memory = ray_config['management_api_memory'] or max(4, head_memory // 2)
+    if mgmt_cpu > head_cpu or mgmt_memory > head_memory:
+        raise ValueError(
+            "Management API resources must fit within the head node: "
+            f"head={head_cpu} CPU/{head_memory} GB, "
+            f"management={mgmt_cpu} CPU/{mgmt_memory} GB. "
+            "Adjust RAY_HEAD_* or RAY_MANAGEMENT_API_* values."
+        )
 
     # ── Build worker groups ───────────────────────────────────────────────────
-    # Advanced: explicit worker_groups list from YAML takes priority.
-    # Simple:   build one group from the flat num_workers / worker_* params.
-    if ray_config.get('worker_groups'):
-        worker_groups = [
-            WorkerGroupConfig(
-                name=g['name'],
-                node_type=g['node_type'],
-                count=g['count'],
-                cpu=g['cpu'],
-                memory=g['memory'],
-                gpus=g.get('gpus', 0),
-                accelerator_type=g.get('accelerator_type'),
-                node_label=g.get('node_label'),
-                runtime_identifier=g.get('runtime_identifier'),
-            )
-            for g in ray_config['worker_groups']
-        ]
-    else:
-        node_type = (
-            ray_config['worker_node_type']
-            or ("gpu-worker" if ray_config['worker_gpus'] > 0 else "cpu-worker")
-        )
-        worker_groups = [WorkerGroupConfig(
-            name="workers",
-            node_type=node_type,
-            count=ray_config['num_workers'],
-            cpu=ray_config['worker_cpu'],
-            memory=ray_config['worker_memory'],
-            gpus=ray_config['worker_gpus'],
-        )]
+    # Explicit YAML groups are supported alongside a zero-worker AMP template.
+    worker_groups = build_worker_groups(ray_config)
 
     print("\n🎯 Ray Cluster Configuration:")
     print(f"   Head Node     : {head_cpu} CPU, {head_memory} GB RAM  (no GPU)")

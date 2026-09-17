@@ -83,13 +83,22 @@ The fastest way to see this running is a one-click AMP import:
 
 1. **Import as a prototype** — in CAI Workbench, create a project from this
    repository. The [`.project-metadata.yaml`](.project-metadata.yaml) manifest
-   then runs the full chain automatically: base venv → vLLM venv → LiteLLM
-   venv → Ray cluster (head + GPU workers) → Prometheus/Grafana, and finally
-   deploys `VLLM_MODEL_ID` (default `Qwen/Qwen3.8-27B-FP8`, TP=2) and runs a
-   sample query.
-2. **Open the head app** — `https://ray-cluster-head.<CDSW_DOMAIN>`: chat UI
+   then runs the infrastructure chain automatically: base venv → vLLM venv →
+   LiteLLM venv → a configurable Ray head → Prometheus/Grafana. It launches
+   **no workers**. At import, choose `RAY_HEAD_CPU`/`RAY_HEAD_MEMORY` for the
+   head resource pool and `RAY_WORKER_NODE_TYPE` (plus its CPU, memory, GPU,
+   and accelerator-type fields) for the zero-worker template.
+2. **Add your worker** — open Swagger and use `POST /api/v1/resources/nodes`
+   with the imported `RAY_WORKER_NODE_TYPE`; it uses the template defaults but
+   accepts per-node CPU, memory, GPU, runtime, and node-label overrides. For a
+   wholly new shape, first use `POST /api/v1/resources/node-types`, then add
+   nodes of that type. This is the point at which your worker quota is used.
+3. **Run the optional Qwen job** — run `amp_llm_demo` after a compatible GPU
+   worker is ready. It deploys `VLLM_MODEL_ID` (default
+   `Qwen/Qwen3.8-27B-FP8`, TP=2) and runs a sample query.
+4. **Open the head app** — `https://ray-cluster-head.<CDSW_DOMAIN>`: chat UI
    at `/`, interactive Swagger at `/docs`.
-3. **Deploy & query any model** — `POST /api/v1/applications` with any
+5. **Deploy & query any model** — `POST /api/v1/applications` with any
    HuggingFace model ID, then query it with the OpenAI client
    (see [Quick start](#quick-start)).
 

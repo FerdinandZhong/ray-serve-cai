@@ -2,8 +2,8 @@
 """
 AMP demo task: deploy a model via the Management API and run one sample query.
 
-Runs as the final create/run job pair in `.project-metadata.yaml`, i.e. after
-the Ray cluster is up. Uses only workbench-injected env vars:
+Is created by the AMP import and deliberately run manually after the user has
+added a GPU worker through the Management API. Uses only workbench-injected env vars:
 
     CDSW_DOMAIN        → head URL  https://ray-cluster-head.<CDSW_DOMAIN>
     CDSW_APIV2_KEY     → Authorization: Bearer for the Management API
@@ -11,7 +11,7 @@ the Ray cluster is up. Uses only workbench-injected env vars:
 Configurable (AMP environment_variables, see .project-metadata.yaml):
     VLLM_MODEL_ID           (default Qwen/Qwen3.8-27B-FP8)
     TENSOR_PARALLEL_SIZE    (default 2)
-    GPU_NODE_TYPE           (default rtxpro6000-gpu-worker)
+    RAY_WORKER_NODE_TYPE    (default gpu-worker)
     HUGGING_FACE_HUB_TOKEN  (default "" — gated models only)
 
 Exit codes: 0 = the model reached RUNNING and returned a non-empty completion;
@@ -72,7 +72,7 @@ def main() -> int:
                "Content-Type": "application/json"}
     model = os.environ.get("VLLM_MODEL_ID", "Qwen/Qwen3.8-27B-FP8")
     tp = int(os.environ.get("TENSOR_PARALLEL_SIZE", "2"))
-    node_type = os.environ.get("GPU_NODE_TYPE", "rtxpro6000-gpu-worker")
+    node_type = os.environ.get("RAY_WORKER_NODE_TYPE", "gpu-worker")
     hf_token = os.environ.get("HUGGING_FACE_HUB_TOKEN", "").strip()
 
     print(f"Management API : {base}")
