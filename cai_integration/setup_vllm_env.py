@@ -83,7 +83,7 @@ def main():
     # `ninja` wheels install the real binary only into the package's BIN_DIR and
     # skip the <venv>/bin console-script shim, so PATH lookups fail with
     # `FileNotFoundError: 'ninja'` even though the package IS installed (and thus
-    # passes the _PRESENCE_CRITICAL check). Catch + repair that here at build
+    # passes package-version checks). Catch + repair that here at build
     # time rather than at deploy time.
     if not _ensure_ninja_resolvable(venv_python, _VENV_DIR):
         sys.exit(1)
@@ -113,7 +113,14 @@ def _ensure_ninja_resolvable(venv_python: str, venv_dir: str) -> bool:
         "    info['error'] = repr(e)\n"
         "print(json.dumps(info))\n"
     )
-    res = subprocess.run([venv_python, "-c", probe], capture_output=True, text=True)
+    # The job's own PATH doesn't include <venv>/bin (the venv isn't activated),
+    # so a bare shutil.which('ninja') here is always None even when the real
+    # console-script is correctly installed. Prepend <venv>/bin so this probe
+    # matches the runtime PATH vLLMEngine actually uses — otherwise every
+    # build falls into the "shim missing" repair branch below unconditionally.
+    probe_env = dict(os.environ)
+    probe_env["PATH"] = os.path.dirname(venv_python) + os.pathsep + probe_env.get("PATH", "")
+    res = subprocess.run([venv_python, "-c", probe], capture_output=True, text=True, env=probe_env)
     try:
         info = json.loads((res.stdout or "").strip().splitlines()[-1])
     except Exception:
@@ -130,6 +137,12 @@ def _ensure_ninja_resolvable(venv_python: str, venv_dir: str) -> bool:
         # consumer (torch, FlashInfer) resolves it via PATH, not just our engine.
         src = os.path.join(bin_dir, "ninja")
         dst = os.path.join(venv_dir, "bin", "ninja")
+        if os.path.realpath(src) == os.path.realpath(dst) or os.path.abspath(src) == os.path.abspath(dst):
+            # ninja.BIN_DIR IS <venv>/bin (the normal case) — the real binary is
+            # already there. which() only missed it because the probe's PATH was
+            # wrong (see caller); don't self-symlink over the real binary.
+            print(f"✅ ninja already resolvable at {dst} (BIN_DIR == venv bin)")
+            return True
         try:
             os.makedirs(os.path.dirname(dst), exist_ok=True)
             if os.path.islink(dst) or os.path.exists(dst):

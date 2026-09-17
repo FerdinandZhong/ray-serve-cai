@@ -29,6 +29,8 @@ import asyncio
 import inspect
 import logging
 import os
+import sys
+from pathlib import Path
 from typing import Any, Dict, List, Optional
 
 from fastapi import FastAPI
@@ -72,6 +74,77 @@ except ImportError as exc:
 # _load_vllm_protocol(), and request bodies are validated at request time.
 
 logger = logging.getLogger(__name__)
+
+
+def _find_venv_cuda_toolkit_root(venv_root: Path) -> Optional[Path]:
+    """Return the CUDA wheel toolkit root containing ``bin/nvcc``, if present."""
+    candidates = sorted(
+        venv_root.glob("lib/python*/site-packages/nvidia/cu*/bin/nvcc")
+    )
+    return candidates[0].parent.parent if candidates else None
+
+
+def _visible_cuda_compute_capability_major() -> Optional[int]:
+    """Read the visible GPU major capability without making torch a head dependency."""
+    try:
+        import torch
+
+        if torch.cuda.is_available():
+            return int(torch.cuda.get_device_capability()[0])
+    except Exception as exc:  # pragma: no cover - hardware/runtime dependent
+        logger.debug("Could not inspect CUDA compute capability: %s", exc)
+    return None
+
+
+def _active_venv_roots() -> list[Path]:
+    """Return possible active venv roots without resolving interpreter symlinks."""
+    roots = [Path(sys.prefix)]
+    if virtual_env := os.environ.get("VIRTUAL_ENV"):
+        # Ray's py_executable can preserve VIRTUAL_ENV from the parent process,
+        # so the interpreter's actual prefix must take precedence.
+        roots.append(Path(virtual_env))
+    roots.append(Path(sys.executable).parent.parent)
+
+    # Preserve precedence while avoiding repeated filesystem scans. Resolving
+    # sys.executable is intentionally avoided: venv/bin/python is commonly a
+    # symlink to the base interpreter, which would point outside the venv.
+    return list(dict.fromkeys(roots))
+
+
+def _configure_flashinfer_jit_environment() -> None:
+    """Prepare FlashInfer JIT in the actor before EngineCore inherits its env.
+
+    The CUDA toolkit wheels installed by ``setup_vllm_env.py`` are deliberately
+    version-aligned. They live inside the actor venv, but FlashInfer only uses
+    them when ``CUDA_HOME`` points to the toolkit root. On Blackwell (sm_120+),
+    fall back to vLLM's native sampler only when no local toolkit is available;
+    this avoids FlashInfer's unsupported-toolkit JIT path while leaving older
+    architectures (including L40S/sm_89) unchanged.
+    """
+    toolkit_root = next(
+        (
+            toolkit
+            for root in _active_venv_roots()
+            if (toolkit := _find_venv_cuda_toolkit_root(root)) is not None
+        ),
+        None,
+    )
+    if toolkit_root:
+        if os.environ.get("CUDA_HOME"):
+            logger.info("Preserving caller-provided CUDA_HOME=%s", os.environ["CUDA_HOME"])
+        else:
+            os.environ["CUDA_HOME"] = str(toolkit_root)
+            logger.info("Set CUDA_HOME to venv CUDA toolkit: %s", toolkit_root)
+        return
+
+    capability_major = _visible_cuda_compute_capability_major()
+    if capability_major is not None and capability_major >= 12:
+        if "VLLM_USE_FLASHINFER_SAMPLER" not in os.environ:
+            os.environ["VLLM_USE_FLASHINFER_SAMPLER"] = "0"
+            logger.warning(
+                "No venv CUDA toolkit found on sm_120+; disabling FlashInfer sampler "
+                "to avoid a runtime JIT failure"
+            )
 
 
 def _load_vllm_serving():
@@ -580,6 +653,11 @@ class VLLMEngine:
                     ".venv-vllm (it is listed in _ENGINE_PACKAGES['vllm'])."
                 )
 
+            # FlashInfer's JIT subprocess inherits this actor environment. Point
+            # it at the venv CUDA toolkit when present; on Blackwell, safely use
+            # vLLM's sampler if the required toolkit cannot be located.
+            _configure_flashinfer_jit_environment()
+
             # attention_backend must be set as an env var before the engine
             # starts — vLLM's EngineCore subprocess inherits it from us.
             attention_backend = engine_config.pop("attention_backend", None)
@@ -1061,6 +1139,24 @@ def create_vllm_deployment(
         env_vars.setdefault(
             "PATH", f"{venv_path}/bin{_os.pathsep}{_os.environ.get('PATH', '')}"
         )
+        # Put FlashInfer's JIT configuration in the Ray runtime environment,
+        # rather than relying only on VLLMEngine.__init__. The TP executors are
+        # child Ray actors created in GPU placement-group bundles and inherit
+        # this runtime environment before importing vLLM/FlashInfer.
+        _cuda_toolkit = _find_venv_cuda_toolkit_root(Path(venv_path))
+        if _cuda_toolkit is not None:
+            env_vars.setdefault("CUDA_HOME", str(_cuda_toolkit))
+        else:
+            # The scheduler actor has no visible GPU for TP deployments, so it
+            # cannot reliably identify Blackwell. A missing pinned toolkit is a
+            # sufficient reason to use vLLM's native sampler on every GPU; an
+            # explicit caller value still takes precedence via setdefault.
+            env_vars.setdefault("VLLM_USE_FLASHINFER_SAMPLER", "0")
+            logger.warning(
+                "No CUDA toolkit wheel found under %s; disabling the FlashInfer "
+                "sampler in the Ray worker runtime environment",
+                venv_path,
+            )
         logger.info("Using isolated venv: %s (venv bin prepended to worker PATH)", venv_path)
     if env_vars:
         rt_env["env_vars"] = env_vars

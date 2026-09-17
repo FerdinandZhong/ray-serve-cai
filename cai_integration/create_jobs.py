@@ -15,10 +15,21 @@ import argparse
 import json
 import os
 import sys
-import yaml
-import requests
 from pathlib import Path
-from typing import Dict, Optional, Any
+from typing import Any, Optional
+
+import requests
+import yaml
+
+try:
+    from cai_integration.cml_env import resolve_cml_connection
+except ModuleNotFoundError as exc:
+    # ``python cai_integration/create_jobs.py`` puts cai_integration/, not the
+    # repository root, on sys.path.  Keep that workflow invocation working
+    # while retaining the package import used by ``python -m`` and tests.
+    if exc.name != "cai_integration":
+        raise
+    from cml_env import resolve_cml_connection
 
 
 class JobManager:
@@ -26,12 +37,13 @@ class JobManager:
 
     def __init__(self):
         """Initialize CML REST API client."""
-        self.cml_host = os.environ.get("CML_HOST")
-        self.api_key = os.environ.get("CML_API_KEY")
+        connection = resolve_cml_connection()
+        self.cml_host = connection.host
+        self.api_key = connection.api_key
 
         if not all([self.cml_host, self.api_key]):
             print("❌ Error: Missing required environment variables")
-            print("   Required: CML_HOST, CML_API_KEY")
+            print("   Required: CML_HOST/CML_API_KEY or CDSW_DOMAIN/CDSW_APIV2_KEY")
             sys.exit(1)
 
         self.api_url = f"{self.cml_host.rstrip('/')}/api/v2"
@@ -72,7 +84,7 @@ class JobManager:
             print(f"❌ Request error: {e}")
             return None
 
-    def load_jobs_config(self) -> Dict[str, Any]:
+    def load_jobs_config(self) -> dict[str, Any]:
         """Load jobs configuration from YAML."""
         config_path = Path(__file__).parent / "jobs_config.yaml"
 
@@ -113,7 +125,7 @@ class JobManager:
         print("❌ No runtime_identifier found in environment or config")
         return None
 
-    def list_jobs(self, project_id: str) -> Dict[str, str]:
+    def list_jobs(self, project_id: str) -> dict[str, str]:
         """List all jobs in a project."""
         print("📋 Listing existing jobs...")
         result = self.make_request("GET", f"projects/{project_id}/jobs")
@@ -130,7 +142,7 @@ class JobManager:
     def create_job(
         self,
         project_id: str,
-        job_config: Dict[str, Any],
+        job_config: dict[str, Any],
         parent_job_id: Optional[str] = None,
         runtime_identifier: Optional[str] = None,
     ) -> Optional[str]:
@@ -159,11 +171,11 @@ class JobManager:
             print(f"      ✅ Created: {job_id}")
             return job_id
         else:
-            print(f"      ❌ Failed to create job")
+            print("      ❌ Failed to create job")
             return None
 
     def update_job(
-        self, project_id: str, job_id: str, job_config: Dict[str, Any],
+        self, project_id: str, job_id: str, job_config: dict[str, Any],
         runtime_identifier: Optional[str] = None
     ) -> bool:
         """Update an existing job in the CML project."""
@@ -189,12 +201,12 @@ class JobManager:
             print(f"      ✅ Updated: {job_id}")
             return True
         else:
-            print(f"      ❌ Failed to update job")
+            print("      ❌ Failed to update job")
             return False
 
     def create_or_update_jobs(
-        self, project_id: str, jobs_config: Dict
-    ) -> Dict[str, str]:
+        self, project_id: str, jobs_config: dict
+    ) -> dict[str, str]:
         """Create or update all jobs from configuration."""
         print("\n📋 Creating/Updating Jobs")
         print("-" * 70)

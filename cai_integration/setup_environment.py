@@ -12,9 +12,10 @@ Run this as a CML job to prepare the environment for Ray cluster deployment.
 
 import os
 import re
-import sys
+import shlex
 import shutil
 import subprocess
+import sys
 from pathlib import Path
 
 
@@ -154,6 +155,44 @@ def _pip_install_into_venv(venv_dir: str, spec: str) -> bool:
     env = "PIP_USER=0"
     run_command(f"{env} {py} -m ensurepip --upgrade")  # idempotent if pip present
     return run_command(f"{env} {py} -m pip install '{spec}'")
+
+
+def _pip_install_bundle_into_venv(venv_dir: str, specs: list[str]) -> bool:
+    """Install requirements in one resolver transaction.
+
+    Installing one requirement per command can silently upgrade/downgrade a
+    dependency chosen for an earlier requirement.  A single invocation makes
+    the resolver consider the complete engine contract together.
+    """
+    if not specs:
+        return True
+    requirements = " ".join(shlex.quote(spec) for spec in specs)
+    cmd = _resolve_uv()
+    if cmd:
+        return run_command(
+            f"{cmd} pip install --python {venv_dir}/bin/python {requirements}"
+        )
+    py = f"{venv_dir}/bin/python"
+    print("   uv unavailable — installing via the venv's own pip (ensurepip)")
+    env = "PIP_USER=0"
+    run_command(f"{env} {py} -m ensurepip --upgrade")
+    return run_command(f"{env} {py} -m pip install {requirements}")
+
+
+def _venv_dependencies_consistent(venv_dir: str) -> bool:
+    """Check the target venv for broken or conflicting transitive dependencies."""
+    cmd = _resolve_uv()
+    if cmd:
+        return run_command(f"{cmd} pip check --python {venv_dir}/bin/python")
+    py = f"{venv_dir}/bin/python"
+    print("   uv unavailable — validating dependencies via existing target-venv pip")
+    if run_command(f"PIP_USER=0 {py} -m pip check"):
+        return True
+    print(
+        f"❌ Could not validate dependencies in {venv_dir}; target pip is missing "
+        "or reported an inconsistent environment"
+    )
+    return False
 
 
 def is_venv_ready(venv_dir):
@@ -392,42 +431,42 @@ def _pin_pkgs_to_base(packages: list, pkg_names: list[str]) -> list:
     return pinned
 
 
-# Packages that MUST match the base env exactly in every engine venv, because
-# Ray cloudpickles objects on the head and unpickles them inside the actor venv:
-#   ray:     worker and head must run the same Ray (DeploymentConfig proto)
-#   fastapi: renamed internals (e.g. '_IncludedRouter') break unpickling
-# protobuf is intentionally excluded — it is range-pinned (<7), not tied to an
-# exact base version.
-_BASE_MATCHED_PKGS = ("ray", "fastapi")
+def _requirement_satisfied(venv_dir: str, spec: str) -> bool:
+    """Return whether the installed distribution satisfies *spec*."""
+    try:
+        from packaging.requirements import Requirement
+    except ImportError:
+        # packaging ships with pip even on lean bootstrap images.
+        from pip._vendor.packaging.requirements import Requirement
 
-# Build tools that provide a console script spawned as a subprocess at runtime
-# (e.g. FlashInfer's JIT shells out to `ninja`). They must be present ON DISK in
-# the engine venv — a venv created before they were added to the package set
-# would miss them, so the ready-path reconcile reinstalls them if absent.
-_PRESENCE_CRITICAL = ("ninja",)
+    requirement = Requirement(spec)
+    installed = _venv_pkg_version(venv_dir, requirement.name)
+    return installed is not None and (
+        not requirement.specifier or requirement.specifier.contains(installed)
+    )
 
 
-def _spec_name(spec: str) -> str:
-    """Bare, lowercase distribution name from a requirement spec string."""
-    return re.split(r"[<>=!~\[ ]", spec.strip(), maxsplit=1)[0].lower()
+def _resolved_engine_packages(packages: list[str]) -> list[str]:
+    """Apply head/worker compatibility pins before resolving an engine bundle."""
+    packages = _pin_ray_to_base(packages, venv_ray_version(_BASE_VENV))
+    return _pin_pkgs_to_base(packages, ["fastapi"])
 
 
 def _reconcile_engine_venv(
-    engine: str, venv_dir: str, lock_path: str, packages: list = ()
+    engine: str,
+    venv_dir: str,
+    lock_path: str,
+    packages: list = (),
+    *,
+    lock_held: bool = False,
 ) -> bool:
     """Reconcile an *existing* venv with the base env, in place.
 
-    Two independent repairs, so a venv created before the current rules
-    self-heals instead of failing at deploy:
-
-    1. **Version match** — re-pin ``ray`` + ``fastapi`` to the base env's exact
-       versions. A drifted fastapi lacks a class the head pickled, so the Serve
-       replica dies in ``__init__`` with an AttributeError on
-       ``fastapi.routing._IncludedRouter``.
-    2. **Presence** — install any ``_PRESENCE_CRITICAL`` build tool (e.g.
-       ``ninja``) that is missing. FlashInfer's JIT shells out to ``ninja``; a
-       venv predating the ninja addition would fail with
-       ``FileNotFoundError: 'ninja'`` at first inference.
+    Every declared top-level requirement is checked, including engine-specific
+    version ranges and build/toolkit packages. If any are missing or out of
+    range, the complete bundle is resolved together and installed in place.
+    Finally, a target-venv dependency check catches invalid transitive state
+    that top-level version checks alone cannot detect.
 
     The *checks* run lock-free (cheap, read-only). Only when a repair is needed
     do we take the NFS flock and reinstall — re-checking under the lock so
@@ -435,53 +474,43 @@ def _reconcile_engine_venv(
     """
     import fcntl
 
-    drift = []
-    for pkg in _BASE_MATCHED_PKGS:
-        base_v = _base_pkg_version(pkg)
-        engine_v = _venv_pkg_version(venv_dir, pkg)
-        if base_v and engine_v and base_v != engine_v:
-            drift.append((pkg, engine_v, base_v))
+    required = _resolved_engine_packages(list(packages))
+    unsatisfied = [spec for spec in required if not _requirement_satisfied(venv_dir, spec)]
+    if not unsatisfied:
+        return _venv_dependencies_consistent(venv_dir)
 
-    missing = [
-        spec
-        for spec in packages
-        if _spec_name(spec) in _PRESENCE_CRITICAL
-        and _venv_pkg_version(venv_dir, _spec_name(spec)) is None
-    ]
-
-    if not drift and not missing:
-        return True
-
-    lock_fd = open(lock_path, "w")
+    lock_fd = None if lock_held else open(lock_path, "w")
     try:
-        fcntl.flock(lock_fd, fcntl.LOCK_EX)
-        ok = True
-        for pkg, engine_v, base_v in drift:
-            # Another pod may have repinned while we waited for the lock.
-            if _venv_pkg_version(venv_dir, pkg) == base_v:
-                continue
-            # ray needs the [serve] extra so the reinstall keeps serve deps.
-            spec = f"ray[serve]=={base_v}" if pkg == "ray" else f"{pkg}=={base_v}"
+        if lock_fd is not None:
+            fcntl.flock(lock_fd, fcntl.LOCK_EX)
+        # Another pod may have repaired the venv while this process waited.
+        unsatisfied = [
+            spec for spec in required if not _requirement_satisfied(venv_dir, spec)
+        ]
+        if not unsatisfied:
+            return _venv_dependencies_consistent(venv_dir)
+        print(f"⚠️  {engine} venv does not satisfy: {', '.join(unsatisfied)}")
+        if not _pip_install_bundle_into_venv(venv_dir, required):
+            print(f"❌ Failed to reconcile the required {engine} package bundle")
+            return False
+        remaining = [
+            spec for spec in required if not _requirement_satisfied(venv_dir, spec)
+        ]
+        if remaining:
             print(
-                f"⚠️  {engine} venv: {pkg} {engine_v} != base env {base_v} — "
-                f"repinning to match the head (prevents cloudpickle mismatch)"
+                f"❌ {engine} venv still violates required packages after install: "
+                f"{', '.join(remaining)}"
             )
-            if not _pip_install_into_venv(venv_dir, spec):
-                print(f"❌ Failed to repin {pkg} in {engine} venv")
-                ok = False
-        for spec in missing:
-            if _venv_pkg_version(venv_dir, _spec_name(spec)) is not None:
-                continue  # installed by another pod while we waited
-            print(f"⚠️  {engine} venv: missing build tool {spec!r} — installing")
-            if not _pip_install_into_venv(venv_dir, spec):
-                print(f"❌ Failed to install {spec} in {engine} venv")
-                ok = False
-        if ok:
-            print(f"✅ {engine} venv reconciled with base env")
-        return ok
+            return False
+        if not _venv_dependencies_consistent(venv_dir):
+            print(f"❌ {engine} venv has inconsistent transitive dependencies")
+            return False
+        print(f"✅ {engine} venv reconciled with required package bundle")
+        return True
     finally:
-        fcntl.flock(lock_fd, fcntl.LOCK_UN)
-        lock_fd.close()
+        if lock_fd is not None:
+            fcntl.flock(lock_fd, fcntl.LOCK_UN)
+            lock_fd.close()
 
 
 def setup_engine_venv(
@@ -530,7 +559,9 @@ def setup_engine_venv(
         fcntl.flock(lock_fd, fcntl.LOCK_EX)
         if is_venv_ready(venv_dir):
             print(f"✅ {engine} venv created by another process")
-            return True
+            return _reconcile_engine_venv(
+                engine, venv_dir, lock_path, packages, lock_held=True
+            )
 
         if not run_command(f"{_ensure_uv()} venv {python_flag} {venv_dir}".strip()):
             print(f"❌ Failed to create {engine} venv")
@@ -539,20 +570,27 @@ def setup_engine_venv(
         # Pin Ray to the base env's exact version so the worker actor and the
         # cluster head never run mismatched Ray (see _pin_ray_to_base).
         base_version = venv_ray_version(_BASE_VENV)
-        packages = _pin_ray_to_base(packages, base_version)
-        # Pin fastapi: Ray cloudpickles the FastAPI app on the head and
-        # unpickles it in the actor; mismatched versions cause AttributeError
-        # on renamed internal classes (e.g. '_IncludedRouter').
-        packages = _pin_pkgs_to_base(packages, ["fastapi"])
-
-        uv_install = f"{_ensure_uv()} pip install --python {venv_dir}/bin/python"
-        for pkg in packages:
-            if not run_command(f"{uv_install} '{pkg}'"):
-                print(f"⚠️  {pkg} failed for {engine} venv — continuing")
+        packages = _resolved_engine_packages(list(packages))
+        if not _pip_install_bundle_into_venv(venv_dir, packages):
+            print(f"❌ Failed to install the required {engine} package bundle")
+            return False
 
         ready = is_venv_ready(venv_dir)
         if not ready:
             print(f"❌ {engine} venv not ready after install")
+            return False
+
+        unsatisfied = [
+            spec for spec in packages if not _requirement_satisfied(venv_dir, spec)
+        ]
+        if unsatisfied:
+            print(
+                f"❌ {engine} venv violates required packages after install: "
+                f"{', '.join(unsatisfied)}"
+            )
+            return False
+        if not _venv_dependencies_consistent(venv_dir):
+            print(f"❌ {engine} venv has inconsistent transitive dependencies")
             return False
 
         # Hard gate: the engine venv's Ray MUST match the base env's Ray.
@@ -602,12 +640,34 @@ _RAY_BASE = [
 # CML jobs import from here rather than redefining their own lists, so a change to
 # _RAY_BASE (e.g. a Ray bump) propagates to every engine venv automatically.
 _ENGINE_PACKAGES = {
-    # flashinfer-python is pinned to >=0.6.16.post4: 0.6.16 through post3
-    # annotate `array.array[int]` in flashinfer/comm/fd_exchange.py, which is only
-    # subscriptable on Python 3.12+. On the 3.11 runtime that import raises
-    # `TypeError: type 'array.array' is not subscriptable`, killing vLLM's
-    # EngineCore at startup. post4 adds `from __future__ import annotations`.
-    "vllm":    _RAY_BASE + ["vllm>=0.13.0", "flashinfer-python>=0.6.16.post4", "ninja"],
+    # flashinfer-python is capped to the 0.6.16 line (>=post4, <0.6.17):
+    #   - Lower bound post4: 0.6.16 through post3 annotate `array.array[int]` in
+    #     flashinfer/comm/fd_exchange.py, only subscriptable on Python 3.12+. On the
+    #     3.11 runtime that import raises `TypeError: type 'array.array' is not
+    #     subscriptable`, killing EngineCore. post4 adds `from __future__ import
+    #     annotations`.
+    #   - Upper bound <0.6.17: without it, pip drifts to 0.6.18.x, which bundles a
+    #     newer CCCL whose cuda_toolkit.h enforces a strict nvcc==runtime-headers
+    #     version guard. Combined with the unpinned CUDA wheels below that drifted to
+    #     mismatched minors, this fired `CUDA compiler and CUDA toolkit headers are
+    #     incompatible` during FlashInfer's sm_120 JIT on Blackwell. Staying on the
+    #     0.6.16 line also matches what vLLM 0.28.x expects (==0.6.16.post3).
+    #
+    # nvidia-cuda-{nvcc,runtime,cccl}==13.0.*: Blackwell/sm_120 needs a CUDA >=12.9
+    # toolkit for FlashInfer/torch.compile JIT (see docs/BLACKWELL_CUDA_NVCC_NCCL.md).
+    # These wheels version independently, so an unpinned install let nvcc and the
+    # runtime headers land on different CUDA minors — tripping CCCL's compiler↔header
+    # equality guard. The `==13.0.*` prefix pin locks all three to the same major.minor
+    # (what the guard checks), aligns with torch's cu130 build, and survives patch yanks.
+    # CUDA_HOME still must point at the wheel toolkit root at deploy time (payload env).
+    "vllm":    _RAY_BASE + [
+        "vllm>=0.13.0",
+        "flashinfer-python>=0.6.16.post4,<0.6.17",
+        "nvidia-cuda-nvcc==13.0.*",
+        "nvidia-cuda-runtime==13.0.*",
+        "nvidia-cuda-cccl==13.0.*",
+        "ninja",
+    ],
     "sglang":  _RAY_BASE + ["sglang>=0.5.7"],
     "yolo":    _RAY_BASE + ["ultralytics>=8.0.0", "Pillow>=9.0.0", "opencv-python-headless>=4.8.0"],
     "mcp":     _RAY_BASE + ["mcp>=1.0.0", "httpx>=0.27.0"],
@@ -677,7 +737,7 @@ def main():
     # Create virtual environment with uv
     print("\n📝 Creating Python virtual environment...")
     if os.path.exists(venv_dir):
-        print(f"   Removing existing incomplete venv...")
+        print("   Removing existing incomplete venv...")
         run_command(f"rm -rf {venv_dir}")
 
     if not run_command(f"{uv} venv {venv_dir}"):

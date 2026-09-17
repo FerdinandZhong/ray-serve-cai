@@ -14,8 +14,17 @@ import json
 import os
 import sys
 import time
-import requests
 from typing import Optional
+
+import requests
+
+try:
+    from cai_integration.cml_env import resolve_cml_connection
+except ModuleNotFoundError as exc:
+    # Direct script execution only adds cai_integration/ to sys.path.
+    if exc.name != "cai_integration":
+        raise
+    from cml_env import resolve_cml_connection
 
 
 class ProjectSetup:
@@ -23,15 +32,16 @@ class ProjectSetup:
 
     def __init__(self):
         """Initialize CML REST API client."""
-        self.cml_host = os.environ.get("CML_HOST")
-        self.api_key = os.environ.get("CML_API_KEY")
+        connection = resolve_cml_connection()
+        self.cml_host = connection.host
+        self.api_key = connection.api_key
         self.github_repo = os.environ.get("GITHUB_REPOSITORY")
         self.gh_pat = os.environ.get("GH_PAT") or os.environ.get("GITHUB_TOKEN")
         self.project_name = "ray-cluster"
 
         if not all([self.cml_host, self.api_key]):
             print("❌ Error: Missing required environment variables")
-            print("   Required: CML_HOST, CML_API_KEY")
+            print("   Required: CML_HOST/CML_API_KEY or CDSW_DOMAIN/CDSW_APIV2_KEY")
             sys.exit(1)
 
         self.api_url = f"{self.cml_host.rstrip('/')}/api/v2"
@@ -88,7 +98,7 @@ class ProjectSetup:
                 print(f"✅ Found existing project: {project_id}")
                 return project_id
 
-        print(f"   No existing project found")
+        print("   No existing project found")
         return None
 
     def create_project_with_git(
@@ -119,7 +129,7 @@ class ProjectSetup:
 
     def configure_project_resources(self, project_id: str) -> bool:
         """Patch project-level resource defaults (shared memory, ephemeral storage)."""
-        print(f"⚙️  Configuring project resource defaults...")
+        print("⚙️  Configuring project resource defaults...")
         result = self.make_request(
             "PATCH",
             f"projects/{project_id}",
@@ -177,7 +187,7 @@ class ProjectSetup:
 
                 # Status progression: unknown -> creating -> success/ready/running
                 if creation_status in ["unknown", "creating"]:
-                    print(f"        Still initializing...")
+                    print("        Still initializing...")
                 elif creation_status == "error":
                     print("❌ Error during git clone")
                     error_msg = result.get("error_message", "No error message")

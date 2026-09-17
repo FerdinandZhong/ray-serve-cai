@@ -15,8 +15,11 @@ ray_cluster:
   # ── Management API resources (Ray Serve deployment on the head node) ──────
   # Defaults: half of head_cpu / head_memory when omitted.
   # Must not exceed head_cpu / head_memory.
-  management_api_cpu:    6   # = head_cpu // 2
-  management_api_memory: 16  # GB  = head_memory // 2
+  # Leave unset so the launcher derives a safe half-head allocation after any
+  # AMP RAY_HEAD_CPU/RAY_HEAD_MEMORY override.  Advanced users may set
+  # RAY_MANAGEMENT_API_CPU and RAY_MANAGEMENT_API_MEMORY explicitly.
+  management_api_cpu: null
+  management_api_memory: null
 
   # ── Worker groups ─────────────────────────────────────────────────────────
   # Each group defines a node type.  Workers are registered in Ray with a
@@ -26,20 +29,25 @@ ray_cluster:
   #
   # count: workers launched automatically at cluster start.
   #        Set to 0 to register the group without launching any workers;
-  #        add workers on demand via POST /api/v1/resources/nodes/add.
+  #        add workers on demand via POST /api/v1/resources/nodes.
   #
   # runtime_identifier: overrides cai.worker_runtime_identifier per group.
   #        Use the standard (non-CUDA) image for CPU-only groups.
   worker_groups:
-    - name:      rtxpro6000-gpu-workers
-      node_type: rtxpro6000-gpu-worker
-      count:     1   # 1 dual-GPU RTX PRO 6000 worker currently running (g7e.12xlarge)
-      cpu:       44
-      memory:    320  # GB  (object_store ~44 GB + memory ~328 GB ≈ 340 GB request)
+    - name:      amp-gpu-worker-template
+      # This is an AMP input template, not a default worker allocation.
+      # RAY_WORKER_NODE_TYPE (and optional RAY_WORKER_{CPU,MEMORY,GPUS})
+      # override this definition at import.  It is registered with the head
+      # so users can create workers through the Management API afterwards.
+      input_template: true
+      node_type: gpu-worker
+      count:     0
+      cpu:       20
+      memory:    200  # GB; choose a value supported by the selected worker pool
       gpus:      2
       accelerator_type: RTX-PRO-6000  # Ray accelerator_type label (matches nvidia-smi GPU name)
       # node_label: unset — real nvidia.com/gpu.product value for this SKU not
-      # yet confirmed; add it once known (see l40-gpu-workers below for the pattern).
+      # yet confirmed; override it with RAY_WORKER_ACCELERATOR_TYPE if needed.
       # inherits cai.worker_runtime_identifier (CUDA image)
 
     - name:      cpu-workers
