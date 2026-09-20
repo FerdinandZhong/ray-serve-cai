@@ -1,7 +1,8 @@
 """AMP resource-input behavior without a live CML cluster."""
 
-import cai_integration.launch_ray_cluster as launcher
 import pytest
+
+import cai_integration.launch_ray_cluster as launcher
 
 
 def test_amp_worker_inputs_override_only_the_zero_worker_template(monkeypatch):
@@ -49,6 +50,48 @@ def test_head_resource_env_overrides_and_management_defaults(monkeypatch):
     assert config["head_memory"] == 80
     assert config["management_api_cpu"] is None
     assert config["management_api_memory"] is None
+
+
+def test_blank_amp_inputs_do_not_override_or_crash(monkeypatch):
+    """AMP exports optional fields as empty strings, not absent variables."""
+    for name in (
+        "RAY_HEAD_CPU", "RAY_HEAD_MEMORY", "RAY_MANAGEMENT_API_CPU",
+        "RAY_MANAGEMENT_API_MEMORY", "RAY_WORKER_CPU", "RAY_WORKER_MEMORY",
+        "RAY_WORKER_GPUS", "RAY_WORKER_NODE_TYPE",
+        "RAY_LAUNCH_INITIAL_WORKERS",
+        "RAY_SERVE_PROXY_HEALTH_CHECK_PERIOD_S", "MONITORING_GRAFANA_HOST",
+    ):
+        monkeypatch.setenv(name, "")
+
+    config = launcher.load_config()
+
+    assert config["head_cpu"] == 12
+    assert config["head_memory"] == 32
+    assert config["management_api_cpu"] is None
+    assert config["worker_node_type"] is None
+
+
+def test_worker_types_are_registered_without_launching_initial_workers(monkeypatch):
+    config = {
+        "launch_initial_workers": False,
+        "worker_groups": [
+            {"name": "gpu", "node_type": "gpu-worker", "count": 2,
+             "cpu": 20, "memory": 200, "gpus": 2, "input_template": True},
+        ],
+    }
+
+    groups = launcher.build_worker_groups(config)
+
+    assert len(groups) == 1
+    assert groups[0].node_type == "gpu-worker"
+    assert groups[0].count == 0
+
+
+def test_worker_launch_switch_can_reenable_configured_counts(monkeypatch):
+    monkeypatch.setenv("RAY_LAUNCH_INITIAL_WORKERS", "true")
+    config = launcher.load_config()
+
+    assert config["launch_initial_workers"] is True
 
 
 def test_amp_worker_type_rejects_unsafe_identifier(monkeypatch):

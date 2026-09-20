@@ -46,6 +46,7 @@ def test_amp_registers_a_configurable_zero_worker_template():
     manifest = yaml.safe_load((ROOT / ".project-metadata.yaml").read_text())
     cluster = yaml.safe_load((ROOT / "configs/ray_cluster_config.yaml").read_text())
     env = manifest["environment_variables"]
+    assert env["RAY_LAUNCH_INITIAL_WORKERS"]["default"] == "false"
     label = env["RAY_WORKER_NODE_TYPE"]["default"]
     tp = int(env["TENSOR_PARALLEL_SIZE"]["default"])
     assert any(

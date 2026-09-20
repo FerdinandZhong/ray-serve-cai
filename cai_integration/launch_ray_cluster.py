@@ -214,6 +214,7 @@ def load_config():
         'worker_memory':            32,
         'worker_gpus':              0,
         'worker_node_type':         None,
+        'launch_initial_workers':   True,
         'ray_port':                 6379,
         'dashboard_port':           8265,
         'metrics_port':             9090,
@@ -268,8 +269,9 @@ def load_config():
             print(f"Warning: could not load config file: {e}")
 
     # ── Step 3: env vars override everything (highest priority) ─────────────
-    # Only apply when the variable is actually set so that an absent env var
-    # does not silently zero-out a value supplied by the YAML.
+    # Only apply non-blank values. AMP renders optional input fields as empty
+    # strings when a user leaves them unset; treating that as an override would
+    # either crash int()/float() or erase the YAML configuration.
     _env_int = [
         ('RAY_NUM_WORKERS',    'num_workers'),
         ('RAY_HEAD_CPU',       'head_cpu'),
@@ -285,12 +287,28 @@ def load_config():
     ]
     for env_var, key in _env_int:
         val = os.environ.get(env_var)
-        if val is not None:
-            config[key] = int(val)
+        if val and val.strip():
+            try:
+                config[key] = int(val)
+            except ValueError as exc:
+                raise ValueError(f"{env_var} must be an integer, got {val!r}") from exc
 
     val = os.environ.get('RAY_WORKER_NODE_TYPE')
-    if val is not None:
-        config['worker_node_type'] = val
+    if val and val.strip():
+        config['worker_node_type'] = val.strip()
+
+    val = os.environ.get('RAY_LAUNCH_INITIAL_WORKERS')
+    if val and val.strip():
+        normalized = val.strip().lower()
+        if normalized in {'1', 'true', 'yes', 'on'}:
+            config['launch_initial_workers'] = True
+        elif normalized in {'0', 'false', 'no', 'off'}:
+            config['launch_initial_workers'] = False
+        else:
+            raise ValueError(
+                "RAY_LAUNCH_INITIAL_WORKERS must be true/false, got "
+                f"{val!r}"
+            )
 
     _env_float = [
         ('RAY_SERVE_PROXY_HEALTH_CHECK_PERIOD_S',  'proxy_health_check_period_s'),
@@ -300,8 +318,11 @@ def load_config():
     ]
     for env_var, key in _env_float:
         val = os.environ.get(env_var)
-        if val is not None:
-            config[key] = float(val)
+        if val and val.strip():
+            try:
+                config[key] = float(val)
+            except ValueError as exc:
+                raise ValueError(f"{env_var} must be a number, got {val!r}") from exc
 
     _mon = config.setdefault('monitoring', {
         'prometheus_host': None, 'grafana_host': None,
@@ -314,8 +335,8 @@ def load_config():
         ('MONITORING_GRAFANA_ORG_ID',      'grafana_org_id'),
     ]:
         _v = os.environ.get(_env_var)
-        if _v is not None:
-            _mon[_key] = _v
+        if _v and _v.strip():
+            _mon[_key] = _v.strip()
 
     # ── Break the launch-order cycle via deterministic URLs ──────────────────
     # The monitoring apps use fixed subdomains, so their URLs are predictable
@@ -349,10 +370,12 @@ def build_worker_groups(ray_config: dict) -> list[WorkerGroupConfig]:
             ray_config['worker_node_type']
             or ("gpu-worker" if ray_config['worker_gpus'] > 0 else "cpu-worker")
         )
+        launch_initial_workers = ray_config.get('launch_initial_workers', True)
+        count = ray_config['num_workers'] if launch_initial_workers else 0
         return [WorkerGroupConfig(
             name="workers",
             node_type=node_type,
-            count=ray_config['num_workers'],
+            count=count,
             cpu=ray_config['worker_cpu'],
             memory=ray_config['worker_memory'],
             gpus=ray_config['worker_gpus'],
@@ -374,7 +397,9 @@ def build_worker_groups(ray_config: dict) -> list[WorkerGroupConfig]:
         if definition.get('input_template'):
             # These are intentionally applied only to the marked template.
             # Other YAML groups remain stable cluster administrator defaults.
-            input_node_type = os.environ.get('RAY_WORKER_NODE_TYPE', group.node_type)
+            input_node_type = os.environ.get('RAY_WORKER_NODE_TYPE', group.node_type).strip()
+            if not input_node_type:
+                input_node_type = group.node_type
             if not re.fullmatch(r"[A-Za-z0-9._-]+", input_node_type):
                 raise ValueError(
                     "RAY_WORKER_NODE_TYPE must contain only letters, digits, '.', '-', '_'"
@@ -386,11 +411,13 @@ def build_worker_groups(ray_config: dict) -> list[WorkerGroupConfig]:
                 ('RAY_WORKER_GPUS', 'gpus'),
             ]:
                 value = os.environ.get(env_var)
-                if value is not None:
+                if value and value.strip():
                     setattr(group, attr, int(value))
-            group.accelerator_type = os.environ.get(
-                'RAY_WORKER_ACCELERATOR_TYPE', group.accelerator_type
-            )
+            accelerator = os.environ.get('RAY_WORKER_ACCELERATOR_TYPE')
+            if accelerator and accelerator.strip():
+                group.accelerator_type = accelerator.strip()
+        if not ray_config.get('launch_initial_workers', True):
+            group.count = 0
         groups.append(group)
     return groups
 

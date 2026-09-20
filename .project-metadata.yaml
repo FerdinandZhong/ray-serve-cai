@@ -60,6 +60,12 @@ environment_variables:
     default: "32"
     description: Memory in GB requested for the Ray head CML Application.
     required: false
+  RAY_LAUNCH_INITIAL_WORKERS:
+    default: "false"
+    description: >-
+      Start only the Ray head and register worker node types. Set true to also
+      launch the configured worker-group counts during cluster startup.
+    required: false
   RAY_WORKER_NODE_TYPE:
     default: "gpu-worker"
     description: >-
