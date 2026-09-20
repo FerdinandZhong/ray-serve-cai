@@ -21,6 +21,11 @@ ray_cluster:
   management_api_cpu: null
   management_api_memory: null
 
+  # Create the head and register all node types, but do not consume worker
+  # capacity. Set true (or RAY_LAUNCH_INITIAL_WORKERS=true) only when the
+  # configured worker-group counts should be launched at cluster start.
+  launch_initial_workers: false
+
   # ── Worker groups ─────────────────────────────────────────────────────────
   # Each group defines a node type.  Workers are registered in Ray with a
   # custom resource "node_type:<node_type>" so deployments can be pinned to
