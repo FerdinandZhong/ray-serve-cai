@@ -334,7 +334,7 @@ class CoordinatorService:
         gpus: int = 0,
         runtime_identifier: str = None,
         environment: dict = None,
-        bypass_authentication: bool = True,
+        bypass_authentication: bool = False,
     ) -> Dict[str, Any]:
         """
         Validate cluster capacity, launch a CML application, and record the allocation.
