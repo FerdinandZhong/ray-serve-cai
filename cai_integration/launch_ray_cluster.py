@@ -502,6 +502,9 @@ def main():
         return 1
 
     head_app_name = ray_config['head_app_name']
+    from cai_integration.project_environment import preflight_project_environment
+
+    preflight_project_environment()
     # Derive head URL from app name + CDSW_DOMAIN — deterministic, no CML API call needed.
     cdsw_domain = os.environ.get("CDSW_DOMAIN", "").strip()
     head_url_from_domain = (

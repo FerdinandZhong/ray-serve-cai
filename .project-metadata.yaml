@@ -17,6 +17,9 @@
 # Workbench-injected vars (CDSW_DOMAIN, CDSW_APIV2_KEY, CDSW_PROJECT_ID,
 # CDSW_APP_*) are available to every task at runtime and are therefore NOT
 # declared below — only user-configurable values are prompted at import.
+# If the Workbench form serializes edited inputs as browser events, use the
+# input-safe API import in docs/AMP_INPUT_SAFE_IMPORT.md. Do not replace user
+# resource choices with defaults or flatten this manifest's definition objects.
 #
 # After import, open:
 #   https://ray-cluster-head.<CDSW_DOMAIN>/          (chat UI)

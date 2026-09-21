@@ -832,4 +832,10 @@ ray.shutdown()
 
 
 if __name__ == "__main__":
+    if __package__:
+        from .project_environment import preflight_project_environment
+    else:
+        from project_environment import preflight_project_environment
+
+    preflight_project_environment()
     main()
