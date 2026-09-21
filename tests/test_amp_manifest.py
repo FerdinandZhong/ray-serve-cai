@@ -11,6 +11,13 @@ import yaml
 ROOT = Path(__file__).resolve().parents[1]
 
 
+def test_amp_input_defaults_resolve_to_strings():
+    manifest = yaml.safe_load((ROOT / ".project-metadata.yaml").read_text())
+    for name, definition in manifest["environment_variables"].items():
+        assert isinstance(definition["default"], str), name
+        assert set(definition) <= {"default", "description", "required"}, name
+
+
 def test_amp_stages_are_bounded_sequential_jobs():
     manifest = yaml.safe_load((ROOT / ".project-metadata.yaml").read_text())
     expected = [
