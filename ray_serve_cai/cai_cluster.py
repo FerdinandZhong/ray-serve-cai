@@ -113,7 +113,7 @@ class CMLAPIClient:
         memory: int,
         runtime_identifier: str,
         subdomain: str,
-        bypass_authentication: bool = True,
+        bypass_authentication: bool = False,
         num_gpus: int = 0,
         environment: Optional[Dict[str, str]] = None,
     ) -> ApplicationInfo:
@@ -469,7 +469,7 @@ class CAIClusterManager:
                 memory=head_memory,
                 runtime_identifier=head_runtime_identifier,
                 subdomain=head_app_name,
-                bypass_authentication=True,
+                bypass_authentication=False,
             )
             self.head_app_id = head_app.id
             logger.info(f"✅ Head node application created: {head_app.id}")
@@ -789,7 +789,7 @@ class CAIClusterManager:
             memory=group.memory,
             runtime_identifier=rt,
             subdomain=subdomain,
-            bypass_authentication=True,
+            bypass_authentication=False,
             num_gpus=group.gpus,
             environment=env or None,
         )

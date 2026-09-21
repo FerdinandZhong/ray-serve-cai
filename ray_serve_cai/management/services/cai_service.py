@@ -333,7 +333,7 @@ class CAIService:
         gpus: int = 0,
         runtime_identifier: str = None,
         environment: dict = None,
-        bypass_authentication: bool = True,
+        bypass_authentication: bool = False,
     ) -> Dict[str, Any]:
         """
         Launch a generic CML application.

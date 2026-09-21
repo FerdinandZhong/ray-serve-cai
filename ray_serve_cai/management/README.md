@@ -304,8 +304,10 @@ Access at: http://127.0.0.1:8080/docs
 ## Security Considerations
 
 **Current Implementation:**
-- No authentication (bypass_authentication=true)
-- Suitable for internal/trusted networks
+- Cluster head and worker applications are created with CML authentication enabled
+  (`bypass_authentication=false`), including sites that prohibit anonymous access.
+- Generic application creation defaults to authentication enabled as well.
+- Use authenticated requests when accessing the application ingress.
 
 **Production Recommendations:**
 - Enable CML authentication
