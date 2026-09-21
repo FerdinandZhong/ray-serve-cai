@@ -19,6 +19,36 @@ import sys
 from pathlib import Path
 
 
+def run_project_preflight():
+    """Load the sibling helper in scripts, modules and CML notebook execution.
+
+    CML may execute source as cells without __file__ or adding the script's
+    directory to sys.path. Resolve from this file when available, otherwise from
+    the project working directory. Do not depend on an already installed package.
+    """
+    from importlib.util import module_from_spec, spec_from_file_location
+
+    script_file = globals().get("__file__")
+    if script_file:
+        helper = Path(script_file).resolve().with_name("project_environment.py")
+    else:
+        roots = (Path(os.environ.get("CDSW_PROJECT_DIR") or Path.cwd()), Path.cwd(), Path.cwd().parent)
+        helper = next(
+            (root / "cai_integration" / "project_environment.py" for root in roots
+             if (root / "cai_integration" / "project_environment.py").is_file()),
+            Path.cwd() / "project_environment.py",
+        )
+    if not helper.is_file():
+        raise RuntimeError(
+            "AMP preflight helper is missing. Run from the project root with "
+            "cai_integration/project_environment.py present in the checkout."
+        )
+    spec = spec_from_file_location("_amp_project_environment", helper)
+    module = module_from_spec(spec)
+    spec.loader.exec_module(module)
+    module.preflight_project_environment()
+
+
 def run_command(cmd, cwd=None):
     """Run a command and return success status."""
     print(f"Running: {cmd}")
@@ -832,10 +862,5 @@ ray.shutdown()
 
 
 if __name__ == "__main__":
-    if __package__:
-        from .project_environment import preflight_project_environment
-    else:
-        from project_environment import preflight_project_environment
-
-    preflight_project_environment()
+    run_project_preflight()
     main()

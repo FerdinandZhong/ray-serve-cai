@@ -45,13 +45,25 @@ logging.basicConfig(
 # ---------------------------------------------------------------------------
 _VENV_PYTHON = Path("/home/cdsw/.venv/bin/python")
 
-if _VENV_PYTHON.exists() and Path(sys.executable).resolve() != _VENV_PYTHON.resolve():
-    os.execv(str(_VENV_PYTHON), [str(_VENV_PYTHON)] + sys.argv)
+def _project_root():
+    if globals().get("__file__"):
+        return Path(__file__).resolve().parent.parent
+    for root in (Path(os.environ.get("CDSW_PROJECT_DIR") or Path.cwd()), Path.cwd(), Path.cwd().parent):
+        if (root / "cai_integration" / "launch_ray_cluster.py").is_file():
+            return root.resolve()
+    raise RuntimeError("Cannot locate the Ray AMP project checkout")
+
+
+PROJECT_ROOT = _project_root()
+if (__name__ == "__main__" and _VENV_PYTHON.exists()
+        and Path(sys.prefix).resolve() != _VENV_PYTHON.parent.parent.resolve()):
+    os.execv(str(_VENV_PYTHON), [str(_VENV_PYTHON), "-u",
+             str(PROJECT_ROOT / "cai_integration" / "launch_ray_cluster.py")])
 
 from jinja2 import Environment, FileSystemLoader
 
 # Add parent directory to path for imports
-script_dir = Path(__file__).parent
+script_dir = PROJECT_ROOT / "cai_integration"
 sys.path.insert(0, str(script_dir.parent))
 
 from ray_serve_cai.cai_cluster import CAIClusterManager, WorkerGroupConfig
@@ -239,7 +251,7 @@ def load_config():
     }
 
     # ── Step 2: YAML overrides defaults ─────────────────────────────────────
-    config_path = Path(__file__).parent.parent / "configs" / "ray_cluster_config.yaml"
+    config_path = PROJECT_ROOT / "configs" / "ray_cluster_config.yaml"
     if config_path.exists():
         try:
             with open(config_path) as f:

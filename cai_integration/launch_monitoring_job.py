@@ -31,7 +31,8 @@ def main() -> int:
     try:
         project_root = Path(__file__).resolve().parent.parent
     except (NameError, AttributeError):
-        project_root = Path.cwd()
+        candidates = (Path(os.environ.get("CDSW_PROJECT_DIR") or Path.cwd()), Path.cwd(), Path.cwd().parent)
+        project_root = next((p for p in candidates if (p / "cai_integration" / "launch_monitoring.py").is_file()), Path.cwd())
 
     venv_python = project_root / ".venv" / "bin" / "python"
     if not venv_python.exists():

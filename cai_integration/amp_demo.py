@@ -33,8 +33,19 @@ def _running_in_venv(venv_python: Path) -> bool:
     return Path(sys.prefix).resolve() == venv_python.parent.parent.resolve()
 
 
-if _VENV_PYTHON.exists() and not _running_in_venv(_VENV_PYTHON):
-    os.execv(str(_VENV_PYTHON), [str(_VENV_PYTHON)] + sys.argv)
+def _demo_script_path() -> Path:
+    if globals().get("__file__"):
+        return Path(__file__).resolve()
+    for root in (Path(os.environ.get("CDSW_PROJECT_DIR") or Path.cwd()), Path.cwd(), Path.cwd().parent):
+        script = root / "cai_integration" / "amp_demo.py"
+        if script.is_file():
+            return script.resolve()
+    raise RuntimeError("Cannot locate cai_integration/amp_demo.py in the project checkout")
+
+
+if __name__ == "__main__" and _VENV_PYTHON.exists() and not _running_in_venv(_VENV_PYTHON):
+    # Never pass notebook kernel argv to the child Python process.
+    os.execv(str(_VENV_PYTHON), [str(_VENV_PYTHON), "-u", str(_demo_script_path())])
 
 import requests  # noqa: E402 - the venv re-exec above must happen before import
 

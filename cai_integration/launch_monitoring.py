@@ -25,7 +25,16 @@ import sys
 import time
 from pathlib import Path
 
-sys.path.insert(0, str(Path(__file__).parent.parent))
+def _project_root():
+    if globals().get("__file__"):
+        return Path(__file__).resolve().parent.parent
+    for root in (Path(os.environ.get("CDSW_PROJECT_DIR") or Path.cwd()), Path.cwd(), Path.cwd().parent):
+        if (root / "cai_integration" / "launch_monitoring.py").is_file():
+            return root.resolve()
+    raise RuntimeError("Cannot locate the monitoring AMP project checkout")
+
+
+sys.path.insert(0, str(_project_root()))
 
 from ray_serve_cai.cai_cluster import CAIClusterManager
 
