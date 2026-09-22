@@ -45,15 +45,22 @@ except ImportError:
         return {}
 
 
-def _wait_healthy(url: str, timeout: int = 300) -> bool:
+def _wait_healthy(url: str, timeout: int = 300, token: str = "") -> bool:
+    import json
     import urllib.request
     deadline = time.time() + timeout
     dots = 0
     while time.time() < deadline:
         try:
-            with urllib.request.urlopen(url, timeout=5) as r:
-                if r.status < 400:
-                    return True
+            req = urllib.request.Request(url, headers={"Authorization": f"Bearer {token}"} if token else {})
+            with urllib.request.urlopen(req, timeout=5) as r:
+                if r.status == 200 and r.geturl() == url:
+                    body = r.read().decode()
+                    if url.endswith("/api/health"):
+                        if json.loads(body).get("database") == "ok":
+                            return True
+                    if "Prometheus Server is Ready" in body:
+                        return True
         except Exception:
             pass
         time.sleep(5)
@@ -154,12 +161,12 @@ def main():
         memory=4,
         runtime_identifier=runtime,
         subdomain=prom_sub,
-        bypass_authentication=True,
+        bypass_authentication=False,
         environment=prom_env or None,
     )
     prom_health_url = f"{prom_url.rstrip('/')}/-/ready" if prom_url else ""
     print(f"  Polling {prom_health_url} ...")
-    if prom_health_url and _wait_healthy(prom_health_url, timeout=300):
+    if prom_health_url and _wait_healthy(prom_health_url, timeout=300, token=cml_api_key):
         print("  Prometheus healthy")
     else:
         print("  ERROR: Prometheus did not respond within 5 min — check app logs")
@@ -170,6 +177,7 @@ def main():
     grafana_env = {}
     if prom_url:
         grafana_env["PROMETHEUS_URL"] = prom_url
+    grafana_env["PROMETHEUS_BEARER_TOKEN"] = cml_api_key
 
     manager.cml_client.create_application(
         project_id=project_id,
@@ -179,12 +187,12 @@ def main():
         memory=4,
         runtime_identifier=runtime,
         subdomain=grafana_sub,
-        bypass_authentication=True,
+        bypass_authentication=False,
         environment=grafana_env or None,
     )
     grafana_health_url = f"{grafana_url.rstrip('/')}/api/health" if grafana_url else ""
     print(f"  Polling {grafana_health_url} ...")
-    if grafana_health_url and _wait_healthy(grafana_health_url, timeout=300):
+    if grafana_health_url and _wait_healthy(grafana_health_url, timeout=300, token=cml_api_key):
         print("  Grafana healthy")
     else:
         print("  ERROR: Grafana did not respond within 5 min — check app logs")

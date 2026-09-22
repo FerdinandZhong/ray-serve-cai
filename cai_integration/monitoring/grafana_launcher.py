@@ -94,20 +94,30 @@ def download_grafana():
 
 
 def provision_datasource():
+    import json
     ds_dir = PROVISION_DIR / "datasources"
     ds_dir.mkdir(parents=True, exist_ok=True)
+    token = os.environ.get("PROMETHEUS_BEARER_TOKEN", "").strip()
+    auth = ""
+    if token:
+        auth = ('      httpHeaderName1: Authorization\n'
+                '    secureJsonData:\n'
+                '      httpHeaderValue1: $PROMETHEUS_AUTH_HEADER\n')
+        # Grafana expands this at provisioning time; keep secrets off shared NFS.
+        os.environ["PROMETHEUS_AUTH_HEADER"] = f"Bearer {token}"
     (ds_dir / "prometheus.yml").write_text(f"""\
 apiVersion: 1
 datasources:
   - name: Prometheus
     type: prometheus
     access: proxy
-    url: {PROMETHEUS_URL}
+    url: {json.dumps(PROMETHEUS_URL)}
     isDefault: true
     editable: true
     jsonData:
       httpMethod: GET
       timeInterval: 15s
+{auth}\
 """)
     print(f"Datasource → {PROMETHEUS_URL}")
 
@@ -163,8 +173,13 @@ class _ProxyHandler(BaseHTTPRequestHandler):
                 body = self.rfile.read(int(length))
             req = urllib.request.Request(target, data=body, method=self.command)
             for k, v in self.headers.items():
-                if k.lower() not in ("host", "transfer-encoding"):
+                if k.lower() not in ("host", "transfer-encoding", "authorization", "x-grafana-authorization"):
                     req.add_header(k, v)
+            # CAI consumes the ingress Authorization token. A separate header
+            # carries Grafana credentials, which Grafana must validate itself.
+            grafana_auth = self.headers.get("X-Grafana-Authorization")
+            if grafana_auth:
+                req.add_header("Authorization", grafana_auth)
             with urlopen(req, timeout=30) as resp:
                 self.send_response(resp.status)
                 for k, v in resp.getheaders():

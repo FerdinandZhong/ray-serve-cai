@@ -176,7 +176,7 @@ def test_monitoring_fails_on_prometheus_readiness_timeout(monkeypatch):
     monkeypatch.setattr(
         launch_monitoring,
         "_wait_healthy",
-        lambda url, timeout: checked.append(url) or False,
+        lambda url, timeout, token: checked.append(url) or False,
     )
 
     assert launch_monitoring.main() == 1
@@ -187,7 +187,7 @@ def test_monitoring_fails_on_grafana_health_timeout(monkeypatch):
     _monitoring_env(monkeypatch)
     checked = []
 
-    def wait(url, timeout):
+    def wait(url, timeout, token):
         checked.append(url)
         return len(checked) == 1
 
