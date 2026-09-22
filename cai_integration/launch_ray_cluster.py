@@ -72,6 +72,21 @@ from ray_serve_cai.cai_cluster import CAIClusterManager, WorkerGroupConfig
 TEMPLATE_DIR = script_dir / "templates"
 
 
+def save_cluster_info(info_file: Path, cluster_info: dict, *, preserve_workers: bool = True):
+    """Serialize startup writes with API worker registration on shared storage."""
+    import fcntl
+    with open(info_file.with_suffix(".json.lock"), "w") as lock:
+        fcntl.flock(lock, fcntl.LOCK_EX)
+        if preserve_workers and info_file.exists():
+            current = json.loads(info_file.read_text())
+            for key in ("workers", "worker_groups"):
+                if key in current:
+                    cluster_info[key] = current[key]
+        tmp = info_file.with_suffix(".json.tmp")
+        tmp.write_text(json.dumps(cluster_info, indent=2))
+        os.replace(tmp, info_file)
+
+
 def render_worker_launcher(
     group,
     *,
@@ -82,11 +97,9 @@ def render_worker_launcher(
 ) -> str:
     """Render ONE worker group's launcher script and set group.script_path.
 
-    node_type is baked into the script (it seeds the ``node_type:<type>`` Ray
-    resource), so every node_type needs its own script — this keeps the
-    one-script-per-node_type invariant that _detect_node_type and recovery rely
-    on.  Reused both at cluster start (loop below) and by the runtime
-    "define node_type" API (cai_service.define_node_type).  Returns the path.
+    node_type seeds the optional legacy scheduling resource. Direct creation
+    uses a unique group.name per worker; templates may share a group launcher.
+    Returns the path.
     """
     venv_python = project_dir / ".venv" / "bin" / "python"
     env = Environment(
@@ -226,7 +239,7 @@ def load_config():
         'worker_memory':            32,
         'worker_gpus':              0,
         'worker_node_type':         None,
-        'launch_initial_workers':   True,
+        'launch_initial_workers':   False,
         'ray_port':                 6379,
         'dashboard_port':           8265,
         'metrics_port':             9090,
@@ -377,7 +390,10 @@ def build_worker_groups(ray_config: dict) -> list[WorkerGroupConfig]:
     shape can be selected at AMP import using ``RAY_WORKER_*`` variables.  It
     is registered on the head, but never creates a CML worker by itself.
     """
-    if not ray_config.get('worker_groups'):
+    # An explicit empty list means head-only, not the legacy single-group fallback.
+    if ray_config.get('worker_groups') == []:
+        return []
+    if ray_config.get('worker_groups') is None:
         node_type = (
             ray_config['worker_node_type']
             or ("gpu-worker" if ray_config['worker_gpus'] > 0 else "cpu-worker")
@@ -601,6 +617,7 @@ def main():
         if head_url_from_domain:
             cluster_info['head_url'] = head_url_from_domain
         print(f"   head_url: {cluster_info.get('head_url', '(unknown)')}")
+        save_cluster_info(info_file, cluster_info, preserve_workers=False)
 
         # ── Step 2: wait for Management API ───────────────────────────────────
         print("\n⏳ Waiting for Management API to become healthy on head node...")
@@ -628,8 +645,7 @@ def main():
                     _gcs = json.loads(_r.read()).get("gcs_address", "")
                     if _gcs:
                         cluster_info["head_address"] = _gcs
-                        with open(info_file, "w") as f:
-                            json.dump(cluster_info, f, indent=2)
+                        save_cluster_info(info_file, cluster_info)
                         print(f"   GCS address: {_gcs}")
             except Exception as _exc:
                 print(f"⚠️  Could not fetch GCS address from Management API: {_exc}")
@@ -648,6 +664,9 @@ def main():
                         "cpu":       g.cpu,
                         "memory":    g.memory,
                         "gpus":      g.gpus,
+                        "accelerator_type": g.accelerator_type,
+                        "runtime_identifier": g.runtime_identifier,
+                        "node_label": g.node_label,
                     }).encode()
                     req = _urlreq.Request(
                         add_url,
@@ -670,8 +689,9 @@ def main():
 
         # Save cluster info to file for reference
         info_file = Path("/home/cdsw/ray_cluster_info.json")
-        with open(info_file, 'w') as f:
-            json.dump(cluster_info, f, indent=2)
+        # The API may have added worker records while startup was waiting.
+        # Merge under its lock rather than overwrite with our earlier snapshot.
+        save_cluster_info(info_file, cluster_info)
         print(f"\n💾 Cluster info saved to {info_file}")
 
         # Register the head-recovery CML Job (best-effort). The management API

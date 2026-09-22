@@ -22,6 +22,7 @@ Sequence (each phase checkpointed before the next; see recovery_state):
 from __future__ import annotations
 
 import json
+import fcntl
 import logging
 import os
 import time
@@ -121,15 +122,19 @@ class RecoveryOrchestrator:
         if self.dry_run:
             logger.info("[dry-run] would set head_address=%s in cluster info", new_head_address)
             return
-        info = self._cluster_info()
-        info["head_address"] = new_head_address
-        tmp = self.cluster_info_path.with_suffix(self.cluster_info_path.suffix + ".tmp")
-        with open(tmp, "w") as f:
-            json.dump(info, f, indent=2)
-        os.replace(tmp, self.cluster_info_path)
+        with open(self.cluster_info_path.with_suffix(".json.lock"), "w") as lock:
+            fcntl.flock(lock, fcntl.LOCK_EX)
+            info = self._cluster_info()
+            info["head_address"] = new_head_address
+            tmp = self.cluster_info_path.with_suffix(self.cluster_info_path.suffix + ".tmp")
+            with open(tmp, "w") as f:
+                json.dump(info, f, indent=2)
+            os.replace(tmp, self.cluster_info_path)
         logger.info("Updated ray_cluster_info.json head_address=%s", new_head_address)
 
     def rebuild_workers(self, info: dict[str, Any]) -> dict[str, int]:
+        if "workers" in info:
+            return self._rebuild_recorded_workers(info)
         self.state.set_phase("REBUILDING_WORKERS")
         head_name = info.get("head_app_name", "ray-cluster-head")
         deleted = 0
@@ -155,6 +160,37 @@ class RecoveryOrchestrator:
                     self.cai_service.create_worker_node(node_type=group["node_type"])
                 created += 1
         logger.info("Workers rebuilt: deleted=%d created=%d", deleted, created)
+        return {"deleted": deleted, "created": created}
+
+    def _rebuild_recorded_workers(self, info: dict[str, Any]) -> dict[str, int]:
+        """Restore exact per-worker specs; never delete unrelated applications.
+
+        Persist the original plan before deleting. On resume a recorded replacement
+        app ID proves creation completed; ambiguous creates require reconciliation
+        rather than risking duplicate GPU applications.
+        """
+        plan = self.state.load().get("worker_plan", info["workers"])
+        if info.get("legacy_workers_untracked"):
+            raise RuntimeError("Legacy workers lack per-node specs; reconcile them before per-worker recovery")
+        self.state.set_phase("REBUILDING_WORKERS", worker_plan=plan)
+        live_ids = {app["id"] for app in self.cml.list_applications()}
+        deleted = created = 0
+        for worker_id, original in plan.items():
+            current = self.cai_service.worker_records().get(worker_id)
+            if current is None:  # explicitly removed while recovery was interrupted
+                continue
+            if current.get("status") in ("creating", "launch_unknown"):
+                raise RuntimeError(f"Worker {worker_id} has an unresolved launch; reconcile its application before recovery")
+            if current.get("app_id") != original.get("app_id") and current.get("app_id") in live_ids:
+                continue
+            app_id = current.get("app_id")
+            if app_id in live_ids:
+                if not self.dry_run and not self.cml.stop_application(app_id):
+                    raise RuntimeError(f"Could not delete worker application {app_id}; replacement not launched")
+                deleted += 1
+            if not self.dry_run:
+                self.cai_service.create_worker_node(**original["spec"], _worker_id=worker_id)
+            created += 1
         return {"deleted": deleted, "created": created}
 
     def redeploy(self, info: dict[str, Any]) -> dict[str, int]:
@@ -196,6 +232,9 @@ class RecoveryOrchestrator:
             else:
                 self.state.set_phase("DETECTED")
             info = self._cluster_info()
+
+            if info.get("legacy_workers_untracked"):
+                raise RuntimeError("Legacy workers lack per-node specs; reconcile them before restarting the head")
 
             self.restart_head(info)
             new_addr = self.wait_for_head(info)

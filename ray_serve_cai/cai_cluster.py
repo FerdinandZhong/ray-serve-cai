@@ -498,6 +498,8 @@ class CAIClusterManager:
                 'head_url': self.head_url,
                 'worker_app_ids': self.worker_app_ids,
                 'num_workers': len(self.worker_app_ids),
+                'worker_runtime_identifier': worker_runtime_identifier,
+                'workers': {},
                 'worker_groups': [
                     {
                         'name':               g.name,

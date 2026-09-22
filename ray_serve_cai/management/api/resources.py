@@ -33,8 +33,13 @@ async def add_node(request: AddNodeRequest, coordinator: CoordinatorService = De
             runtime_identifier=request.runtime_identifier,
             node_label=request.node_label,
             ray_labels=request.ray_labels,
+            name=request.name,
+            accelerator_type=request.accelerator_type,
+            labels=request.labels,
         )
         return result
+    except ValueError as e:
+        raise HTTPException(status_code=422, detail=str(e))
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
 
@@ -137,6 +142,16 @@ async def list_nodes(coordinator: CoordinatorService = Depends(get_coordinator))
         )
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
+
+
+@router.get("/worker-apps", response_model=Dict[str, Any])
+async def list_worker_records(coordinator: CoordinatorService = Depends(get_coordinator)):
+    """Persisted worker specifications, including workers not yet joined to Ray.
+
+    Join status and current Ray node IDs are available from GET /nodes.
+    """
+    records = coordinator.cai_service.worker_records()
+    return {"workers": list(records.values()), "count": len(records)}
 
 
 @router.get("/workers", response_model=Dict[str, Any], deprecated=True)

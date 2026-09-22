@@ -113,9 +113,23 @@ cluster.
 | `POST` | `/resources/nodes` | Add a worker node (creates a CML App). Returns `201` with `app_id`. |
 | `DELETE` | `/resources/nodes/{app_id}` | Remove a worker node (stops the CML App). |
 | `GET` | `/resources/nodes` | List Ray nodes enriched with CML `app_id`, `app_name`, `cml_status`. |
+| `GET` | `/resources/worker-apps` | Persisted worker identities and resolved specs, including pending launches. |
 | `GET` | `/resources/workers` | **Deprecated** — use `/resources/nodes`. |
 | `GET` | `/resources/allocation` | API-tracked resource allocations. |
 | `GET` | `/resources/capacity` | Live Ray cluster capacity & utilization. |
+
+Launch directly (no node-type registration):
+
+```json
+{"name":"l40s-worker-01","cpu":12,"memory":64,"gpus":1,"accelerator_type":"L40S","labels":{"purpose":"inference"}}
+```
+
+`node_type` is optional. Supplying CPU and memory bypasses template lookup;
+otherwise `node_type` selects an existing template. `labels` are metadata only.
+Use returned `app_id` to delete, `worker_id` to track the logical worker, and
+`ray_node_id` from GET `/resources/nodes` for the joined Ray process. Recovery
+retains the worker ID but changes the application and Ray IDs. Application
+creation (`201`) is not proof that the worker has joined Ray.
 
 ## Engines — `/api/v1/engines`
 

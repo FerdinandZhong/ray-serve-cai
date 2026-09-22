@@ -1,6 +1,7 @@
 """Request models for management API."""
 
 import re
+import math
 from typing import Any, Dict, List, Literal, Optional
 from pydantic import BaseModel, ConfigDict, Field, field_validator, model_validator
 
@@ -23,7 +24,10 @@ _ENV_VAR_DENYLIST = frozenset({
 class AddNodeRequest(BaseModel):
     """Request to add a new worker node to the cluster."""
 
-    node_type: str = Field(default="worker", description="Type of node (worker, gpu-worker)")
+    name: Optional[str] = Field(default=None, min_length=1, max_length=128, description="Worker display name; identity is returned separately.")
+    node_type: Optional[str] = Field(default=None, max_length=64, description="Optional grouping/scheduling label. Legacy template lookup only when CPU or memory is omitted.")
+    accelerator_type: Optional[str] = Field(default=None, max_length=128)
+    labels: Dict[str, str] = Field(default_factory=dict, description="Descriptive metadata only; does not constrain Ray or Kubernetes placement.")
     cpu: Optional[int] = Field(default=None, ge=1, le=256, description="CPU cores override (uses group default when omitted)")
     memory: Optional[int] = Field(default=None, ge=4, le=1024, description="Memory in GB override (uses group default when omitted)")
     gpus: Optional[int] = Field(default=None, ge=0, description="GPU count override (uses group default when omitted)")
@@ -57,13 +61,38 @@ class AddNodeRequest(BaseModel):
         ),
     )
 
+    @field_validator("node_type", "accelerator_type")
+    @classmethod
+    def _safe_worker_label(cls, value):
+        if value is not None and not re.fullmatch(r"[A-Za-z0-9._ -]+", value):
+            raise ValueError("Worker labels contain unsupported characters")
+        if value is not None and not value.strip():
+            raise ValueError("Worker labels must not be blank")
+        return value
+
+    @field_validator("ray_labels")
+    @classmethod
+    def _reserved_worker_identity(cls, value):
+        if value and any(key.startswith(("worker_id:", "worker_launch_id:")) for key in value):
+            raise ValueError("worker_id resources are reserved for server-generated identity")
+        if value and any(not math.isfinite(amount) or amount < 0 for amount in value.values()):
+            raise ValueError("Ray resource quantities must be finite and nonnegative")
+        return value
+
+    @model_validator(mode="after")
+    def _direct_or_template(self):
+        if not self.node_type and (self.cpu is None or self.memory is None):
+            raise ValueError("Direct worker creation requires cpu and memory")
+        return self
+
     class Config:
         json_schema_extra = {
             "example": {
-                "node_type": "l40-gpu-worker",
-                "cpu": 16,
+                "name": "l40s-worker-01",
+                "cpu": 12,
                 "memory": 64,
                 "gpus": 1,
+                "accelerator_type": "L40S",
                 "node_label": {
                     "liftie.cloudera.com/instance-group-id": "ig-n4bsnv8r",
                 },
@@ -189,8 +218,8 @@ class SchedulingConfig(BaseModel):
     resources: Optional[Dict[str, float]] = Field(
         default=None,
         description=(
-            "Ray resource affinity for this deployment's GPU work. Use 0.001 for "
-            "soft affinity (a scheduling hint that does not consume capacity). "
+            "Ray resource requirements for this deployment's GPU work. A 0.001 "
+            "custom-resource request is still a required match, not soft affinity. "
             "Applied to whichever layer actually places the work: when a placement "
             "group is used (tensor parallelism or fractional GPU), these labels are "
             "merged into the GPU-bearing bundles so every shard lands on the target "

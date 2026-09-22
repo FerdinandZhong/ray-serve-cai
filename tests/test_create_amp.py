@@ -12,12 +12,11 @@ def manifest():
     return yaml.safe_load((create_amp.ROOT / ".project-metadata.yaml").read_text())
 
 
-def test_selected_resources_survive_payload_and_worker_configuration(monkeypatch):
+def test_selected_head_resources_survive_payload_without_worker_configuration(monkeypatch):
     from cai_integration import launch_ray_cluster as launcher
 
     payload = create_amp.build_payload(
-        manifest(), {"RAY_WORKER_CPU": "12", "RAY_WORKER_MEMORY": "64",
-                     "RAY_WORKER_ACCELERATOR_TYPE": "L40S"},
+        manifest(), {"RAY_HEAD_CPU": "12", "RAY_HEAD_MEMORY": "64"},
         name="example", runtime="runtime", git_url="https://example.test/repo.git",
         git_ref="feature/blueprint_fix",
     )
@@ -27,20 +26,20 @@ def test_selected_resources_survive_payload_and_worker_configuration(monkeypatch
         monkeypatch.setenv(key, value)
     config = launcher.load_config()
     groups = launcher.build_worker_groups(config)
-    group = next(g for g in groups if g.node_type == env["RAY_WORKER_NODE_TYPE"])
-    assert (group.cpu, group.memory, group.accelerator_type, group.count) == (12, 64, "L40S", 0)
+    assert (config["head_cpu"], config["head_memory"]) == (12, 64)
+    assert groups == []
 
 
 @pytest.mark.parametrize("bad", [12, None, [], {"nativeEvent": {}, "target": None}])
 def test_reject_non_string_inputs_instead_of_defaulting(bad):
-    with pytest.raises(ValueError, match="RAY_WORKER_CPU"):
-        create_amp.resolve_inputs(manifest()["environment_variables"], {"RAY_WORKER_CPU": bad})
+    with pytest.raises(ValueError, match="RAY_HEAD_CPU"):
+        create_amp.resolve_inputs(manifest()["environment_variables"], {"RAY_HEAD_CPU": bad})
 
 
 @pytest.mark.parametrize("bad", ["-1", "0", "twelve", "12.5"])
 def test_reject_invalid_resource_strings(bad):
     with pytest.raises(ValueError):
-        create_amp.resolve_inputs(manifest()["environment_variables"], {"RAY_WORKER_CPU": bad})
+        create_amp.resolve_inputs(manifest()["environment_variables"], {"RAY_HEAD_CPU": bad})
 
 
 def test_unknown_inputs_are_not_silently_ignored():
@@ -53,8 +52,7 @@ def test_dry_run_never_calls_api_or_reads_token(monkeypatch, capsys):
     monkeypatch.setattr(create_amp.requests, "post", post)
     assert create_amp.main([
         "--name", "example", "--runtime", "runtime", "--git-ref", "branch",
-        "--worker-cpu", "12", "--worker-memory", "64",
-        "--worker-accelerator-type", "L40S", "--token-file", "/nonexistent",
+        "--token-file", "/nonexistent",
     ]) == 0
     post.assert_not_called()
     assert "Dry run" in capsys.readouterr().out
@@ -67,16 +65,14 @@ def test_explicit_apply_posts_flat_values_to_amp_not_existing_project(monkeypatc
     create_amp.main([
         "--name", "example", "--runtime", "runtime", "--git-ref", "branch",
         "--host", "https://example.test", "--apply",
-        "--worker-cpu", "12", "--worker-memory", "64",
-        "--worker-accelerator-type", "L40S",
     ])
     assert post.call_args.args == ("https://example.test/api/v2/amps",)
     env = post.call_args.kwargs["json"]["create_project_request"]["environment"]
-    assert env["RAY_WORKER_CPU"] == "12"
-    assert env["RAY_WORKER_MEMORY"] == "64"
-    assert env["RAY_WORKER_ACCELERATOR_TYPE"] == "L40S"
+    assert "RAY_WORKER_CPU" not in env
+    assert "RAY_WORKER_MEMORY" not in env
+    assert "RAY_WORKER_ACCELERATOR_TYPE" not in env
 
 
-def test_empty_accelerator_is_preserved():
-    env = create_amp.resolve_inputs(manifest()["environment_variables"], {"RAY_WORKER_ACCELERATOR_TYPE": ""})
-    assert env["RAY_WORKER_ACCELERATOR_TYPE"] == ""
+def test_worker_resources_must_be_defined_after_initialization():
+    with pytest.raises(ValueError, match="Unknown AMP inputs"):
+        create_amp.resolve_inputs(manifest()["environment_variables"], {"RAY_WORKER_ACCELERATOR_TYPE": "L40S"})
