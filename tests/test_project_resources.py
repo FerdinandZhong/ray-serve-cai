@@ -1,5 +1,7 @@
 import io
 import json
+import runpy
+import urllib.request
 from unittest.mock import Mock
 
 import pytest
@@ -35,6 +37,17 @@ def test_configures_and_verifies_shared_memory(monkeypatch):
     assert json.loads(patch.data) == {"shared_memory_limit": 40000}
     assert patch.get_header("Authorization") == "Bearer secret"
     assert opener.call_args_list[1].args[0].method == "GET"
+
+
+def test_successful_job_script_finishes_without_system_exit(monkeypatch):
+    _env(monkeypatch)
+    monkeypatch.setenv("RAY_SHARED_MEMORY_LIMIT_MB", "40000")
+    opener = Mock(side_effect=[Response(b"{}"), Response(b'{"shared_memory_limit":40000}')])
+    monkeypatch.setattr(urllib.request, "urlopen", opener)
+
+    # CAI executes the job in IPython, where even sys.exit(0) is a failed job.
+    runpy.run_path(resources.__file__, run_name="__main__")
+    assert opener.call_count == 2
 
 
 def test_fails_when_server_does_not_apply_value(monkeypatch):
