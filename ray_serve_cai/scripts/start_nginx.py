@@ -44,6 +44,7 @@ DEFAULT_STATIC_ROOT = Path("/home/cdsw/ray_serve_cai/static")
 
 # Nginx binary search order
 NGINX_CANDIDATES = [
+    str(Path.home() / ".local" / "bin" / "nginx-ssl"),
     str(Path.home() / ".local" / "bin" / "nginx"),
     "/usr/sbin/nginx",
     "/usr/bin/nginx",
@@ -62,6 +63,7 @@ def find_mime_types() -> str:
     the compiled prefix.  We probe candidates in priority order.
     """
     candidates = [
+        "/home/cdsw/.local/nginx-ssl/conf/mime.types",    # SSL-capable source build
         "/etc/nginx/mime.types",                          # system nginx
         "/home/cdsw/.local/nginx/conf/mime.types",        # compiled from source
         "/usr/local/nginx/conf/mime.types",               # alt compiled location
@@ -72,7 +74,7 @@ def find_mime_types() -> str:
             return path
     # Last resort: use the compiled location even if it doesn't exist yet
     # (nginx will report a clear error rather than a cryptic one).
-    return "/home/cdsw/.local/nginx/conf/mime.types"
+    return "/home/cdsw/.local/nginx-ssl/conf/mime.types"
 
 
 def build_context(runtime_dir: Path, static_root: Path) -> dict:
@@ -202,14 +204,30 @@ def create_runtime_dirs(runtime_dir: Path, static_root: Path) -> None:
 
 def find_nginx() -> str:
     """Return the path to the nginx binary, or raise RuntimeError."""
+    requires_ssl = bool(os.environ.get("GRAFANA_PROXY_UPSTREAM"))
+
+    def usable(candidate):
+        if not (os.path.isfile(candidate) and os.access(candidate, os.X_OK)):
+            return False
+        if not requires_ssl:
+            return True
+        result = subprocess.run([candidate, "-V"], capture_output=True, text=True)
+        return result.returncode == 0 and "--with-http_ssl_module" in result.stderr
+
     for candidate in NGINX_CANDIDATES:
-        if os.path.isfile(candidate) and os.access(candidate, os.X_OK):
+        if usable(candidate):
             return candidate
 
     result = subprocess.run(["which", "nginx"], capture_output=True, text=True)
-    if result.returncode == 0 and result.stdout.strip():
+    if result.returncode == 0 and result.stdout.strip() and usable(result.stdout.strip()):
         return result.stdout.strip()
 
+    if requires_ssl:
+        raise RuntimeError(
+            "No SSL-capable nginx found for the Grafana HTTPS proxy. "
+            "Rerun the setup_base_env job to install ~/.local/bin/nginx-ssl "
+            "before launching the Ray head."
+        )
     raise RuntimeError(
         "nginx binary not found. Run setup_environment.py first.\n"
         f"Searched: {NGINX_CANDIDATES}"
@@ -306,7 +324,7 @@ def main() -> int:
     if args.foreground:
         # Replace this Python process with nginx running in the foreground.
         # The caller blocks until nginx exits — no while-loop needed.
-        print(f"\nStarting nginx in foreground mode (process will block)...")
+        print("\nStarting nginx in foreground mode (process will block)...")
         print(f"  config : {conf_path}")
         print("=" * 70)
         os.execv(nginx_bin, [nginx_bin, "-c", str(conf_path), "-g", "daemon off;"])
@@ -326,12 +344,12 @@ def main() -> int:
         print(f"\nWARNING: nginx started but is not responding on port {context['app_port']}")
 
     print("\nRouting:")
-    print(f"  /             → static landing page")
+    print("  /             → static landing page")
     print(f"  /api/*        → Ray Serve / Management API (:{context['ray_serve_port']})")
-    print(f"  /docs         → Swagger UI")
-    print(f"  /redoc        → ReDoc")
+    print("  /docs         → Swagger UI")
+    print("  /redoc        → ReDoc")
     print(f"  /dashboard/   → Ray Dashboard (:{context['ray_dashboard_port']})")
-    print(f"  /health       → health check")
+    print("  /health       → health check")
     print("=" * 70)
     return 0
 

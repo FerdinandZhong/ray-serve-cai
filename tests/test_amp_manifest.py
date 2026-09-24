@@ -22,7 +22,7 @@ def test_amp_stages_are_bounded_sequential_jobs():
     manifest = yaml.safe_load((ROOT / ".project-metadata.yaml").read_text())
     expected = [
         ("configure_project_resources", 5),
-        ("setup_base_env", 15),
+        ("setup_base_env", 30),
         ("setup_vllm_env", 30),
         ("setup_litellm_env", 10),
         ("launch_ray_cluster", 20),

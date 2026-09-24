@@ -100,7 +100,7 @@ tasks:
     kernel: python3
     cpu: 4
     memory: 16
-    timeout: 15
+    timeout: 30
     description: "Create /home/cdsw/.venv with Ray and core deps (no inference engines)"
   - type: run_job
     entity_label: amp-setup-base-env

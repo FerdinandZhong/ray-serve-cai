@@ -10,6 +10,7 @@ This script:
 Run this as a CML job to prepare the environment for Ray cluster deployment.
 """
 
+import hashlib
 import os
 import re
 import shlex
@@ -243,54 +244,53 @@ def is_venv_ready(venv_dir):
     return True
 
 
+def _nginx_has_ssl(nginx_bin):
+    """Check the capability needed for proxy_pass to an HTTPS CML app."""
+    if not os.path.isfile(nginx_bin):
+        return False
+    result = subprocess.run([nginx_bin, "-V"], capture_output=True, text=True)
+    return result.returncode == 0 and "--with-http_ssl_module" in result.stderr
+
+
 def install_nginx():
     """
-    Install nginx without requiring apt/sudo.
+    Install an SSL-capable nginx without requiring apt/sudo.
 
-    Strategy (tried in order):
-      1. Already installed at the expected path — use as-is.
-      2. System nginx is on PATH — symlink it.
-      3. Download a pre-built static binary from nginx.org — no compiler,
-         no dev headers, no build tools required.
+    The Grafana proxy connects to a CAI HTTPS application, so the old minimal
+    HTTP-only nginx cannot be reused. Keep the new binary separate from it.
     """
     print("\n Setting up Nginx (no-root install)...")
 
     home = Path.home()
-    nginx_bin = str(home / ".local" / "bin" / "nginx")
+    nginx_bin = str(home / ".local" / "bin" / "nginx-ssl")
 
     os.makedirs(str(home / ".local" / "bin"), exist_ok=True)
 
     # ------------------------------------------------------------------ #
     # Step 1: already installed?                                           #
     # ------------------------------------------------------------------ #
-    if os.path.exists(nginx_bin):
-        result = subprocess.run(
-            [nginx_bin, "-v"], capture_output=True, text=True
-        )
-        if result.returncode == 0:
-            print(f"   Nginx already installed: {result.stderr.strip()}")
-            return True
-        print("   Existing nginx binary is broken — reinstalling...")
+    if _nginx_has_ssl(nginx_bin):
+        print(f"   SSL-capable nginx already installed: {nginx_bin}")
+        return True
+    if os.path.lexists(nginx_bin):
+        print("   Existing nginx lacks HTTPS proxy support — reinstalling...")
         os.remove(nginx_bin)
 
     # ------------------------------------------------------------------ #
     # Step 2: system nginx on PATH?                                        #
     # ------------------------------------------------------------------ #
-    result = subprocess.run(
-        ["which", "nginx"], capture_output=True, text=True
-    )
-    if result.returncode == 0:
-        system_nginx = result.stdout.strip()
+    system_nginx = shutil.which("nginx")
+    if system_nginx and _nginx_has_ssl(system_nginx):
         print(f"   System nginx found: {system_nginx}")
         try:
             os.symlink(system_nginx, nginx_bin)
             print(f"   Symlinked to: {nginx_bin}")
             return True
         except OSError as e:
-            print(f"   Could not create symlink: {e} — will download static binary")
+            print(f"   Could not create symlink: {e} — will compile nginx")
 
     # ------------------------------------------------------------------ #
-    # Step 3: compile from source (no SSL, no PCRE, no zlib needed)      #
+    # Step 3: compile from source with the HTTPS proxy module           #
     # ------------------------------------------------------------------ #
     import tarfile
     import tempfile
@@ -300,7 +300,7 @@ def install_nginx():
         "NGINX_SOURCE_URL",
         f"https://nginx.org/download/nginx-{nginx_version}.tar.gz",
     )
-    nginx_prefix = str(home / ".local" / "nginx")
+    nginx_prefix = str(home / ".local" / "nginx-ssl")
 
     print(f"   No system nginx found — compiling from source (nginx {nginx_version})...")
 
@@ -321,9 +321,9 @@ def install_nginx():
                 print(f"   Source directory not found: {src_dir}")
                 return False
 
-            # Minimal build: proxy only — no SSL, no PCRE, no zlib needed.
-            # TLS is terminated by the CAI/CML platform layer, not nginx.
-            configure_cmd = " ".join([
+            # CAI terminates browser TLS, but nginx itself must initiate TLS
+            # to the separate, authenticated Grafana CML application.
+            configure_args = [
                 "./configure",
                 f"--prefix={nginx_prefix}",
                 f"--sbin-path={nginx_bin}",
@@ -331,20 +331,43 @@ def install_nginx():
                 f"--pid-path={nginx_prefix}/run/nginx.pid",
                 f"--error-log-path={nginx_prefix}/logs/error.log",
                 f"--http-log-path={nginx_prefix}/logs/access.log",
+                "--with-http_ssl_module",
                 "--without-http_rewrite_module",  # no libpcre-dev
-                # "--without-http_ssl_module",      # no libssl-dev
-                # "--without-http_v2_module",       # no libssl-dev
                 "--without-http_gzip_module",     # no zlib-dev
                 "--without-mail_smtp_module",
                 "--without-mail_imap_module",
                 "--without-mail_pop3_module",
-            ])
-            print("   Configuring...")
-            if not run_command(configure_cmd, cwd=src_dir):
-                print("   Configure failed")
-                return False
+            ]
+            print("   Configuring with system OpenSSL...")
+            if not run_command(" ".join(configure_args), cwd=src_dir):
+                # Some CAI runtimes have libssl but no development headers.
+                # Nginx can build OpenSSL from a verified source tarball.
+                openssl_version = "3.5.8"
+                openssl_name = f"openssl-{openssl_version}"
+                openssl_tar = os.path.join(tmpdir, f"{openssl_name}.tar.gz")
+                openssl_url = (
+                    "https://github.com/openssl/openssl/releases/download/"
+                    f"{openssl_name}/{openssl_name}.tar.gz"
+                )
+                print("   System OpenSSL headers unavailable; downloading OpenSSL source...")
+                if not run_command(f"curl -fsSL -o {openssl_tar} {openssl_url}", cwd=tmpdir):
+                    return False
+                with open(openssl_tar, "rb") as source:
+                    digest = hashlib.file_digest(source, "sha256").hexdigest()
+                if digest != "a8f84a39918ec6415ce765d9b429d313ba97b8143169c172e734b9514464f5b2":
+                    print("   OpenSSL source checksum mismatch")
+                    return False
+                with tarfile.open(openssl_tar, "r:gz") as tar:
+                    tar.extractall(path=tmpdir)
+                print("   Configuring with bundled OpenSSL source...")
+                if not run_command(
+                    " ".join(configure_args + [f"--with-openssl={tmpdir}/{openssl_name}"]),
+                    cwd=src_dir,
+                ):
+                    print("   SSL-capable nginx configure failed")
+                    return False
 
-            num_cores = os.cpu_count() or 2
+            num_cores = min(os.cpu_count() or 2, 8)
             print(f"   Compiling with {num_cores} cores...")
             if not run_command(f"make -j{num_cores}", cwd=src_dir):
                 print("   Compile failed")
@@ -354,12 +377,11 @@ def install_nginx():
                 print("   Install failed")
                 return False
 
-        result = subprocess.run([nginx_bin, "-v"], capture_output=True, text=True)
-        if result.returncode == 0:
-            print(f"   Nginx installed: {result.stderr.strip()}")
+        if _nginx_has_ssl(nginx_bin):
+            print(f"   SSL-capable nginx installed: {nginx_bin}")
             return True
 
-        print("   Nginx binary not found after compilation")
+        print("   Nginx binary missing HTTPS proxy support after compilation")
         return False
 
     except Exception as exc:
@@ -722,7 +744,8 @@ def main():
     print(f"Working directory: {os.getcwd()}\n")
 
     # Install system dependencies
-    install_nginx()
+    if not install_nginx():
+        raise RuntimeError("Could not install SSL-capable nginx required by Grafana proxy")
 
     venv_dir = "/home/cdsw/.venv"
 
