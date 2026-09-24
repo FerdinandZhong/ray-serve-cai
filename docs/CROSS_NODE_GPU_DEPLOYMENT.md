@@ -1,9 +1,12 @@
 # Cross-node GPU inference on Cloudera AI
 
 This runbook configures **one vLLM replica with tensor parallelism across two
-CML Application pods**, each exposing one GPU to Ray. All local commands use
-**Bash** and start from the repository root. Run Kubernetes commands from an
+CML Application pods**, each exposing one GPU to Ray. The numbered manual steps
+use **Bash** and start from the repository root. Run Kubernetes commands from an
 administrator workstation with the correct cluster context.
+
+The steps below
+show the equivalent Bash commands and explain the security and rollback details.
 
 ## Scope and tested configuration
 
