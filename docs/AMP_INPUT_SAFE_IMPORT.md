@@ -83,9 +83,20 @@ clusters do not need this migration. Persisted `joined`/Ray ID values are last
 observations; GET `/resources/nodes` is the live membership view.
 
 **Existing corrupted projects:** updating the repository does not remove already
-saved malformed project variables. A fresh import avoids the removed worker input
-fields; the read-only preflight will still reject corruption in an existing project.
-No migration silently replaces or deletes those settings.
+saved malformed project variables. If only `HUGGING_FACE_HUB_TOKEN` is malformed,
+sync this repository in the project and run the following command from its
+terminal. Enter the original Hugging Face token at the hidden prompt:
+
+```bash
+python -m cai_integration.repair_project_hf_token
+```
+
+The command reads the current project environment, replaces only that token,
+and verifies the API result without printing the token. It refuses to rewrite
+other malformed variables. You can also supply `--hf-token-file /path/to/token`
+instead of the prompt. Run the failed AMP job again after repair. For new AMPs,
+use the input-safe API import when entering a Hugging Face token; the Workbench
+form can persist an edited input as a browser event rather than its text.
 
 The read-only project-environment preflight also checks existing project values
 before setup/application creation. It detects corruption, but does not repair the

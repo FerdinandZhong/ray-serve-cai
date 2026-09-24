@@ -18,6 +18,11 @@ def test_nested_or_non_string_values_rejected_without_leaking_values(value):
     assert "private-secret" not in str(error.value)
 
 
+def test_malformed_hf_token_points_to_explicit_repair():
+    with pytest.raises(ValueError, match="repair_project_hf_token"):
+        validate_project_environment(json.dumps({"HUGGING_FACE_HUB_TOKEN": {"nativeEvent": {}}}))
+
+
 @pytest.mark.parametrize("value", ["not json", "[]", "null"])
 def test_invalid_top_level_rejected(value):
     with pytest.raises(ValueError):

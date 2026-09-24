@@ -18,6 +18,13 @@ def validate_project_environment(raw):
         raise ValueError("Project environment must be an object of string values")
     invalid = [key for key, value in values.items() if not isinstance(value, str)]
     if invalid:
+        if invalid == ["HUGGING_FACE_HUB_TOKEN"]:
+            raise ValueError(
+                "Project HUGGING_FACE_HUB_TOKEN is not a string. "
+                "From the project terminal, run "
+                "python -m cai_integration.repair_project_hf_token to re-enter it "
+                "through a hidden prompt. No settings were changed."
+            )
         raise ValueError(
             "Project environment contains non-string values for: "
             + ", ".join(sorted(invalid))
