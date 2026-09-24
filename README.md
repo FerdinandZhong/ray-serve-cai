@@ -9,12 +9,17 @@
 `ray-serve-cai` turns a set of Cloudera AI (CAI) / Cloudera Machine Learning (CML)
 Applications into a live Ray cluster and gives you a single REST API to deploy,
 scale, place, and monitor inference workloads on it — vLLM and SGLang LLMs, a
-LiteLLM gateway, YOLO vision models, MCP tool servers, or any custom Ray Serve app.
+LiteLLM gateway, MCP tool servers, or any custom Ray Serve app.
 
 Each engine runs in its own isolated Python virtual environment so mutually
 incompatible dependency stacks (e.g. vLLM vs SGLang) coexist on the same cluster,
 and every deployment can be pinned to specific nodes and GPU topologies through a
 declarative scheduling block.
+
+**Using GPUs across multiple Ray nodes / CML pods?** Follow the
+[cross-node GPU deployment runbook](docs/CROSS_NODE_GPU_DEPLOYMENT.md) before
+deploying the model. It covers Bash commands for Istio configuration, collective
+communication checks, Ray TP placement, and the tested vLLM runner workaround.
 
 ---
 
@@ -39,7 +44,6 @@ declarative scheduling block.
 - [Performance](#performance)
 - [Optimizations](#optimizations)
 - [Cost](#cost)
-- [Multi-modal (YOLO)](#multi-modal-yolo)
 - [The Management REST API](#the-management-rest-api)
   - [Applications](#applications--apiv1applications)
   - [Scheduling & placement groups](#scheduling--placement-groups)
@@ -120,7 +124,6 @@ The fastest way to see this running is a one-click AMP import:
 | **Multi-model A/B or routing** | Deploy N models simultaneously; route traffic at the application layer via LiteLLM gateway |
 | **Large-model tensor parallelism** | Spread a 27B–70B+ model across 2+ GPUs with one declarative `tensor_parallel_size` field |
 | **Fractional-GPU multi-tenancy** | Pack multiple small models onto one GPU node with `gpu_fraction` |
-| **Vision / multi-modal inference** | YOLO object detection engine; batched image requests via the same REST API |
 | **Tool servers (MCP)** | Host Model Context Protocol servers as Ray Serve apps on the same cluster |
 | **Cost-optimised batch routing** | Use LiteLLM to route to cheaper external providers when GPU capacity is at peak |
 
@@ -136,8 +139,12 @@ The fastest way to see this running is a one-click AMP import:
   `/v1/chat/completions`, `/v1/completions`, `/v1/models`, `/metrics`.
 - **Built-in monitoring** — Prometheus + Grafana CML apps provisioned by the
   same job chain that launches the cluster.
-- **Multi-modal & tool servers** — YOLO vision and MCP tool engines run on the
-  same cluster as the LLMs.
+- **Tool servers** — MCP tool engines run on the same cluster as the LLMs.
+
+Open the full Grafana UI at `https://<ray-head-app>.<CDSW_DOMAIN>/grafana/`.
+The Ray Dashboard metrics tab uses the same path. The head app supplies CAI
+authentication to the protected Grafana backend; the CAI API token stays on the
+server. Recreate existing head and Grafana apps to pick up these launch settings.
 
 ## Architecture
 
@@ -160,7 +167,7 @@ flowchart LR
     end
     subgraph GENERIC["ray_serve_cai/ — generic, platform-neutral"]
         direction TB
-        E["engines/<br/>registry + factories (vllm · sglang · litellm · yolo · mcp)"]
+        E["engines/<br/>registry + factories (vllm · sglang · litellm · mcp)"]
         M["management/<br/>FastAPI Management REST API"]
         B["ray_backend.py<br/>programmatic Python API"]
         C["launch_cluster.py<br/>cluster CLI"]
@@ -206,7 +213,6 @@ pip install -e .
 # With an inference engine — pick ONE of vllm / sglang; they conflict on llguidance
 pip install -e ".[vllm]"     # vLLM >= 0.13.0 (+ ninja for FlashInfer JIT on T4/SM7.5)
 pip install -e ".[sglang]"   # SGLang >= 0.5.7
-pip install -e ".[yolo]"     # Ultralytics YOLO + Pillow + OpenCV
 
 # Tooling
 pip install -e ".[dev]"      # pytest, ruff, black, mypy
@@ -233,6 +239,11 @@ GPU inference additionally needs CUDA 11.8+ and a compatible driver on the worke
 
 ## Hardware Requirements
 
+The AMP configures the project shared-memory limit to 40,000 MB before creating
+the Ray applications. This prevents Ray's plasma object store from failing when
+the platform default `/dev/shm` is only 64 MB. Existing applications must be
+recreated after changing this project setting.
+
 | Deployment | Head (CPU-only) | GPU workers | Notes |
 |---|---|---|---|
 | **Minimum (demo)** | 12 CPU / 32 GB | 1× dual-GPU node (2× RTX PRO 6000 96 GB; 44 CPU / 320 GB) | serves 27B FP8 at TP=2 |
@@ -249,7 +260,7 @@ KV cache included).
 |------|---------|
 | **Head node** | The Ray head. Runs the Management API and coordination. **No GPUs.** |
 | **Worker node** | A CML Application that joins the cluster and carries GPUs/CPU for inference. |
-| **Engine** | A registered inference backend: `vllm`, `sglang`, `litellm`, `yolo`, `mcp`, or custom. |
+| **Engine** | A registered inference backend: `vllm`, `sglang`, `litellm`, `mcp`, or custom. |
 | **Application** | A Ray Serve deployment. Created via `POST /api/v1/applications`. |
 | **Environment** | An isolated venv at `/home/cdsw/.venv-<name>` that an engine's actor runs under. |
 | **`node_type`** | A logical worker-group label (e.g. `l40-gpu-worker`) registered as a Ray resource. |
@@ -376,7 +387,6 @@ Available per deployment: `POST {prefix}/v1/completions`,
 | **vLLM** | `vllm` | ✅ Stable | High-throughput LLM serving; tensor parallelism, fractional GPU, multi-node. |
 | **SGLang** | `sglang` | ✅ Stable | Runs SGLang's server as a subprocess; native Prometheus metrics. |
 | **LiteLLM** | `litellm` | ✅ Stable | Proxy/gateway to external providers (OpenAI, Anthropic, …); no local model. |
-| **YOLO** | `yolo` | ✅ Stable | Ultralytics object detection; batched inference. |
 | **MCP** | `mcp` | ✅ Stable | Model Context Protocol tool servers. |
 | **Custom** | *(your name)* | 🔌 Extensible | Register your own via the engine registry. |
 
@@ -446,39 +456,6 @@ To price a deployment, multiply its GPU count by your node's $/GPU-hour
 (ask your platform team for the internal rate) and the time served; divide by
 the sustained token throughput from a [Locust](#performance) run for a
 $/1M-tokens figure to compare against hosted API pricing.
-
-## Multi-modal (YOLO)
-
-Object detection runs on the same cluster with the same API surface:
-
-```bash
-curl -X POST http://<head>/api/v1/applications \
-  -H 'Content-Type: application/json' \
-  -d '{
-        "name": "yolo-detect",
-        "engine_type": "yolo",
-        "route_prefix": "/yolo",
-        "engine_config": {
-          "model_path": "yolo11n.pt",
-          "conf_threshold": 0.25,
-          "iou_threshold": 0.45,
-          "device": "cuda:0"
-        },
-        "scheduling": {"resources": {"node_type:rtxpro6000-gpu-worker": 0.001}}
-      }'
-```
-
-Then run detection (multipart image upload) — the engine batches concurrent
-images to maximise GPU utilisation:
-
-```bash
-curl -X POST http://<head>/yolo/v1/detect -F "file=@street.jpg"
-# → {"detections": [{"label": "car", "confidence": 0.91, "location": ...}, ...]}
-```
-
-`GET /yolo/info` returns model metadata; interactive Swagger at `/yolo/docs`.
-YOLO-nano class models run comfortably at `gpu_fraction: 0.25` alongside an
-LLM deployment on the same GPU.
 
 ## The Management REST API
 
@@ -727,7 +704,7 @@ Copy [`.env.example`](.env.example) to `.env` and fill in your values.
 ray_serve_cai/                 # the library
 ├── engines/                   # engine registry + per-engine config/factory
 │   ├── registry.py            #   register_engine / get_registry
-│   ├── vllm_*.py  sglang_*.py litellm_*.py yolo_*.py mcp_*.py
+│   ├── vllm_*.py  sglang_*.py litellm_*.py mcp_*.py
 │   └── venv_utils.py          #   venv resolution & validation
 ├── management/                # the FastAPI Management API
 │   ├── app.py                 #   FastAPI app + lifespan

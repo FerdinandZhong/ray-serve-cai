@@ -284,7 +284,12 @@ class VLLMDeploymentFactory:
 
         logger.info(f"Creating vLLM deployment with tensor_parallel_size={tensor_parallel_size}")
 
+        # Work on a copy: environment selection is deployment metadata, not an
+        # AsyncEngineArgs option. Resolve before removing it so explicit missing
+        # environments still fail fast instead of falling back to the default.
+        engine_config = dict(engine_config)
         venv_path = resolve_venv_path(engine_config, default_name="vllm")
+        engine_config.pop("venv_name", None)
 
         # Extract scheduling fields injected by ray_service.deploy_model().
         # Pop them so they don't leak into the vLLM AsyncEngineArgs.

@@ -45,19 +45,46 @@ logging.basicConfig(
 # ---------------------------------------------------------------------------
 _VENV_PYTHON = Path("/home/cdsw/.venv/bin/python")
 
-if _VENV_PYTHON.exists() and Path(sys.executable).resolve() != _VENV_PYTHON.resolve():
-    os.execv(str(_VENV_PYTHON), [str(_VENV_PYTHON)] + sys.argv)
+def _project_root():
+    if globals().get("__file__"):
+        return Path(__file__).resolve().parent.parent
+    for root in (Path(os.environ.get("CDSW_PROJECT_DIR") or Path.cwd()), Path.cwd(), Path.cwd().parent):
+        if (root / "cai_integration" / "launch_ray_cluster.py").is_file():
+            return root.resolve()
+    raise RuntimeError("Cannot locate the Ray AMP project checkout")
+
+
+PROJECT_ROOT = _project_root()
+if (__name__ == "__main__" and _VENV_PYTHON.exists()
+        and Path(sys.prefix).resolve() != _VENV_PYTHON.parent.parent.resolve()):
+    os.execv(str(_VENV_PYTHON), [str(_VENV_PYTHON), "-u",
+             str(PROJECT_ROOT / "cai_integration" / "launch_ray_cluster.py")])
 
 from jinja2 import Environment, FileSystemLoader
 
 # Add parent directory to path for imports
-script_dir = Path(__file__).parent
+script_dir = PROJECT_ROOT / "cai_integration"
 sys.path.insert(0, str(script_dir.parent))
 
 from ray_serve_cai.cai_cluster import CAIClusterManager, WorkerGroupConfig
 
 # Jinja2 templates for generated launcher scripts
 TEMPLATE_DIR = script_dir / "templates"
+
+
+def save_cluster_info(info_file: Path, cluster_info: dict, *, preserve_workers: bool = True):
+    """Serialize startup writes with API worker registration on shared storage."""
+    import fcntl
+    with open(info_file.with_suffix(".json.lock"), "w") as lock:
+        fcntl.flock(lock, fcntl.LOCK_EX)
+        if preserve_workers and info_file.exists():
+            current = json.loads(info_file.read_text())
+            for key in ("workers", "worker_groups"):
+                if key in current:
+                    cluster_info[key] = current[key]
+        tmp = info_file.with_suffix(".json.tmp")
+        tmp.write_text(json.dumps(cluster_info, indent=2))
+        os.replace(tmp, info_file)
 
 
 def render_worker_launcher(
@@ -70,11 +97,9 @@ def render_worker_launcher(
 ) -> str:
     """Render ONE worker group's launcher script and set group.script_path.
 
-    node_type is baked into the script (it seeds the ``node_type:<type>`` Ray
-    resource), so every node_type needs its own script — this keeps the
-    one-script-per-node_type invariant that _detect_node_type and recovery rely
-    on.  Reused both at cluster start (loop below) and by the runtime
-    "define node_type" API (cai_service.define_node_type).  Returns the path.
+    node_type seeds the optional legacy scheduling resource. Direct creation
+    uses a unique group.name per worker; templates may share a group launcher.
+    Returns the path.
     """
     venv_python = project_dir / ".venv" / "bin" / "python"
     env = Environment(
@@ -214,7 +239,7 @@ def load_config():
         'worker_memory':            32,
         'worker_gpus':              0,
         'worker_node_type':         None,
-        'launch_initial_workers':   True,
+        'launch_initial_workers':   False,
         'ray_port':                 6379,
         'dashboard_port':           8265,
         'metrics_port':             9090,
@@ -239,7 +264,7 @@ def load_config():
     }
 
     # ── Step 2: YAML overrides defaults ─────────────────────────────────────
-    config_path = Path(__file__).parent.parent / "configs" / "ray_cluster_config.yaml"
+    config_path = PROJECT_ROOT / "configs" / "ray_cluster_config.yaml"
     if config_path.exists():
         try:
             with open(config_path) as f:
@@ -324,6 +349,10 @@ def load_config():
             except ValueError as exc:
                 raise ValueError(f"{env_var} must be a number, got {val!r}") from exc
 
+    head_subdomain = os.environ.get("RAY_HEAD_SUBDOMAIN", "").strip()
+    if head_subdomain:
+        config['head_app_name'] = head_subdomain
+
     _mon = config.setdefault('monitoring', {
         'prometheus_host': None, 'grafana_host': None,
         'grafana_iframe_host': None, 'grafana_org_id': '1',
@@ -351,8 +380,9 @@ def load_config():
             _mon['prometheus_host'] = f"https://{_prom_sub}.{_cdsw_domain}"
         if not _mon.get('grafana_host'):
             _mon['grafana_host'] = f"https://{_graf_sub}.{_cdsw_domain}"
-        if not _mon.get('grafana_iframe_host'):
-            _mon['grafana_iframe_host'] = _mon['grafana_host']
+        if (not _mon.get('grafana_iframe_host') or
+                _mon['grafana_iframe_host'].rstrip('/') == _mon['grafana_host'].rstrip('/')):
+            _mon['grafana_iframe_host'] = f"https://{config['head_app_name']}.{_cdsw_domain}/grafana"
 
     return config
 
@@ -365,7 +395,10 @@ def build_worker_groups(ray_config: dict) -> list[WorkerGroupConfig]:
     shape can be selected at AMP import using ``RAY_WORKER_*`` variables.  It
     is registered on the head, but never creates a CML worker by itself.
     """
-    if not ray_config.get('worker_groups'):
+    # An explicit empty list means head-only, not the legacy single-group fallback.
+    if ray_config.get('worker_groups') == []:
+        return []
+    if ray_config.get('worker_groups') is None:
         node_type = (
             ray_config['worker_node_type']
             or ("gpu-worker" if ray_config['worker_gpus'] > 0 else "cpu-worker")
@@ -480,7 +513,7 @@ def main():
         if cdsw_domain:
             cml_host = f"https://{cdsw_domain}"
 
-    cml_api_key = os.environ.get("CML_API_KEY") or os.environ.get("CDSW_APIV2_KEY")
+    cml_api_key = os.environ.get("CDSW_APIV2_KEY") or os.environ.get("CML_API_KEY")
     project_id = os.environ.get("CDSW_PROJECT_ID") or os.environ.get("CML_PROJECT_ID")
 
     # Load cluster configuration first so runtime defaults come from the YAML.
@@ -581,6 +614,9 @@ def main():
             head_runtime_identifier=head_runtime,
             worker_runtime_identifier=worker_runtime,
             head_script_path=head_script_path,
+            # CDSW_APIV2_KEY is scoped to this launch job. The head receives
+            # its own runtime key from CAI; copying this one makes it expire
+            # as soon as the job ends.
             wait_ready=True,
             timeout=600,
         )
@@ -589,6 +625,7 @@ def main():
         if head_url_from_domain:
             cluster_info['head_url'] = head_url_from_domain
         print(f"   head_url: {cluster_info.get('head_url', '(unknown)')}")
+        save_cluster_info(info_file, cluster_info, preserve_workers=False)
 
         # ── Step 2: wait for Management API ───────────────────────────────────
         print("\n⏳ Waiting for Management API to become healthy on head node...")
@@ -616,8 +653,7 @@ def main():
                     _gcs = json.loads(_r.read()).get("gcs_address", "")
                     if _gcs:
                         cluster_info["head_address"] = _gcs
-                        with open(info_file, "w") as f:
-                            json.dump(cluster_info, f, indent=2)
+                        save_cluster_info(info_file, cluster_info)
                         print(f"   GCS address: {_gcs}")
             except Exception as _exc:
                 print(f"⚠️  Could not fetch GCS address from Management API: {_exc}")
@@ -636,6 +672,9 @@ def main():
                         "cpu":       g.cpu,
                         "memory":    g.memory,
                         "gpus":      g.gpus,
+                        "accelerator_type": g.accelerator_type,
+                        "runtime_identifier": g.runtime_identifier,
+                        "node_label": g.node_label,
                     }).encode()
                     req = _urlreq.Request(
                         add_url,
@@ -658,8 +697,9 @@ def main():
 
         # Save cluster info to file for reference
         info_file = Path("/home/cdsw/ray_cluster_info.json")
-        with open(info_file, 'w') as f:
-            json.dump(cluster_info, f, indent=2)
+        # The API may have added worker records while startup was waiting.
+        # Merge under its lock rather than overwrite with our earlier snapshot.
+        save_cluster_info(info_file, cluster_info)
         print(f"\n💾 Cluster info saved to {info_file}")
 
         # Register the head-recovery CML Job (best-effort). The management API

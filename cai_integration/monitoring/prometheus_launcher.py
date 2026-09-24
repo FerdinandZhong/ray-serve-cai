@@ -72,7 +72,12 @@ if not RAY_HEAD_URL:
     _head_sub = os.environ.get("RAY_HEAD_SUBDOMAIN", "ray-cluster-head")
     if _cdsw_domain:
         RAY_HEAD_URL = f"https://{_head_sub}.{_cdsw_domain}"
-METRICS_BEARER = os.environ.get("RAY_METRICS_BEARER_TOKEN", "").strip()
+# Prefer this application's own CAI key. A token copied from the launch job
+# expires when that job ends, even if it remains in application settings.
+METRICS_BEARER = (
+    os.environ.get("CDSW_APIV2_KEY")
+    or os.environ.get("RAY_METRICS_BEARER_TOKEN", "")
+).strip()
 APP_PORT = int(os.environ.get("CDSW_APP_PORT", "8090"))
 PROM_PORT = 9090
 

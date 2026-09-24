@@ -25,7 +25,16 @@ import sys
 import time
 from pathlib import Path
 
-sys.path.insert(0, str(Path(__file__).parent.parent))
+def _project_root():
+    if globals().get("__file__"):
+        return Path(__file__).resolve().parent.parent
+    for root in (Path(os.environ.get("CDSW_PROJECT_DIR") or Path.cwd()), Path.cwd(), Path.cwd().parent):
+        if (root / "cai_integration" / "launch_monitoring.py").is_file():
+            return root.resolve()
+    raise RuntimeError("Cannot locate the monitoring AMP project checkout")
+
+
+sys.path.insert(0, str(_project_root()))
 
 from ray_serve_cai.cai_cluster import CAIClusterManager
 
@@ -36,15 +45,22 @@ except ImportError:
         return {}
 
 
-def _wait_healthy(url: str, timeout: int = 300) -> bool:
+def _wait_healthy(url: str, timeout: int = 300, token: str = "") -> bool:
+    import json
     import urllib.request
     deadline = time.time() + timeout
     dots = 0
     while time.time() < deadline:
         try:
-            with urllib.request.urlopen(url, timeout=5) as r:
-                if r.status < 400:
-                    return True
+            req = urllib.request.Request(url, headers={"Authorization": f"Bearer {token}"} if token else {})
+            with urllib.request.urlopen(req, timeout=5) as r:
+                if r.status == 200 and r.geturl() == url:
+                    body = r.read().decode()
+                    if url.endswith("/api/health"):
+                        if json.loads(body).get("database") == "ok":
+                            return True
+                    if "Prometheus Server is Ready" in body:
+                        return True
         except Exception:
             pass
         time.sleep(5)
@@ -66,7 +82,7 @@ def main():
         if domain:
             cml_host = f"https://{domain}"
 
-    cml_api_key = os.environ.get("CML_API_KEY") or os.environ.get("CDSW_APIV2_KEY")
+    cml_api_key = os.environ.get("CDSW_APIV2_KEY") or os.environ.get("CML_API_KEY")
     project_id = os.environ.get("CDSW_PROJECT_ID") or os.environ.get("CML_PROJECT_ID")
     cdsw_domain = os.environ.get("CDSW_DOMAIN", "").strip()
 
@@ -104,7 +120,9 @@ def main():
     print(f"\n  CML Host   : {cml_host}")
     print(f"  Project ID : {project_id}")
     print(f"  Prometheus : {prom_url}")
-    print(f"  Grafana    : {grafana_url}")
+    print(f"  Grafana backend (CAI-protected): {grafana_url}")
+    if ray_head_url:
+        print(f"  Grafana dashboard UI         : {ray_head_url.rstrip('/')}/grafana/")
     if ray_head_url:
         print(f"  Ray Head   : {ray_head_url}")
 
@@ -120,13 +138,9 @@ def main():
     prom_env = {}
     if ray_head_url:
         prom_env["RAY_CLUSTER_HEAD_URL"] = ray_head_url
-    # Forward a Bearer token so Prometheus can scrape the head's ingress when
-    # the head app requires authentication. Default to the CML API key
-    # ($CDSW_APIV2_KEY / $CML_API_KEY), which the Management API accepts.
-    _metrics_token = (
-        os.environ.get("RAY_METRICS_BEARER_TOKEN", "").strip()
-        or (cml_api_key or "").strip()
-    )
+    # The application uses its own CDSW_APIV2_KEY by default. Never copy this
+    # job's ephemeral key into a long-running application.
+    _metrics_token = os.environ.get("RAY_METRICS_BEARER_TOKEN", "").strip()
     if _metrics_token:
         prom_env["RAY_METRICS_BEARER_TOKEN"] = _metrics_token
 
@@ -145,12 +159,12 @@ def main():
         memory=4,
         runtime_identifier=runtime,
         subdomain=prom_sub,
-        bypass_authentication=True,
+        bypass_authentication=False,
         environment=prom_env or None,
     )
     prom_health_url = f"{prom_url.rstrip('/')}/-/ready" if prom_url else ""
     print(f"  Polling {prom_health_url} ...")
-    if prom_health_url and _wait_healthy(prom_health_url, timeout=300):
+    if prom_health_url and _wait_healthy(prom_health_url, timeout=300, token=cml_api_key):
         print("  Prometheus healthy")
     else:
         print("  ERROR: Prometheus did not respond within 5 min — check app logs")
@@ -161,6 +175,11 @@ def main():
     grafana_env = {}
     if prom_url:
         grafana_env["PROMETHEUS_URL"] = prom_url
+    _prometheus_token = os.environ.get("PROMETHEUS_BEARER_TOKEN", "").strip()
+    if _prometheus_token:
+        grafana_env["PROMETHEUS_BEARER_TOKEN"] = _prometheus_token
+    if ray_head_url:
+        grafana_env["GRAFANA_ROOT_URL"] = f"{ray_head_url.rstrip('/')}/grafana/"
 
     manager.cml_client.create_application(
         project_id=project_id,
@@ -170,12 +189,12 @@ def main():
         memory=4,
         runtime_identifier=runtime,
         subdomain=grafana_sub,
-        bypass_authentication=True,
+        bypass_authentication=False,
         environment=grafana_env or None,
     )
     grafana_health_url = f"{grafana_url.rstrip('/')}/api/health" if grafana_url else ""
     print(f"  Polling {grafana_health_url} ...")
-    if grafana_health_url and _wait_healthy(grafana_health_url, timeout=300):
+    if grafana_health_url and _wait_healthy(grafana_health_url, timeout=300, token=cml_api_key):
         print("  Grafana healthy")
     else:
         print("  ERROR: Grafana did not respond within 5 min — check app logs")
@@ -190,7 +209,8 @@ def main():
     print("Add to configs/ray_cluster_config.yaml → monitoring:")
     print(f"  prometheus_host:     {prom_url}")
     print(f"  grafana_host:        {grafana_url}")
-    print(f"  grafana_iframe_host: {grafana_url}")
+    iframe_url = f"{ray_head_url.rstrip('/')}/grafana" if ray_head_url else grafana_url
+    print(f"  grafana_iframe_host: {iframe_url}")
     print("=" * 70)
     if ray_head_url:
         print("\nTo provision Ray dashboards:")

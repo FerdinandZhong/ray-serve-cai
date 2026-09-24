@@ -38,30 +38,10 @@ ray_cluster:
   #
   # runtime_identifier: overrides cai.worker_runtime_identifier per group.
   #        Use the standard (non-CUDA) image for CPU-only groups.
-  worker_groups:
-    - name:      amp-gpu-worker-template
-      # This is an AMP input template, not a default worker allocation.
-      # RAY_WORKER_NODE_TYPE (and optional RAY_WORKER_{CPU,MEMORY,GPUS})
-      # override this definition at import.  It is registered with the head
-      # so users can create workers through the Management API afterwards.
-      input_template: true
-      node_type: gpu-worker
-      count:     0
-      cpu:       20
-      memory:    200  # GB; choose a value supported by the selected worker pool
-      gpus:      2
-      accelerator_type: RTX-PRO-6000  # Ray accelerator_type label (matches nvidia-smi GPU name)
-      # node_label: unset — real nvidia.com/gpu.product value for this SKU not
-      # yet confirmed; override it with RAY_WORKER_ACCELERATOR_TYPE if needed.
-      # inherits cai.worker_runtime_identifier (CUDA image)
-
-    - name:      cpu-workers
-      node_type: cpu-worker
-      count:     0   # none at cluster start — add on demand via Management API
-      cpu:       16
-      memory:    32  # GB
-      gpus:      0
-      runtime_identifier: "docker.repository.cloudera.com/cloudera/cdsw/ml-runtime-pbj-jupyterlab-python3.11-standard:2026.04.1-b7"
+  # Intentionally empty: no worker shapes or allocations during initialization.
+  # Define shapes via POST /api/v1/resources/node-types after the head is ready,
+  # then launch them with POST /api/v1/resources/nodes.
+  worker_groups: []
 
   # ── Ray daemon ports ──────────────────────────────────────────────────────
   ray_port:       6379
@@ -106,15 +86,15 @@ ray_serve:
 # All fields are optional — leave null to keep the metrics tab inactive.
 #
 # prometheus_host / grafana_host : URLs the head node can reach (http or https)
-# grafana_iframe_host            : browser-accessible Grafana URL (for iframes);
-#                                  usually same as grafana_host in CML
+# grafana_iframe_host            : browser-accessible head /grafana proxy URL (for iframes);
+#                                  defaults to the head app URL plus /grafana
 #
 # Env var overrides: MONITORING_PROMETHEUS_HOST, MONITORING_GRAFANA_HOST,
 #                    MONITORING_GRAFANA_IFRAME_HOST, MONITORING_GRAFANA_ORG_ID
 monitoring:
   prometheus_host:     null   # e.g. https://prometheus-server.<CDSW_DOMAIN>
   grafana_host:        null   # e.g. https://grafana-server.<CDSW_DOMAIN>
-  grafana_iframe_host: null   # same as grafana_host unless split-ingress
+  grafana_iframe_host: null   # defaults to authenticated head /grafana proxy
   grafana_org_id:      "1"
 
 # ── Optional per-job environment variables ────────────────────────────────────

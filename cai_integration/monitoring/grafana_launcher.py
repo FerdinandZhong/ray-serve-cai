@@ -23,7 +23,8 @@ import threading
 import time
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 from pathlib import Path
-from urllib.request import urlopen, urlretrieve
+from urllib.error import HTTPError
+from urllib.request import HTTPRedirectHandler, build_opener, urlretrieve
 
 GF_VERSION = os.environ.get("GRAFANA_VERSION", "11.6.0")
 PROMETHEUS_URL = os.environ.get("PROMETHEUS_URL", "http://localhost:9090")
@@ -94,20 +95,34 @@ def download_grafana():
 
 
 def provision_datasource():
+    import json
     ds_dir = PROVISION_DIR / "datasources"
     ds_dir.mkdir(parents=True, exist_ok=True)
+    # The application's own key outlives the launch job's copied key.
+    token = (
+        os.environ.get("CDSW_APIV2_KEY")
+        or os.environ.get("PROMETHEUS_BEARER_TOKEN", "")
+    ).strip()
+    auth = ""
+    if token:
+        auth = ('      httpHeaderName1: Authorization\n'
+                '    secureJsonData:\n'
+                '      httpHeaderValue1: $PROMETHEUS_AUTH_HEADER\n')
+        # Grafana expands this at provisioning time; keep secrets off shared NFS.
+        os.environ["PROMETHEUS_AUTH_HEADER"] = f"Bearer {token}"
     (ds_dir / "prometheus.yml").write_text(f"""\
 apiVersion: 1
 datasources:
   - name: Prometheus
     type: prometheus
     access: proxy
-    url: {PROMETHEUS_URL}
+    url: {json.dumps(PROMETHEUS_URL)}
     isDefault: true
     editable: true
     jsonData:
       httpMethod: GET
       timeInterval: 15s
+{auth}\
 """)
     print(f"Datasource → {PROMETHEUS_URL}")
 
@@ -155,6 +170,19 @@ class _ProxyHandler(BaseHTTPRequestHandler):
 
     def _proxy(self):
         import urllib.request
+        # Browsers opening the Grafana CML app directly should land on the
+        # authenticated head route, which also owns Grafana's configured
+        # /grafana/ asset and API paths. Keep API calls on the backend URL for
+        # provisioning and health checks.
+        root_url = os.environ.get("GRAFANA_ROOT_URL", "").rstrip("/")
+        if (root_url and self.command == "GET" and
+                "text/html" in self.headers.get("Accept", "") and
+                not self.headers.get("X-Ray-Grafana-Proxy") and
+                not self.path.startswith("/api/")):
+            self.send_response(302)
+            self.send_header("Location", f"{root_url}/{self.path.lstrip('/')}")
+            self.end_headers()
+            return
         try:
             target = f"http://127.0.0.1:{GF_PORT}{self.path}"
             body = None
@@ -163,9 +191,14 @@ class _ProxyHandler(BaseHTTPRequestHandler):
                 body = self.rfile.read(int(length))
             req = urllib.request.Request(target, data=body, method=self.command)
             for k, v in self.headers.items():
-                if k.lower() not in ("host", "transfer-encoding"):
+                if k.lower() not in ("host", "transfer-encoding", "authorization", "x-grafana-authorization", "x-ray-grafana-proxy"):
                     req.add_header(k, v)
-            with urlopen(req, timeout=30) as resp:
+            # CAI consumes the ingress Authorization token. A separate header
+            # carries Grafana credentials, which Grafana must validate itself.
+            grafana_auth = self.headers.get("X-Grafana-Authorization")
+            if grafana_auth:
+                req.add_header("Authorization", grafana_auth)
+            with _open_upstream(req) as resp:
                 self.send_response(resp.status)
                 for k, v in resp.getheaders():
                     if k.lower() != "transfer-encoding":
@@ -180,6 +213,21 @@ class _ProxyHandler(BaseHTTPRequestHandler):
 
     def log_message(self, fmt, *args):
         pass  # silent
+
+
+class _NoRedirect(HTTPRedirectHandler):
+    def redirect_request(self, request, response, code, message, headers, url):
+        return None
+
+
+def _open_upstream(request):
+    """Return Grafana's response without following redirects through CAI ingress."""
+    try:
+        return build_opener(_NoRedirect()).open(request, timeout=30)
+    except HTTPError as response:
+        # urllib raises for 3xx/4xx/5xx; these are Grafana responses, not
+        # proxy failures, so pass their status and body through unchanged.
+        return response
 
 
 _GF_PROC_PATTERNS = (
@@ -275,7 +323,8 @@ def main():
         "GF_PATHS_PLUGINS": str(DATA_DIR / "plugins"),
         "GF_PATHS_PROVISIONING": str(PROVISION_DIR),
         "GF_SERVER_HTTP_PORT": str(GF_PORT),
-        "GF_SERVER_ROOT_URL": "%(protocol)s://%(domain)s/",
+        "GF_SERVER_ROOT_URL": os.environ.get("GRAFANA_ROOT_URL", "%(protocol)s://%(domain)s/"),
+        "GF_SERVER_SERVE_FROM_SUB_PATH": "false",
         "GF_SECURITY_ADMIN_PASSWORD": os.environ.get("GF_SECURITY_ADMIN_PASSWORD", "admin"),
         # Anonymous read-only access (required for Ray Dashboard iframe embedding)
         "GF_AUTH_ANONYMOUS_ENABLED": "true",

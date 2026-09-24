@@ -9,6 +9,10 @@ class NodeInfo(BaseModel):
     """Information about a Ray node, enriched with CML application identity."""
 
     node_id: str = Field(..., description="Ray node ID")
+    ray_node_id: Optional[str] = None
+    worker_id: Optional[str] = Field(None, description="Stable worker identity across recovery")
+    name: Optional[str] = Field(None, description="User-supplied display name")
+    labels: Dict[str, str] = Field(default_factory=dict)
     node_name: str = Field(..., description="Node name")
     node_type: str = Field(..., description="Node type (head/worker)")
     alive: bool = Field(..., description="Whether the node is alive")

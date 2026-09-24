@@ -1,7 +1,13 @@
 # Cross-Pod Collectives under Istio — Plan (serving TP + training)
 
 _Date: 2026-09-08_
-_Status: plan (root cause now empirically confirmed)_
+_Correction (2026-09-24): this is an archived diagnosis. Use the
+[cross-node GPU runbook](../../CROSS_NODE_GPU_DEPLOYMENT.md) for the tested
+EnvoyFilter, commands, and observed results. Ray Serve applications are
+processes inside Ray-node pods, not Kubernetes Deployments. The TCPStore and
+IP-range claims below were superseded by direct TCPStore, Gloo, and NCCL
+probes; the vLLM inference timeout was a separate issue._
+_Status: archived plan; see the runbook for the current procedure._
 _Extends: `2026-09-06-cross-node-training-readiness-design.md` (that spec = training slice +
 networking foundation, scoped to training; this doc adds the **serving multi-node TP** path
 and records the confirmed evidence)._
@@ -57,10 +63,13 @@ hop; once past it, **NCCL opens its own sockets on ephemeral ports** for the rin
 all-reduce, and those also cross pods and get intercepted. NCCL gives no clean single-port
 pin. Therefore the robust bypass is **IP-range / pod-scoped**, not per-port:
 
-- Exclude the worker-pod CIDR from the sidecar via
-  `traffic.sidecar.istio.io/excludeOutboundIPRanges` + `excludeInboundIPRanges` (covers both
-  rendezvous and NCCL data ports at once), **or** disable injection for collective pods
-  (`sidecar.istio.io/inject: "false"`).
+- `traffic.sidecar.istio.io/excludeOutboundIPRanges` supports outbound CIDR exclusion.
+  There is **no** `excludeInboundIPRanges` annotation; the former recommendation
+  was invalid. Inbound exclusions are port-based (`excludeInboundPorts`), or all
+  inbound capture can be disabled with `includeInboundPorts: ""`. These settings
+  must be supplied when the host pod is created, and affect more than its model.
+  Alternatively, disable sidecar injection for collective host pods using the pod
+  label `sidecar.istio.io/inject: "false"` at creation time.
 - Keep namespace `PeerAuthentication` **PERMISSIVE** (already applied for Ray GCS).
 - Still pin the rendezvous port (below) so behaviour is deterministic and documented, even
   though the exclude is IP-range based.

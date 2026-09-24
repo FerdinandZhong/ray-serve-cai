@@ -20,6 +20,7 @@ This script only uses the stdlib — Ray is invoked via subprocesses so there
 is no dependency on which Python interpreter runs this launcher.
 """
 import os
+import json
 import socket
 import subprocess
 import sys
@@ -53,7 +54,7 @@ if _venv_bin not in _path.split(":"):
     print(f"Prepended venv bin to PATH: {_venv_bin}")
 
 # ── [0/4] Ensure nginx is installed ──────────────────────────────────────────
-_nginx_bin = Path("/home/cdsw/.local/bin/nginx")
+_nginx_bin = Path("/home/cdsw/.local/bin/nginx-ssl")
 if not _nginx_bin.exists():
     print("\n[0/4] nginx not found — running setup_environment.py ...")
     _setup_script = PROJECT_DIR / "cai_integration" / "setup_environment.py"
@@ -83,8 +84,16 @@ print(f"GCS address     : {_gcs_address}  (written to {_gcs_file})")
 
 # ── Monitoring (Ray Dashboard metrics tab) ────────────────────────────────────
 # Set before ray start so the dashboard process inherits these env vars.
+_monitoring_token = os.environ.get("CDSW_APIV2_KEY") or os.environ.get("CML_API_KEY")
 {% if prometheus_host %}os.environ["RAY_PROMETHEUS_HOST"] = "{{ prometheus_host }}"
-{% endif %}{% if grafana_host %}os.environ["RAY_GRAFANA_HOST"] = "{{ grafana_host }}"
+if _monitoring_token:
+    os.environ["RAY_PROMETHEUS_HEADERS"] = json.dumps({"Authorization": f"Bearer {_monitoring_token}"})
+{% endif %}{% if grafana_host %}os.environ["GRAFANA_PROXY_UPSTREAM"] = "{{ grafana_host }}"
+if not _monitoring_token:
+    print("ERROR: CML_API_KEY or CDSW_APIV2_KEY is required for authenticated monitoring")
+    sys.exit(1)
+os.environ["GRAFANA_PROXY_BEARER_TOKEN"] = _monitoring_token
+os.environ["RAY_GRAFANA_HOST"] = f"http://127.0.0.1:{os.environ.get('CDSW_APP_PORT', '8080')}/grafana"
 {% endif %}{% if grafana_iframe_host %}os.environ["RAY_GRAFANA_IFRAME_HOST"] = "{{ grafana_iframe_host }}"
 {% endif %}{% if grafana_org_id %}os.environ["RAY_GRAFANA_ORG_ID"] = "{{ grafana_org_id }}"
 {% endif %}

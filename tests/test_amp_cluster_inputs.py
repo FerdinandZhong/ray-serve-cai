@@ -5,6 +5,27 @@ import pytest
 import cai_integration.launch_ray_cluster as launcher
 
 
+def test_explicit_empty_groups_never_fall_back_to_workers(monkeypatch):
+    monkeypatch.setenv("RAY_LAUNCH_INITIAL_WORKERS", "true")
+    monkeypatch.setenv("RAY_WORKER_CPU", "12")
+    monkeypatch.setenv("RAY_WORKER_MEMORY", "64")
+    config = launcher.load_config()
+    assert config["worker_groups"] == []
+    assert launcher.build_worker_groups(config) == []
+
+
+def test_post_start_l40s_definition_preserves_user_resources():
+    from ray_serve_cai.management.models.requests import DefineNodeTypeRequest, AddNodeRequest
+
+    definition = DefineNodeTypeRequest(
+        node_type="gpu-worker", cpu=12, memory=64, gpus=1,
+        accelerator_type="L40S", count=0,
+    )
+    assert (definition.cpu, definition.memory, definition.accelerator_type) == (12, 64, "L40S")
+    assert definition.count == 0
+    assert AddNodeRequest(node_type=definition.node_type).node_type == "gpu-worker"
+
+
 def test_amp_worker_inputs_override_only_the_zero_worker_template(monkeypatch):
     config = {
         "worker_groups": [

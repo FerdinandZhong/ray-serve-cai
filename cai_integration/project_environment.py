@@ -18,6 +18,13 @@ def validate_project_environment(raw):
         raise ValueError("Project environment must be an object of string values")
     invalid = [key for key, value in values.items() if not isinstance(value, str)]
     if invalid:
+        if invalid == ["HUGGING_FACE_HUB_TOKEN"]:
+            raise ValueError(
+                "Project HUGGING_FACE_HUB_TOKEN is not a string. "
+                "From the project terminal, run "
+                "python -m cai_integration.repair_project_hf_token to re-enter it "
+                "through a hidden prompt. No settings were changed."
+            )
         raise ValueError(
             "Project environment contains non-string values for: "
             + ", ".join(sorted(invalid))
@@ -31,7 +38,7 @@ def validate_project_environment(raw):
 def preflight_project_environment():
     """Fail before costly setup/application creation using the job's credentials."""
     host = os.environ.get("CML_HOST") or "https://" + os.environ.get("CDSW_DOMAIN", "")
-    token = os.environ.get("CML_API_KEY") or os.environ.get("CDSW_APIV2_KEY")
+    token = os.environ.get("CDSW_APIV2_KEY") or os.environ.get("CML_API_KEY")
     project = os.environ.get("CDSW_PROJECT_ID") or os.environ.get("CML_PROJECT_ID")
     if host == "https://" or not token or not project:
         raise RuntimeError("AMP project preflight requires host, project ID and API credentials")

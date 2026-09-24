@@ -21,7 +21,8 @@ def test_amp_input_defaults_resolve_to_strings():
 def test_amp_stages_are_bounded_sequential_jobs():
     manifest = yaml.safe_load((ROOT / ".project-metadata.yaml").read_text())
     expected = [
-        ("setup_base_env", 15),
+        ("configure_project_resources", 5),
+        ("setup_base_env", 30),
         ("setup_vllm_env", 30),
         ("setup_litellm_env", 10),
         ("launch_ray_cluster", 20),
@@ -49,18 +50,12 @@ def test_amp_stages_are_bounded_sequential_jobs():
     assert manifest["runtimes"][0]["kernel"] == "Python 3.11"
 
 
-def test_amp_registers_a_configurable_zero_worker_template():
+def test_amp_initializes_head_only_without_worker_resource_inputs():
     manifest = yaml.safe_load((ROOT / ".project-metadata.yaml").read_text())
     cluster = yaml.safe_load((ROOT / "configs/ray_cluster_config.yaml").read_text())
     env = manifest["environment_variables"]
-    assert env["RAY_LAUNCH_INITIAL_WORKERS"]["default"] == "false"
-    label = env["RAY_WORKER_NODE_TYPE"]["default"]
-    tp = int(env["TENSOR_PARALLEL_SIZE"]["default"])
-    assert any(
-        group.get("input_template") and group["node_type"] == label
-        and group["count"] == 0 and group["gpus"] >= tp
-        for group in cluster["ray_cluster"]["worker_groups"]
-    )
-    assert int(env["RAY_WORKER_GPUS"]["default"]) >= tp
-    assert env["RAY_WORKER_ACCELERATOR_TYPE"]["default"]
-    assert all(group["count"] == 0 for group in cluster["ray_cluster"]["worker_groups"])
+    assert not {"RAY_LAUNCH_INITIAL_WORKERS", "RAY_WORKER_CPU", "RAY_WORKER_MEMORY",
+                "RAY_WORKER_GPUS", "RAY_WORKER_ACCELERATOR_TYPE"} & env.keys()
+    assert env["RAY_WORKER_NODE_TYPE"]["default"] == "gpu-worker"
+    assert cluster["ray_cluster"]["launch_initial_workers"] is False
+    assert cluster["ray_cluster"]["worker_groups"] == []

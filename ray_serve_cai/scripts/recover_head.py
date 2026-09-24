@@ -44,7 +44,7 @@ def main(argv: list[str] | None = None) -> int:
     project_id = os.environ.get("CML_PROJECT_ID") or os.environ.get("CDSW_PROJECT_ID")
     domain = os.environ.get("CDSW_DOMAIN", "").strip()
     cml_host = os.environ.get("CML_HOST") or (f"https://{domain}" if domain else None)
-    service_token = os.environ.get("CML_API_KEY") or os.environ.get("CDSW_APIV2_KEY")
+    service_token = os.environ.get("CDSW_APIV2_KEY") or os.environ.get("CML_API_KEY")
 
     if not (project_id and cml_host and service_token):
         logger.error("Missing CML env (CML_PROJECT_ID / CML_HOST|CDSW_DOMAIN / CML_API_KEY).")

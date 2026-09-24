@@ -18,9 +18,19 @@ import argparse
 import os
 import shutil
 import sys
+from pathlib import Path
 
 # Ensure the project root is on the path so we can import from cai_integration.
-sys.path.insert(0, os.environ.get("CDSW_PROJECT_DIR", "/home/cdsw"))
+def _project_root():
+    if globals().get("__file__"):
+        return Path(__file__).resolve().parent.parent
+    for root in (Path(os.environ.get("CDSW_PROJECT_DIR") or Path.cwd()), Path.cwd(), Path.cwd().parent):
+        if (root / "cai_integration" / "setup_environment.py").is_file():
+            return root.resolve()
+    raise RuntimeError("Cannot locate cai_integration/setup_environment.py")
+
+
+sys.path.insert(0, str(_project_root()))
 
 # Package set is defined once in setup_environment._ENGINE_PACKAGES so the CML
 # job and the base-env registry never drift (see that module for rationale).

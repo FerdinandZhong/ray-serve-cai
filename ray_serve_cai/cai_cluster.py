@@ -153,7 +153,9 @@ class CMLAPIClient:
             payload['environment'] = environment
         if self.verbose:
             logger.debug(f"Creating application: POST {url}")
-            logger.debug(f"Payload: {payload}")
+            # Application environment values may contain CAI API keys and
+            # datasource credentials. Never write the full payload to logs.
+            logger.debug("Application payload fields: %s", sorted(payload))
 
         response = self.session.post(url, json=payload)
         if response.status_code >= 400:
@@ -319,7 +321,7 @@ class CMLAPIClient:
         Returns:
             True if the API accepted the restart request (200/202).
         """
-        url = f"{self.base_url}/projects/{project_id}/applications/{app_id}/restart"
+        url = f"{self.base_url}/projects/{project_id}/applications/{app_id}:restart"
 
         if self.verbose:
             logger.debug(f"Restarting application: POST {url}")
@@ -389,6 +391,7 @@ class CAIClusterManager:
         head_script_path: Optional[str] = None,
         wait_ready: bool = True,
         timeout: int = 300,
+        head_environment: Optional[Dict[str, str]] = None,
     ) -> Dict[str, Any]:
         """
         Start Ray cluster using CAI applications.
@@ -412,6 +415,7 @@ class CAIClusterManager:
             head_script_path: Path to head node launcher script. Required.
             wait_ready: Wait for all applications to reach running state.
             timeout: Maximum seconds to wait per application.
+            head_environment: Environment variables for the head CML application.
 
         Returns:
             Dictionary with cluster information including worker_groups metadata.
@@ -470,6 +474,7 @@ class CAIClusterManager:
                 runtime_identifier=head_runtime_identifier,
                 subdomain=head_app_name,
                 bypass_authentication=False,
+                environment=head_environment or None,
             )
             self.head_app_id = head_app.id
             logger.info(f"✅ Head node application created: {head_app.id}")
@@ -498,6 +503,8 @@ class CAIClusterManager:
                 'head_url': self.head_url,
                 'worker_app_ids': self.worker_app_ids,
                 'num_workers': len(self.worker_app_ids),
+                'worker_runtime_identifier': worker_runtime_identifier,
+                'workers': {},
                 'worker_groups': [
                     {
                         'name':               g.name,

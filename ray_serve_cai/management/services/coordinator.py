@@ -99,6 +99,10 @@ class CoordinatorService:
             cml_app_name: CML application name
         """
         state = self.load_state()
+        # Replacement Ray processes must not leave older identities mapped to
+        # the same CAI application.
+        state["node_mapping"] = {nid: value for nid, value in state["node_mapping"].items()
+                                 if value.get("cml_app_id") != cml_app_id}
         state["node_mapping"][ray_node_id] = {
             "cml_app_id": cml_app_id,
             "cml_app_name": cml_app_name
@@ -131,6 +135,7 @@ class CoordinatorService:
         ray_nodes = self.ray_service.get_nodes()
         state = self.load_state()
         node_mapping = state.get("node_mapping", {})
+        records = self.cai_service.worker_records()
 
         # Build app_id → live status from CML in one call.
         cml_status_by_id: Dict[str, str] = {}
@@ -145,9 +150,24 @@ class CoordinatorService:
         for node in ray_nodes:
             node_id = node.get("NodeID", "")
             mapping = node_mapping.get(node_id, {})
+            worker_id = next((key.split(":", 1)[1] for key in node.get("Resources", {})
+                              if key.startswith("worker_id:")), None)
+            record = records.get(worker_id, {})
+            # A previous raylet can still appear after replacement. Match this
+            # launch as well as the stable worker ID before binding a CAI ID.
+            current_launch = f"worker_launch_id:{record.get('launch_id')}" in node.get("Resources", {})
+            if record.get("app_id") and current_launch:
+                mapping = {"cml_app_id": record["app_id"], "cml_app_name": record["app_name"]}
+                if node.get("Alive"):
+                    self.add_node_mapping(node_id, record["app_id"], record["app_name"])
+                    self.cai_service.observe_worker(worker_id, record["app_id"], node_id)
             app_id = mapping.get("cml_app_id")
             node_info: Dict[str, Any] = {
                 "node_id": node_id,
+                "ray_node_id": node_id,
+                "worker_id": worker_id,
+                "name": record.get("spec", {}).get("name"),
+                "labels": record.get("spec", {}).get("labels", {}),
                 "node_name": node.get("NodeName", ""),
                 "node_type": _detect_node_type(node.get("Resources", {})),
                 "alive": node.get("Alive", False),
@@ -242,13 +262,16 @@ class CoordinatorService:
 
     def add_worker_node(
         self,
-        node_type: str = "worker",
+        node_type: str = None,
         cpu: int = None,
         memory: int = None,
         gpus: int = None,
         runtime_identifier: str = None,
         node_label: dict = None,
         ray_labels: dict = None,
+        name: str = None,
+        accelerator_type: str = None,
+        labels: dict = None,
     ) -> Dict[str, Any]:
         """Add a new worker node, register it in the resource map, and track the mapping."""
         result = self.cai_service.create_worker_node(
@@ -256,6 +279,7 @@ class CoordinatorService:
             runtime_identifier=runtime_identifier,
             node_label=node_label,
             ray_labels=ray_labels,
+            name=name, accelerator_type=accelerator_type, labels=labels,
         )
         self.resource_map.register_worker(
             app_id=result["app_id"],
@@ -284,10 +308,7 @@ class CoordinatorService:
     def remove_worker_node(self, app_id: str) -> Dict[str, Any]:
         """Remove a worker node, unregister it from the resource map, and clean up mapping.
 
-        Local state (resource map, node mapping) is cleaned up regardless of whether
-        the CML delete succeeds, so that a partially-deleted or already-gone application
-        does not leave stale entries.  A warning is included in the response when the
-        CML API call fails.
+        Keep desired state if CML deletion fails, so the worker remains manageable.
         """
         state = self.load_state()
         node_mapping = state.get("node_mapping", {})
@@ -298,19 +319,18 @@ class CoordinatorService:
                 ray_node_id = nid
                 break
 
-        # Attempt to stop the CML application.  Failure is non-fatal for local
-        # state cleanup — the app may have already been deleted or crashed.
-        cml_delete_warning = None
+        # Do not discard the only recorded identity on an unconfirmed delete.
         try:
             self.cai_service.delete_application(app_id)
         except Exception as exc:
             cml_delete_warning = str(exc)
             logger.warning(
-                "CML application delete failed for %s (will still clean up local state): %s",
+                "CML application delete failed for %s (retaining local state): %s",
                 app_id, exc,
             )
+            return {"status": "partial", "app_id": app_id, "warning": cml_delete_warning}
 
-        # Always clean up local state so stale entries don't linger.
+        self.cai_service.forget_worker(app_id)
         self.resource_map.unregister_worker(app_id)
 
         if ray_node_id:
@@ -320,9 +340,6 @@ class CoordinatorService:
         result: Dict[str, Any] = {"status": "success", "app_id": app_id}
         if ray_node_id:
             result["ray_node_id"] = ray_node_id
-        if cml_delete_warning:
-            result["status"] = "partial"
-            result["warning"] = cml_delete_warning
         return result
 
     def launch_cai_application(
@@ -383,6 +400,16 @@ class CoordinatorService:
                 a["id"] for a in live_apps
                 if "id" in a and a.get("status") in ("running", "starting", "scheduling")
             }
+            # Recovery replaces CAI IDs outside this coordinator. Rebuild the
+            # capacity entries from the authoritative per-worker specifications.
+            for record in self.cai_service.worker_records().values():
+                if record.get("app_id") in running_ids:
+                    spec = record["spec"]
+                    self.resource_map.register_worker(
+                        app_id=record["app_id"], app_name=record["app_name"],
+                        node_type=spec.get("node_type"), cpu=spec["cpu"],
+                        memory=spec["memory"], gpus=spec["gpus"],
+                    )
             pruned = self.resource_map.sync(running_ids)
             if pruned:
                 logger.info("Resource map sync: pruned %d stale entries", pruned)

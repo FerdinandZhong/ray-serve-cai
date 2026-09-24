@@ -13,7 +13,6 @@ from urllib.parse import urlparse
 import requests
 import yaml
 
-
 ROOT = Path(__file__).resolve().parents[1]
 
 
@@ -43,7 +42,8 @@ def resolve_inputs(definitions, overrides):
             number = int(value)
         except ValueError:
             raise ValueError(f"{name}: expected an integer string") from None
-        if number < (0 if name == "RAY_WORKER_GPUS" else 1):
+        minimum = 0 if name == "RAY_WORKER_GPUS" else 1
+        if number < minimum:
             raise ValueError(f"{name}: resource value is out of range")
     initial = result.get("RAY_LAUNCH_INITIAL_WORKERS", "false").strip().lower()
     if initial not in ("", "true", "false"):
@@ -77,9 +77,6 @@ def main(argv=None):
     parser.add_argument("--git-url", default="https://github.com/FerdinandZhong/ray-serve-cai.git")
     parser.add_argument("--git-ref", required=True, help="Ref containing the AMP code to deploy")
     parser.add_argument("--env-file", type=Path, help="JSON object with string values; values are not logged")
-    parser.add_argument("--worker-cpu")
-    parser.add_argument("--worker-memory")
-    parser.add_argument("--worker-accelerator-type")
     parser.add_argument("--host", default=os.environ.get("CML_HOST"))
     parser.add_argument("--token-file", type=Path)
     parser.add_argument("--apply", action="store_true", help="Create a NEW project and run its AMP jobs")
@@ -88,13 +85,6 @@ def main(argv=None):
         overrides = json.loads(args.env_file.read_text()) if args.env_file else {}
         if not isinstance(overrides, dict):
             raise ValueError("AMP overrides must be a JSON object")
-        for field, value in (
-            ("RAY_WORKER_CPU", args.worker_cpu),
-            ("RAY_WORKER_MEMORY", args.worker_memory),
-            ("RAY_WORKER_ACCELERATOR_TYPE", args.worker_accelerator_type),
-        ):
-            if value is not None:
-                overrides[field] = value
         manifest = yaml.safe_load((ROOT / ".project-metadata.yaml").read_text())
         payload = build_payload(
             manifest, overrides, name=args.name, runtime=args.runtime,

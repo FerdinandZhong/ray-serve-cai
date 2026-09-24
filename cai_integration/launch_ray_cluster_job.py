@@ -18,6 +18,7 @@ Or manually:
 """
 
 import subprocess
+import os
 import sys
 from pathlib import Path
 
@@ -31,7 +32,8 @@ def main():
         project_root = script_dir.parent
     except (NameError, AttributeError):
         # Fallback: assume we're in project root and cai_integration is a subdirectory
-        project_root = Path.cwd()
+        candidates = (Path(os.environ.get("CDSW_PROJECT_DIR") or Path.cwd()), Path.cwd(), Path.cwd().parent)
+        project_root = next((p for p in candidates if (p / "cai_integration" / "launch_ray_cluster.py").is_file()), Path.cwd())
         script_dir = project_root / "cai_integration"
 
     # Path to bash wrapper script (in cai_integration)
@@ -58,8 +60,7 @@ def main():
     try:
         result = subprocess.run(
             [str(venv_python), "-u",
-             str(project_root / "cai_integration" / "launch_ray_cluster.py")]
-            + sys.argv[1:],
+             str(project_root / "cai_integration" / "launch_ray_cluster.py")],
             cwd=str(project_root),
         )
 

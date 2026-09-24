@@ -5,7 +5,7 @@ Start Nginx reverse proxy for the Ray cluster head node.
 Renders Jinja2 templates from ray_serve_cai/configs/nginx/ into a runtime
 directory, then starts (or reloads) the nginx process.
 
-Runtime layout under NGINX_RUNTIME_DIR (default /home/cdsw/nginx):
+Runtime layout under NGINX_RUNTIME_DIR (default /tmp/ray_serve_cai_nginx):
     nginx.conf
     conf.d/
         upstreams.conf
@@ -20,13 +20,14 @@ Runtime layout under NGINX_RUNTIME_DIR (default /home/cdsw/nginx):
 """
 
 import os
+import re
 import subprocess
 import sys
 import time
 from pathlib import Path
+from urllib.parse import urlsplit
 
 from jinja2 import Environment, FileSystemLoader
-
 
 # ---------------------------------------------------------------------------
 # Paths
@@ -36,13 +37,14 @@ from jinja2 import Environment, FileSystemLoader
 TEMPLATE_DIR = Path(__file__).parent.parent / "configs" / "nginx"
 
 # Default runtime directory — all rendered configs and logs go here
-DEFAULT_RUNTIME_DIR = Path("/home/cdsw/nginx")
+DEFAULT_RUNTIME_DIR = Path("/tmp/ray_serve_cai_nginx")
 
 # Static landing-page root
 DEFAULT_STATIC_ROOT = Path("/home/cdsw/ray_serve_cai/static")
 
 # Nginx binary search order
 NGINX_CANDIDATES = [
+    str(Path.home() / ".local" / "bin" / "nginx-ssl"),
     str(Path.home() / ".local" / "bin" / "nginx"),
     "/usr/sbin/nginx",
     "/usr/bin/nginx",
@@ -61,6 +63,7 @@ def find_mime_types() -> str:
     the compiled prefix.  We probe candidates in priority order.
     """
     candidates = [
+        "/home/cdsw/.local/nginx-ssl/conf/mime.types",    # SSL-capable source build
         "/etc/nginx/mime.types",                          # system nginx
         "/home/cdsw/.local/nginx/conf/mime.types",        # compiled from source
         "/usr/local/nginx/conf/mime.types",               # alt compiled location
@@ -71,7 +74,7 @@ def find_mime_types() -> str:
             return path
     # Last resort: use the compiled location even if it doesn't exist yet
     # (nginx will report a clear error rather than a cryptic one).
-    return "/home/cdsw/.local/nginx/conf/mime.types"
+    return "/home/cdsw/.local/nginx-ssl/conf/mime.types"
 
 
 def build_context(runtime_dir: Path, static_root: Path) -> dict:
@@ -97,6 +100,16 @@ def build_context(runtime_dir: Path, static_root: Path) -> dict:
     NGINX_DASHBOARD_TIMEOUT         86400     proxy read timeout for /dashboard/
     ──────────────────────────────────────────────────────────────────────────
     """
+    grafana_upstream = os.environ.get("GRAFANA_PROXY_UPSTREAM", "").rstrip("/")
+    grafana_token = os.environ.get("GRAFANA_PROXY_BEARER_TOKEN", "")
+    if grafana_upstream:
+        parsed = urlsplit(grafana_upstream)
+        if (parsed.scheme != "https" or
+                not re.fullmatch(r"[A-Za-z0-9.-]+(?::[0-9]+)?", parsed.netloc) or
+                parsed.path or parsed.query or parsed.fragment):
+            raise ValueError("GRAFANA_PROXY_UPSTREAM must be an HTTPS origin")
+        if not re.fullmatch(r"[A-Za-z0-9._~+/-]+=*", grafana_token):
+            raise ValueError("GRAFANA_PROXY_BEARER_TOKEN must be a valid bearer token")
     return {
         # ── External port ──────────────────────────────────────────────────
         "app_port": int(os.environ.get("CDSW_APP_PORT", 8080)),
@@ -123,6 +136,8 @@ def build_context(runtime_dir: Path, static_root: Path) -> dict:
         "client_max_body_size": os.environ.get("NGINX_CLIENT_MAX_BODY_SIZE", "100M"),
         "api_timeout": int(os.environ.get("NGINX_API_TIMEOUT", 300)),
         "dashboard_timeout": int(os.environ.get("NGINX_DASHBOARD_TIMEOUT", 86400)),
+        "grafana_upstream": grafana_upstream,
+        "grafana_token": grafana_token,
     }
 
 
@@ -147,6 +162,7 @@ def render_templates(runtime_dir: Path, context: dict) -> None:
         template_name = str(rel)  # e.g. "conf.d/server.conf.j2"
         rendered = env.get_template(template_name).render(**context)
         output_path.write_text(rendered)
+        output_path.chmod(0o600)
         print(f"  rendered: {template_name} → {output_path}")
 
 
@@ -164,6 +180,7 @@ def create_runtime_dirs(runtime_dir: Path, static_root: Path) -> None:
         static_root,
     ]:
         d.mkdir(parents=True, exist_ok=True)
+    runtime_dir.chmod(0o700)
 
     # Ensure a minimal landing page exists
     index = static_root / "index.html"
@@ -187,14 +204,30 @@ def create_runtime_dirs(runtime_dir: Path, static_root: Path) -> None:
 
 def find_nginx() -> str:
     """Return the path to the nginx binary, or raise RuntimeError."""
+    requires_ssl = bool(os.environ.get("GRAFANA_PROXY_UPSTREAM"))
+
+    def usable(candidate):
+        if not (os.path.isfile(candidate) and os.access(candidate, os.X_OK)):
+            return False
+        if not requires_ssl:
+            return True
+        result = subprocess.run([candidate, "-V"], capture_output=True, text=True)
+        return result.returncode == 0 and "--with-http_ssl_module" in result.stderr
+
     for candidate in NGINX_CANDIDATES:
-        if os.path.isfile(candidate) and os.access(candidate, os.X_OK):
+        if usable(candidate):
             return candidate
 
     result = subprocess.run(["which", "nginx"], capture_output=True, text=True)
-    if result.returncode == 0 and result.stdout.strip():
+    if result.returncode == 0 and result.stdout.strip() and usable(result.stdout.strip()):
         return result.stdout.strip()
 
+    if requires_ssl:
+        raise RuntimeError(
+            "No SSL-capable nginx found for the Grafana HTTPS proxy. "
+            "Rerun the setup_base_env job to install ~/.local/bin/nginx-ssl "
+            "before launching the Ray head."
+        )
     raise RuntimeError(
         "nginx binary not found. Run setup_environment.py first.\n"
         f"Searched: {NGINX_CANDIDATES}"
@@ -291,7 +324,7 @@ def main() -> int:
     if args.foreground:
         # Replace this Python process with nginx running in the foreground.
         # The caller blocks until nginx exits — no while-loop needed.
-        print(f"\nStarting nginx in foreground mode (process will block)...")
+        print("\nStarting nginx in foreground mode (process will block)...")
         print(f"  config : {conf_path}")
         print("=" * 70)
         os.execv(nginx_bin, [nginx_bin, "-c", str(conf_path), "-g", "daemon off;"])
@@ -311,12 +344,12 @@ def main() -> int:
         print(f"\nWARNING: nginx started but is not responding on port {context['app_port']}")
 
     print("\nRouting:")
-    print(f"  /             → static landing page")
+    print("  /             → static landing page")
     print(f"  /api/*        → Ray Serve / Management API (:{context['ray_serve_port']})")
-    print(f"  /docs         → Swagger UI")
-    print(f"  /redoc        → ReDoc")
+    print("  /docs         → Swagger UI")
+    print("  /redoc        → ReDoc")
     print(f"  /dashboard/   → Ray Dashboard (:{context['ray_dashboard_port']})")
-    print(f"  /health       → health check")
+    print("  /health       → health check")
     print("=" * 70)
     return 0
 

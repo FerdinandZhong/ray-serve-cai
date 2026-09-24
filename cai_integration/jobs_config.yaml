@@ -24,7 +24,7 @@ jobs:
     name: "Setup Base Environment"
     script: "cai_integration/setup_environment.py"
     parent_job_key: "git_sync"
-    timeout: 900       # 15 min: uv venv + ray[serve] + core deps + nginx compile
+    timeout: 1800      # 30 min: uv venv + Ray + SSL-capable nginx/OpenSSL build
     cpu: 4
     memory: 16
     description: "Create /home/cdsw/.venv with Ray and core deps (no inference engines)"

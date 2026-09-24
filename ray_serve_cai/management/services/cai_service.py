@@ -3,7 +3,8 @@
 import fcntl
 import json
 import os
-import time
+import re
+import uuid
 from pathlib import Path
 from typing import Dict, Any, Optional
 import logging
@@ -32,8 +33,8 @@ class CAIService:
         self.cml_host = cml_host or os.environ.get("CML_HOST")
         self.api_key = (
             api_key
-            or os.environ.get("CML_API_KEY")
             or os.environ.get("CDSW_APIV2_KEY")
+            or os.environ.get("CML_API_KEY")
         )
 
         if not self.cml_host or not self.api_key:
@@ -115,6 +116,43 @@ class CAIService:
         """Return the worker groups (node_types) known to the running cluster."""
         return self._load_cluster_info().get("worker_groups", [])
 
+    def worker_records(self) -> dict:
+        """Per-worker specifications and identities; independent of templates."""
+        return self._load_cluster_info().get("workers", {})
+
+    def _record_worker(self, worker_id: str, record: dict) -> None:
+        lock_path = _CLUSTER_INFO_PATH.with_suffix(".json.lock")
+        with open(lock_path, "w") as lock:
+            fcntl.flock(lock, fcntl.LOCK_EX)
+            info = self._load_cluster_info()
+            if "workers" not in info and any(g.get("count", 0) for g in info.get("worker_groups", [])):
+                # Old snapshots contain counts, not identities/specs. Do not
+                # silently treat those existing workers as managed records.
+                info["legacy_workers_untracked"] = True
+            info.setdefault("workers", {})[worker_id] = record
+            self._save_cluster_info(info)
+
+    def observe_worker(self, worker_id: str, app_id: str, ray_node_id: str) -> None:
+        """Record a joined Ray identity without overwriting a concurrent replacement."""
+        with open(_CLUSTER_INFO_PATH.with_suffix(".json.lock"), "w") as lock:
+            fcntl.flock(lock, fcntl.LOCK_EX)
+            info = self._load_cluster_info()
+            record = info.get("workers", {}).get(worker_id)
+            if record and record.get("app_id") == app_id:
+                record.update(ray_node_id=ray_node_id, status="joined")
+                self._save_cluster_info(info)
+
+    def forget_worker(self, app_id: str) -> None:
+        """Remove desired worker state only after confirmed application deletion."""
+        with open(_CLUSTER_INFO_PATH.with_suffix(".json.lock"), "w") as lock:
+            fcntl.flock(lock, fcntl.LOCK_EX)
+            info = self._load_cluster_info()
+            records = info.get("workers", {})
+            for worker_id in list(records):
+                if records[worker_id].get("app_id") == app_id:
+                    del records[worker_id]
+            self._save_cluster_info(info)
+
     def define_node_type(
         self,
         node_type: str,
@@ -163,6 +201,7 @@ class CAIService:
             cfg = info.get("configuration", {})
             render_worker_launcher(
                 group,
+                project_dir=_CLUSTER_INFO_PATH.parent,
                 head_address=info.get("head_address"),
                 ray_port=cfg.get("ray_port", 6379),
                 metrics_port=cfg.get("metrics_port", 9090),
@@ -200,26 +239,29 @@ class CAIService:
 
     def create_worker_node(
         self,
-        node_type: str,
+        node_type: str = None,
         cpu: int = None,
         memory: int = None,
         gpus: int = None,
         runtime_identifier: str = None,
         node_label: dict = None,
         ray_labels: dict = None,
+        name: str = None,
+        accelerator_type: str = None,
+        labels: dict = None,
+        _worker_id: str = None,
     ) -> Dict[str, Any]:
         """
         Launch a new worker node as a CML application.
 
-        The worker group configuration (script, runtime, resources) is loaded
-        from the persisted cluster info so callers only need to specify the
-        node_type.  cpu / memory / gpus override the group defaults when
-        provided.
+        Supplying CPU and memory launches directly; node_type is optional.
+        Otherwise node_type selects a legacy resource template. The resolved
+        specification is persisted per worker, independently of that template.
 
         Args:
             node_type: Logical node type label (e.g. "cpu-worker",
-                       "t4_gpu_node_single").  Must match a group that was
-                       used when the cluster was started.
+                       "t4_gpu_node_single"). Registration is optional when
+                       CPU and memory are supplied.
             cpu: Override CPU cores (uses group default when None).
             memory: Override memory in GB (uses group default when None).
             gpus: Override GPU count (uses group default when None).
@@ -227,7 +269,28 @@ class CAIService:
         Returns:
             Dict with app_id, app_name, node_type, cpu, memory, gpus.
         """
-        group = self._group_from_cluster_info(node_type)
+        from ..models.requests import AddNodeRequest
+
+        # Validate internal callers (including recovery) as well as HTTP requests.
+        AddNodeRequest(node_type=node_type, cpu=cpu, memory=memory, gpus=gpus,
+                       runtime_identifier=runtime_identifier, node_label=node_label,
+                       ray_labels=ray_labels, name=name, accelerator_type=accelerator_type,
+                       labels=labels or {})
+        worker_id = _worker_id or uuid.uuid4().hex
+        if not re.fullmatch(r"[0-9a-f]{32}", worker_id):
+            raise ValueError("Invalid internal worker ID")
+        if cpu is not None and memory is not None:
+            group = WorkerGroupConfig(
+                name=f"worker-{worker_id}", node_type=node_type or "worker",
+                count=0, cpu=cpu, memory=memory, gpus=gpus or 0,
+                accelerator_type=accelerator_type, node_label=node_label,
+                runtime_identifier=runtime_identifier,
+            )
+        else:
+            try:
+                group = self._group_from_cluster_info(node_type)
+            except RuntimeError as exc:
+                raise ValueError("Provide cpu and memory for direct creation, or select an existing template") from exc
 
         # Apply any overrides
         if cpu is not None:
@@ -239,14 +302,31 @@ class CAIService:
         if runtime_identifier is not None:
             group.runtime_identifier = runtime_identifier
 
-        worker_name = f"ray-{group.name}-{int(time.time())}"
+        if accelerator_type is not None:
+            group.accelerator_type = accelerator_type
+        cluster_info = self._load_cluster_info()
+        if not group.runtime_identifier:
+            group.runtime_identifier = cluster_info.get("worker_runtime_identifier")
+        if not group.runtime_identifier:
+            raise ValueError("runtime_identifier is required when no cluster worker runtime is configured")
+        display_name = name or node_type or "worker"
+        slug = re.sub(r"[^a-z0-9-]+", "-", display_name.lower()).strip("-")[:30] or "worker"
+        launch_id = uuid.uuid4().hex
+        worker_name = f"ray-{slug}-{launch_id[:12]}"
+        # One immutable launcher per worker identity, never shared by label.
+        group.name = f"worker-{worker_id}"
+        from cai_integration.launch_ray_cluster import render_worker_launcher
+        cfg = cluster_info.get("configuration", {})
+        render_worker_launcher(group, head_address=None,
+                               ray_port=cfg.get("ray_port", 6379),
+                               metrics_port=cfg.get("metrics_port", 9090),
+                               project_dir=_CLUSTER_INFO_PATH.parent)
 
         # The worker launcher script reads these env vars at runtime:
         #   RAY_HEAD_ADDRESS — GCS address when not baked into the script
         #   WORKER_CPUS / WORKER_MEMORY_GB / WORKER_GPUS — passed to the
         #     worker info server (worker_app.py) so GET /info reports the
         #     correct resources, especially when cpu/memory are overridden.
-        cluster_info = self._load_cluster_info()
         env: dict = {
             "WORKER_CPUS":      str(group.cpu),
             "WORKER_MEMORY_GB": str(group.memory),
@@ -283,13 +363,30 @@ class CAIService:
                 _ray[f"{_short}:{_v}"] = 1
         if ray_labels:
             _ray.update(ray_labels)
+        _ray[f"worker_id:{worker_id}"] = 1
+        _ray[f"worker_launch_id:{launch_id}"] = 1
         env["RAY_EXTRA_RESOURCES"] = json.dumps(_ray)
 
-        app_info = self.manager.launch_worker(
-            group=group,
-            name=worker_name,
-            environment=env or None,
-        )
+        spec = dict(name=display_name, node_type=node_type, cpu=group.cpu,
+                    memory=group.memory, gpus=group.gpus,
+                    accelerator_type=group.accelerator_type,
+                    runtime_identifier=group.runtime_identifier, node_label=group.node_label,
+                    ray_labels=ray_labels, labels=labels or {})
+        record = dict(worker_id=worker_id, launch_id=launch_id, app_id=None, app_name=worker_name,
+                      ray_node_id=None, status="creating", spec=spec)
+        self._record_worker(worker_id, record)
+        try:
+            app_info = self.manager.launch_worker(
+                group=group, name=worker_name, environment=env or None,
+            )
+        except Exception:
+            # A timeout may follow a successful server-side create. Do not retry
+            # automatically or claim that no application exists.
+            record["status"] = "launch_unknown"
+            self._record_worker(worker_id, record)
+            raise
+        record.update(app_id=app_info["id"], status="starting")
+        self._record_worker(worker_id, record)
 
         logger.info(f"Created worker node: {worker_name}  [node_type:{node_type}]")
         return {
@@ -300,6 +397,11 @@ class CAIService:
             "cpu":       group.cpu,
             "memory":    group.memory,
             "gpus":      group.gpus,
+            "worker_id": worker_id,
+            "ray_node_id": None,
+            "name": display_name,
+            "labels": labels or {},
+            "readiness": "pending",
         }
 
     def delete_application(self, app_id: str) -> Dict[str, Any]:

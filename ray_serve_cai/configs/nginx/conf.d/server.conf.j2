@@ -48,6 +48,26 @@ server {
         proxy_read_timeout {{ dashboard_timeout }}s;
     }
 
+{% if grafana_upstream %}
+    # The browser stays on the authenticated head app origin. The CAI token is
+    # added only on the server-side request to the Grafana CML application.
+    location /grafana/ {
+        proxy_pass {{ grafana_upstream }}/;
+        proxy_ssl_server_name on;
+        proxy_set_header Host $proxy_host;
+        proxy_set_header Authorization "Bearer {{ grafana_token }}";
+        proxy_set_header X-Grafana-Authorization "";
+        proxy_set_header X-Ray-Grafana-Proxy 1;
+        proxy_set_header Cookie "";
+        proxy_set_header X-Forwarded-Proto https;
+        proxy_set_header X-Forwarded-Host $host;
+        proxy_set_header Upgrade $http_upgrade;
+        proxy_set_header Connection "upgrade";
+        proxy_buffering off;
+        proxy_read_timeout {{ dashboard_timeout }}s;
+    }
+{% endif %}
+
     # ------------------------------------------------------------------ #
     # Prometheus metrics (no access log to avoid scrape noise)            #
     # ------------------------------------------------------------------ #
