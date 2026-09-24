@@ -51,9 +51,6 @@ server {
 {% if grafana_upstream %}
     # The browser stays on the authenticated head app origin. The CAI token is
     # added only on the server-side request to the Grafana CML application.
-    location = /grafana {
-        return 308 /grafana/;
-    }
     location /grafana/ {
         proxy_pass {{ grafana_upstream }}/;
         proxy_ssl_server_name on;

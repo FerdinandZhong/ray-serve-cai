@@ -81,6 +81,12 @@ def test_nginx_grafana_proxy_keeps_token_on_local_private_disk(monkeypatch, tmp_
     assert "proxy_pass https://grafana.example.test/;" in rendered
     assert 'proxy_set_header Authorization "Bearer secret-token";' in rendered
     assert "location /grafana/" in rendered
+    # The CAI nginx build omits ngx_http_rewrite_module. Its core module
+    # redirects /grafana to /grafana/ for this proxied slash-ending location.
+    assert "--without-http_rewrite_module" in (
+        start_nginx.TEMPLATE_DIR.parents[2] / "cai_integration/setup_environment.py"
+    ).read_text()
+    assert "return 308" not in rendered
     assert stat.S_IMODE(runtime_dir.stat().st_mode) == 0o700
     assert stat.S_IMODE(server_conf.stat().st_mode) == 0o600
 
