@@ -16,6 +16,11 @@ incompatible dependency stacks (e.g. vLLM vs SGLang) coexist on the same cluster
 and every deployment can be pinned to specific nodes and GPU topologies through a
 declarative scheduling block.
 
+**Using GPUs across multiple Ray nodes / CML pods?** Follow the
+[cross-node GPU deployment runbook](docs/CROSS_NODE_GPU_DEPLOYMENT.md) before
+deploying the model. It covers Bash commands for Istio configuration, collective
+communication checks, Ray TP placement, and the tested vLLM runner workaround.
+
 ---
 
 ## Table of Contents

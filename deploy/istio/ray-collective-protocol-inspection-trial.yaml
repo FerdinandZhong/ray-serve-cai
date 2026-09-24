@@ -1,0 +1,58 @@
+# Tested cross-pod collective traffic configuration for labeled GPU host pods.
+# Retains the resource name used by the original trial to update it in place.
+# Disables TLS and HTTP detection on inbound 32768-60999 for labeled pods.
+# Mesh TLS connections to those ports will no longer be terminated by Envoy.
+# Retains outbound mesh handling and inspection on other inbound ports.
+apiVersion: networking.istio.io/v1alpha3
+kind: EnvoyFilter
+metadata:
+  name: ray-collective-http-inspection-trial
+  namespace: mlx-user-2
+spec:
+  workloadSelector:
+    labels:
+      ray-collective-inspection-trial: 'true'
+  configPatches:
+  - applyTo: LISTENER_FILTER
+    match:
+      context: SIDECAR_INBOUND
+      listener:
+        name: virtualInbound
+        listenerFilter: envoy.filters.listener.tls_inspector
+    patch:
+      operation: REPLACE
+      value:
+        name: envoy.filters.listener.tls_inspector
+        typed_config:
+          '@type': type.googleapis.com/envoy.extensions.filters.listener.tls_inspector.v3.TlsInspector
+          initial_read_buffer_size: 512
+        filter_disabled:
+          or_match:
+            rules:
+            - destination_port_range:
+                start: 15006
+                end: 15007
+            - destination_port_range:
+                start: 32768
+                end: 61000
+  - applyTo: LISTENER_FILTER
+    match:
+      context: SIDECAR_INBOUND
+      listener:
+        name: virtualInbound
+        listenerFilter: envoy.filters.listener.http_inspector
+    patch:
+      operation: REPLACE
+      value:
+        name: envoy.filters.listener.http_inspector
+        typed_config:
+          '@type': type.googleapis.com/envoy.extensions.filters.listener.http_inspector.v3.HttpInspector
+        filter_disabled:
+          or_match:
+            rules:
+            - destination_port_range:
+                start: 15006
+                end: 15007
+            - destination_port_range:
+                start: 32768
+                end: 61000
