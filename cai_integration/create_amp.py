@@ -13,7 +13,6 @@ from urllib.parse import urlparse
 import requests
 import yaml
 
-
 ROOT = Path(__file__).resolve().parents[1]
 
 
@@ -34,7 +33,7 @@ def resolve_inputs(definitions, overrides):
         result[name] = value
     for name in (
         "RAY_HEAD_CPU", "RAY_HEAD_MEMORY", "RAY_WORKER_CPU", "RAY_WORKER_MEMORY",
-        "RAY_WORKER_GPUS", "TENSOR_PARALLEL_SIZE",
+        "RAY_WORKER_GPUS", "TENSOR_PARALLEL_SIZE", "RAY_SHARED_MEMORY_LIMIT_MB",
     ):
         value = result.get(name, "")
         if not value.strip():
@@ -43,7 +42,12 @@ def resolve_inputs(definitions, overrides):
             number = int(value)
         except ValueError:
             raise ValueError(f"{name}: expected an integer string") from None
-        if number < (0 if name == "RAY_WORKER_GPUS" else 1):
+        minimum = (
+            1024 if name == "RAY_SHARED_MEMORY_LIMIT_MB"
+            else 0 if name == "RAY_WORKER_GPUS"
+            else 1
+        )
+        if number < minimum:
             raise ValueError(f"{name}: resource value is out of range")
     initial = result.get("RAY_LAUNCH_INITIAL_WORKERS", "false").strip().lower()
     if initial not in ("", "true", "false"):

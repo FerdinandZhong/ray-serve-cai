@@ -21,6 +21,7 @@ def test_amp_input_defaults_resolve_to_strings():
 def test_amp_stages_are_bounded_sequential_jobs():
     manifest = yaml.safe_load((ROOT / ".project-metadata.yaml").read_text())
     expected = [
+        ("configure_project_resources", 5),
         ("setup_base_env", 15),
         ("setup_vllm_env", 30),
         ("setup_litellm_env", 10),

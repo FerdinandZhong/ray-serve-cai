@@ -128,22 +128,41 @@ class ProjectSetup:
         return None
 
     def configure_project_resources(self, project_id: str) -> bool:
-        """Patch project-level resource defaults (shared memory, ephemeral storage)."""
+        """Set and verify project defaults before launching Ray applications."""
         print("⚙️  Configuring project resource defaults...")
+        raw_limit = os.environ.get("RAY_SHARED_MEMORY_LIMIT_MB", "40000")
+        try:
+            shared_memory_mb = int(raw_limit)
+        except ValueError:
+            print("❌ RAY_SHARED_MEMORY_LIMIT_MB must be an integer")
+            return False
+        if shared_memory_mb < 1024:
+            print("❌ RAY_SHARED_MEMORY_LIMIT_MB must be at least 1024")
+            return False
         result = self.make_request(
             "PATCH",
             f"projects/{project_id}",
             data={
-                "shared_memory_limit":        40000,
+                "shared_memory_limit":        shared_memory_mb,
                 "ephemeral_storage_request_mb": 0,
                 "ephemeral_storage_limit_mb":   307200,
             },
         )
-        if result is not None:
-            print("✅ Project resource defaults configured")
-            return True
-        print("⚠️  Could not configure project resource defaults (non-fatal)")
-        return False
+        if result is None:
+            print("❌ Could not configure project resource defaults")
+            return False
+        project = self.make_request("GET", f"projects/{project_id}")
+        actual = project.get("shared_memory_limit") if project else None
+        try:
+            verified_limit = int(actual)
+        except (TypeError, ValueError):
+            print("❌ Project response omitted shared_memory_limit")
+            return False
+        if verified_limit != shared_memory_mb:
+            print(f"❌ Project /dev/shm is {verified_limit} MB; expected {shared_memory_mb} MB")
+            return False
+        print(f"✅ Project /dev/shm verified at {verified_limit} MB")
+        return True
 
     def get_or_create_project(self) -> Optional[str]:
         """Get existing project or create new one with git."""
@@ -222,7 +241,9 @@ class ProjectSetup:
             print("❌ Failed to get/create project")
             return False
 
-        self.configure_project_resources(project_id)
+        if not self.configure_project_resources(project_id):
+            print("❌ Project resource setup failed; Ray applications were not launched")
+            return False
 
         # Only wait for git clone if we created a new project with git
         if self.github_repo:

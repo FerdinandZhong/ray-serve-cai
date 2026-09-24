@@ -42,6 +42,15 @@ def test_reject_invalid_resource_strings(bad):
         create_amp.resolve_inputs(manifest()["environment_variables"], {"RAY_HEAD_CPU": bad})
 
 
+@pytest.mark.parametrize("bad", ["-1", "0", "1023", "forty-gb", "40000.5"])
+def test_reject_invalid_shared_memory_strings(bad):
+    with pytest.raises(ValueError):
+        create_amp.resolve_inputs(
+            manifest()["environment_variables"],
+            {"RAY_SHARED_MEMORY_LIMIT_MB": bad},
+        )
+
+
 def test_unknown_inputs_are_not_silently_ignored():
     with pytest.raises(ValueError, match="Unknown AMP inputs"):
         create_amp.resolve_inputs(manifest()["environment_variables"], {"TYPO": "12"})

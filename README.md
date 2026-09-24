@@ -239,6 +239,11 @@ GPU inference additionally needs CUDA 11.8+ and a compatible driver on the worke
 
 ## Hardware Requirements
 
+The AMP configures the project shared-memory limit to 40,000 MB before creating
+the Ray applications. This prevents Ray's plasma object store from failing when
+the platform default `/dev/shm` is only 64 MB. Existing applications must be
+recreated after changing this project setting.
+
 | Deployment | Head (CPU-only) | GPU workers | Notes |
 |---|---|---|---|
 | **Minimum (demo)** | 12 CPU / 32 GB | 1× dual-GPU node (2× RTX PRO 6000 96 GB; 44 CPU / 320 GB) | serves 27B FP8 at TP=2 |

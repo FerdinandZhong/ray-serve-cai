@@ -34,7 +34,11 @@ out of Git.
 
 Only when intentionally creating a **new project and running its AMP jobs**, add
 `--host https://<workbench> --token-file /path/to/token --apply`. The normal AMP
-job chain runs, including monitoring. The shipped configuration has an explicit
+job chain first sets and verifies the project-wide `/dev/shm` limit, then runs
+environment setup, cluster launch, and monitoring. The default is
+`RAY_SHARED_MEMORY_LIMIT_MB=40000`; override it in the input JSON when the
+platform requires a different project limit. This setting applies to applications
+created after that setup stage. The shipped configuration has an explicit
 empty worker-group list: no worker templates or workers are created at startup.
 API acceptance does not prove job readiness.
 
