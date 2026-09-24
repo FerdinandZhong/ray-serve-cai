@@ -349,6 +349,10 @@ def load_config():
             except ValueError as exc:
                 raise ValueError(f"{env_var} must be a number, got {val!r}") from exc
 
+    head_subdomain = os.environ.get("RAY_HEAD_SUBDOMAIN", "").strip()
+    if head_subdomain:
+        config['head_app_name'] = head_subdomain
+
     _mon = config.setdefault('monitoring', {
         'prometheus_host': None, 'grafana_host': None,
         'grafana_iframe_host': None, 'grafana_org_id': '1',
@@ -376,8 +380,9 @@ def load_config():
             _mon['prometheus_host'] = f"https://{_prom_sub}.{_cdsw_domain}"
         if not _mon.get('grafana_host'):
             _mon['grafana_host'] = f"https://{_graf_sub}.{_cdsw_domain}"
-        if not _mon.get('grafana_iframe_host'):
-            _mon['grafana_iframe_host'] = _mon['grafana_host']
+        if (not _mon.get('grafana_iframe_host') or
+                _mon['grafana_iframe_host'].rstrip('/') == _mon['grafana_host'].rstrip('/')):
+            _mon['grafana_iframe_host'] = f"https://{config['head_app_name']}.{_cdsw_domain}/grafana"
 
     return config
 
@@ -609,6 +614,7 @@ def main():
             head_runtime_identifier=head_runtime,
             worker_runtime_identifier=worker_runtime,
             head_script_path=head_script_path,
+            head_environment={"CML_API_KEY": cml_api_key},
             wait_ready=True,
             timeout=600,
         )

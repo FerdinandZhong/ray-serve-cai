@@ -86,15 +86,15 @@ ray_serve:
 # All fields are optional — leave null to keep the metrics tab inactive.
 #
 # prometheus_host / grafana_host : URLs the head node can reach (http or https)
-# grafana_iframe_host            : browser-accessible Grafana URL (for iframes);
-#                                  usually same as grafana_host in CML
+# grafana_iframe_host            : browser-accessible head /grafana proxy URL (for iframes);
+#                                  defaults to the head app URL plus /grafana
 #
 # Env var overrides: MONITORING_PROMETHEUS_HOST, MONITORING_GRAFANA_HOST,
 #                    MONITORING_GRAFANA_IFRAME_HOST, MONITORING_GRAFANA_ORG_ID
 monitoring:
   prometheus_host:     null   # e.g. https://prometheus-server.<CDSW_DOMAIN>
   grafana_host:        null   # e.g. https://grafana-server.<CDSW_DOMAIN>
-  grafana_iframe_host: null   # same as grafana_host unless split-ingress
+  grafana_iframe_host: null   # defaults to authenticated head /grafana proxy
   grafana_org_id:      "1"
 
 # ── Optional per-job environment variables ────────────────────────────────────

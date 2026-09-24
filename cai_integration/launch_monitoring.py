@@ -120,7 +120,9 @@ def main():
     print(f"\n  CML Host   : {cml_host}")
     print(f"  Project ID : {project_id}")
     print(f"  Prometheus : {prom_url}")
-    print(f"  Grafana    : {grafana_url}")
+    print(f"  Grafana backend (CAI-protected): {grafana_url}")
+    if ray_head_url:
+        print(f"  Grafana dashboard UI         : {ray_head_url.rstrip('/')}/grafana/")
     if ray_head_url:
         print(f"  Ray Head   : {ray_head_url}")
 
@@ -178,6 +180,8 @@ def main():
     if prom_url:
         grafana_env["PROMETHEUS_URL"] = prom_url
     grafana_env["PROMETHEUS_BEARER_TOKEN"] = cml_api_key
+    if ray_head_url:
+        grafana_env["GRAFANA_ROOT_URL"] = f"{ray_head_url.rstrip('/')}/grafana/"
 
     manager.cml_client.create_application(
         project_id=project_id,
@@ -207,7 +211,8 @@ def main():
     print("Add to configs/ray_cluster_config.yaml → monitoring:")
     print(f"  prometheus_host:     {prom_url}")
     print(f"  grafana_host:        {grafana_url}")
-    print(f"  grafana_iframe_host: {grafana_url}")
+    iframe_url = f"{ray_head_url.rstrip('/')}/grafana" if ray_head_url else grafana_url
+    print(f"  grafana_iframe_host: {iframe_url}")
     print("=" * 70)
     if ray_head_url:
         print("\nTo provision Ray dashboards:")

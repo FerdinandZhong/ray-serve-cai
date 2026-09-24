@@ -5,7 +5,7 @@ Start Nginx reverse proxy for the Ray cluster head node.
 Renders Jinja2 templates from ray_serve_cai/configs/nginx/ into a runtime
 directory, then starts (or reloads) the nginx process.
 
-Runtime layout under NGINX_RUNTIME_DIR (default /home/cdsw/nginx):
+Runtime layout under NGINX_RUNTIME_DIR (default /tmp/ray_serve_cai_nginx):
     nginx.conf
     conf.d/
         upstreams.conf
@@ -20,13 +20,14 @@ Runtime layout under NGINX_RUNTIME_DIR (default /home/cdsw/nginx):
 """
 
 import os
+import re
 import subprocess
 import sys
 import time
 from pathlib import Path
+from urllib.parse import urlsplit
 
 from jinja2 import Environment, FileSystemLoader
-
 
 # ---------------------------------------------------------------------------
 # Paths
@@ -36,7 +37,7 @@ from jinja2 import Environment, FileSystemLoader
 TEMPLATE_DIR = Path(__file__).parent.parent / "configs" / "nginx"
 
 # Default runtime directory — all rendered configs and logs go here
-DEFAULT_RUNTIME_DIR = Path("/home/cdsw/nginx")
+DEFAULT_RUNTIME_DIR = Path("/tmp/ray_serve_cai_nginx")
 
 # Static landing-page root
 DEFAULT_STATIC_ROOT = Path("/home/cdsw/ray_serve_cai/static")
@@ -97,6 +98,16 @@ def build_context(runtime_dir: Path, static_root: Path) -> dict:
     NGINX_DASHBOARD_TIMEOUT         86400     proxy read timeout for /dashboard/
     ──────────────────────────────────────────────────────────────────────────
     """
+    grafana_upstream = os.environ.get("GRAFANA_PROXY_UPSTREAM", "").rstrip("/")
+    grafana_token = os.environ.get("GRAFANA_PROXY_BEARER_TOKEN", "")
+    if grafana_upstream:
+        parsed = urlsplit(grafana_upstream)
+        if (parsed.scheme != "https" or
+                not re.fullmatch(r"[A-Za-z0-9.-]+(?::[0-9]+)?", parsed.netloc) or
+                parsed.path or parsed.query or parsed.fragment):
+            raise ValueError("GRAFANA_PROXY_UPSTREAM must be an HTTPS origin")
+        if not re.fullmatch(r"[A-Za-z0-9._~+/-]+=*", grafana_token):
+            raise ValueError("GRAFANA_PROXY_BEARER_TOKEN must be a valid bearer token")
     return {
         # ── External port ──────────────────────────────────────────────────
         "app_port": int(os.environ.get("CDSW_APP_PORT", 8080)),
@@ -123,6 +134,8 @@ def build_context(runtime_dir: Path, static_root: Path) -> dict:
         "client_max_body_size": os.environ.get("NGINX_CLIENT_MAX_BODY_SIZE", "100M"),
         "api_timeout": int(os.environ.get("NGINX_API_TIMEOUT", 300)),
         "dashboard_timeout": int(os.environ.get("NGINX_DASHBOARD_TIMEOUT", 86400)),
+        "grafana_upstream": grafana_upstream,
+        "grafana_token": grafana_token,
     }
 
 
@@ -147,6 +160,7 @@ def render_templates(runtime_dir: Path, context: dict) -> None:
         template_name = str(rel)  # e.g. "conf.d/server.conf.j2"
         rendered = env.get_template(template_name).render(**context)
         output_path.write_text(rendered)
+        output_path.chmod(0o600)
         print(f"  rendered: {template_name} → {output_path}")
 
 
@@ -164,6 +178,7 @@ def create_runtime_dirs(runtime_dir: Path, static_root: Path) -> None:
         static_root,
     ]:
         d.mkdir(parents=True, exist_ok=True)
+    runtime_dir.chmod(0o700)
 
     # Ensure a minimal landing page exists
     index = static_root / "index.html"
