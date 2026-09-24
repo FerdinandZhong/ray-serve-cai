@@ -3,7 +3,9 @@
 Some Workbench AMP form edits have been observed to persist serialized browser
 events instead of the entered text. A null event target does not retain the input;
 replacing it with a manifest default loses the user's choice. The Workbench form
-implementation is not part of this repository.
+implementation is not part of this repository. The AMP no longer presents a
+Hugging Face token field in that form. Add a token after import only when a gated
+model needs one.
 
 `cai_integration.create_amp` is a code-controlled import alternative. It resolves
 the manifest defaults once, overlays explicit user values, rejects nested objects,
@@ -28,9 +30,9 @@ contain the intended AMP changes before deploying; local edits are not uploaded.
 AMP inputs, including head resources, can be supplied in
 `--env-file inputs.json`, a JSON object whose values are strings. Worker resources
 are no longer AMP inputs; define them after startup. Unknown keys and object values are
-errors; omitted fields use manifest defaults. Values are not printed, so files
-can carry tokens without displaying them in preview output. Keep secret files
-out of Git.
+errors; omitted fields use manifest defaults. Input values are not printed.
+Keep secret files out of Git. The Hugging Face token is not an
+AMP form or `--env-file` input; set it on the project after import.
 
 Only when intentionally creating a **new project and running its AMP jobs**, add
 `--host https://<workbench> --token-file /path/to/token --apply`. The normal AMP
@@ -82,10 +84,10 @@ restarting the head until those old workers are reconciled. Fresh head-only AMP
 clusters do not need this migration. Persisted `joined`/Ray ID values are last
 observations; GET `/resources/nodes` is the live membership view.
 
-**Existing corrupted projects:** updating the repository does not remove already
-saved malformed project variables. If only `HUGGING_FACE_HUB_TOKEN` is malformed,
-sync this repository in the project and run the following command from its
-terminal. Enter the original Hugging Face token at the hidden prompt:
+**Existing corrupted projects and gated models:** updating the repository does
+not remove already saved malformed project variables. To set or replace only
+`HUGGING_FACE_HUB_TOKEN`, run the following command from the project terminal.
+Enter the original Hugging Face token at the hidden prompt:
 
 ```bash
 python -m cai_integration.repair_project_hf_token
@@ -93,10 +95,9 @@ python -m cai_integration.repair_project_hf_token
 
 The command reads the current project environment, replaces only that token,
 and verifies the API result without printing the token. It refuses to rewrite
-other malformed variables. You can also supply `--hf-token-file /path/to/token`
-instead of the prompt. Run the failed AMP job again after repair. For new AMPs,
-use the input-safe API import when entering a Hugging Face token; the Workbench
-form can persist an edited input as a browser event rather than its text.
+other malformed variables. You can also run it from a local checkout with
+`--host https://<workbench> --project-id <id> --cml-token-file /path/to/cai-token
+--hf-token-file /path/to/hf-token`. Run the failed AMP job again after repair.
 
 The read-only project-environment preflight also checks existing project values
 before setup/application creation. It detects corruption, but does not repair the

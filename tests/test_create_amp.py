@@ -46,6 +46,15 @@ def test_shared_memory_is_not_an_amp_form_input():
     assert "RAY_SHARED_MEMORY_LIMIT_MB" not in manifest()["environment_variables"]
 
 
+def test_hf_token_is_not_an_amp_form_input():
+    assert "HUGGING_FACE_HUB_TOKEN" not in manifest()["environment_variables"]
+    with pytest.raises(ValueError, match="Unknown AMP inputs"):
+        create_amp.resolve_inputs(
+            manifest()["environment_variables"],
+            {"HUGGING_FACE_HUB_TOKEN": "hf_example"},
+        )
+
+
 def test_unknown_inputs_are_not_silently_ignored():
     with pytest.raises(ValueError, match="Unknown AMP inputs"):
         create_amp.resolve_inputs(manifest()["environment_variables"], {"TYPO": "12"})

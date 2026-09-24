@@ -69,13 +69,6 @@ environment_variables:
     description: >-
       Demo deployment target label only. After the head starts, define this
       node type and its resources through Swagger, then explicitly add workers.
-  HUGGING_FACE_HUB_TOKEN:
-    default: ""
-    description: >-
-      HF token for gated models. If your Workbench form serializes edited inputs
-      as browser events, leave this blank and set it after import using the
-      input-safe API procedure in docs/AMP_INPUT_SAFE_IMPORT.md.
-    required: false
 
 tasks:
   # ── Stage 1: project shared memory ─────────────────────────────────────────

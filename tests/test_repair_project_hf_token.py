@@ -50,3 +50,19 @@ def test_rejects_unverified_update(monkeypatch):
 
     with pytest.raises(RuntimeError, match="did not match"):
         repair.repair_project_hf_token("https://cai.example.test", "project", "cml_key", "hf_secret")
+
+
+def test_cli_prefers_current_workbench_key_over_stale_override(monkeypatch, tmp_path):
+    hf_file = tmp_path / "hf-token"
+    hf_file.write_text("hf_secret\n")
+    monkeypatch.setenv("CML_API_KEY", "stale-key")
+    monkeypatch.setenv("CDSW_APIV2_KEY", "current-key")
+    operation = Mock()
+    monkeypatch.setattr(repair, "repair_project_hf_token", operation)
+    repair.main([
+        "--host", "https://cai.example.test", "--project-id", "project",
+        "--hf-token-file", str(hf_file),
+    ])
+    operation.assert_called_once_with(
+        "https://cai.example.test", "project", "current-key", "hf_secret"
+    )

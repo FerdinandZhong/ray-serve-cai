@@ -77,7 +77,7 @@ def main(argv=None):
         parser.error("Provide --project-id or run inside the CAI project")
     credential = (
         args.cml_token_file.expanduser().read_text().strip()
-        if args.cml_token_file else os.environ.get("CML_API_KEY") or os.environ.get("CDSW_APIV2_KEY")
+        if args.cml_token_file else os.environ.get("CDSW_APIV2_KEY") or os.environ.get("CML_API_KEY")
     )
     if not credential:
         parser.error("Provide --cml-token-file or run inside the CAI project")

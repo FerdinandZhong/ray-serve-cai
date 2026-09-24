@@ -38,7 +38,7 @@ def validate_project_environment(raw):
 def preflight_project_environment():
     """Fail before costly setup/application creation using the job's credentials."""
     host = os.environ.get("CML_HOST") or "https://" + os.environ.get("CDSW_DOMAIN", "")
-    token = os.environ.get("CML_API_KEY") or os.environ.get("CDSW_APIV2_KEY")
+    token = os.environ.get("CDSW_APIV2_KEY") or os.environ.get("CML_API_KEY")
     project = os.environ.get("CDSW_PROJECT_ID") or os.environ.get("CML_PROJECT_ID")
     if host == "https://" or not token or not project:
         raise RuntimeError("AMP project preflight requires host, project ID and API credentials")
