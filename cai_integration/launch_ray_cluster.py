@@ -513,7 +513,7 @@ def main():
         if cdsw_domain:
             cml_host = f"https://{cdsw_domain}"
 
-    cml_api_key = os.environ.get("CML_API_KEY") or os.environ.get("CDSW_APIV2_KEY")
+    cml_api_key = os.environ.get("CDSW_APIV2_KEY") or os.environ.get("CML_API_KEY")
     project_id = os.environ.get("CDSW_PROJECT_ID") or os.environ.get("CML_PROJECT_ID")
 
     # Load cluster configuration first so runtime defaults come from the YAML.
@@ -614,7 +614,9 @@ def main():
             head_runtime_identifier=head_runtime,
             worker_runtime_identifier=worker_runtime,
             head_script_path=head_script_path,
-            head_environment={"CML_API_KEY": cml_api_key},
+            # CDSW_APIV2_KEY is scoped to this launch job. The head receives
+            # its own runtime key from CAI; copying this one makes it expire
+            # as soon as the job ends.
             wait_ready=True,
             timeout=600,
         )

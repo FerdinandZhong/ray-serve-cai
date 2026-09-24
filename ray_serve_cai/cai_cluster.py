@@ -321,7 +321,7 @@ class CMLAPIClient:
         Returns:
             True if the API accepted the restart request (200/202).
         """
-        url = f"{self.base_url}/projects/{project_id}/applications/{app_id}/restart"
+        url = f"{self.base_url}/projects/{project_id}/applications/{app_id}:restart"
 
         if self.verbose:
             logger.debug(f"Restarting application: POST {url}")

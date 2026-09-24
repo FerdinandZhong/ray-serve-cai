@@ -48,3 +48,13 @@ def test_client_does_not_log_application_credentials(caplog):
             environment={"CML_API_KEY": "sensitive-key"},
         )
     assert "sensitive-key" not in caplog.text
+
+
+def test_restart_uses_workbench_api_v2_action_path():
+    client = CMLAPIClient("https://example.test", "test-key")
+    client.session = Mock()
+    client.session.post.return_value.status_code = 200
+    assert client.restart_application("project", "app-1")
+    assert client.session.post.call_args.args[0] == (
+        "https://example.test/api/v2/projects/project/applications/app-1:restart"
+    )

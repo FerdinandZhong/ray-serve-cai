@@ -33,8 +33,8 @@ class CAIService:
         self.cml_host = cml_host or os.environ.get("CML_HOST")
         self.api_key = (
             api_key
-            or os.environ.get("CML_API_KEY")
             or os.environ.get("CDSW_APIV2_KEY")
+            or os.environ.get("CML_API_KEY")
         )
 
         if not self.cml_host or not self.api_key:

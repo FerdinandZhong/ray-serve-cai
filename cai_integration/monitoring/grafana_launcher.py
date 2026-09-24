@@ -98,7 +98,11 @@ def provision_datasource():
     import json
     ds_dir = PROVISION_DIR / "datasources"
     ds_dir.mkdir(parents=True, exist_ok=True)
-    token = os.environ.get("PROMETHEUS_BEARER_TOKEN", "").strip()
+    # The application's own key outlives the launch job's copied key.
+    token = (
+        os.environ.get("CDSW_APIV2_KEY")
+        or os.environ.get("PROMETHEUS_BEARER_TOKEN", "")
+    ).strip()
     auth = ""
     if token:
         auth = ('      httpHeaderName1: Authorization\n'

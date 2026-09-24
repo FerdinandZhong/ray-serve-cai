@@ -16,9 +16,21 @@ from cai_integration.monitoring import grafana_launcher as grafana
 from ray_serve_cai.scripts import start_nginx
 
 
+def test_management_prefers_its_own_application_key(monkeypatch):
+    from ray_serve_cai.management.services import cai_service
+
+    monkeypatch.setenv("CML_API_KEY", "expired-launch-job-key")
+    monkeypatch.setenv("CDSW_APIV2_KEY", "current-application-key")
+    manager = Mock()
+    monkeypatch.setattr(cai_service, "CAIClusterManager", manager)
+    cai_service.CAIService(project_id="p", cml_host="https://example.test")
+    assert manager.call_args.kwargs["cml_api_key"] == "current-application-key"
+
+
 def test_monitoring_creation_and_readiness_use_auth(monkeypatch):
-    for key, value in {"CML_HOST": "https://example.test", "CML_API_KEY": "secret",
-                       "CDSW_PROJECT_ID": "p", "CDSW_DOMAIN": "example.test"}.items():
+    for key, value in {"CML_HOST": "https://example.test", "CML_API_KEY": "expired-job-key",
+                       "CDSW_APIV2_KEY": "current-job-key", "CDSW_PROJECT_ID": "p",
+                       "CDSW_DOMAIN": "example.test"}.items():
         monkeypatch.setenv(key, value)
     client = Mock()
     monkeypatch.setattr(launch, "CAIClusterManager", lambda **kw: SimpleNamespace(cml_client=client))
@@ -29,9 +41,10 @@ def test_monitoring_creation_and_readiness_use_auth(monkeypatch):
     assert len(client.create_application.call_args_list) == 2
     for call in client.create_application.call_args_list:
         assert call.kwargs["bypass_authentication"] is False
-    assert client.create_application.call_args_list[1].kwargs["environment"]["PROMETHEUS_BEARER_TOKEN"] == "secret"
+    assert "RAY_METRICS_BEARER_TOKEN" not in client.create_application.call_args_list[0].kwargs["environment"]
+    assert "PROMETHEUS_BEARER_TOKEN" not in client.create_application.call_args_list[1].kwargs["environment"]
     assert client.create_application.call_args_list[1].kwargs["environment"]["GRAFANA_ROOT_URL"] == "https://ray-cluster-head.example.test/grafana/"
-    assert all(c.kwargs["token"] == "secret" for c in health.call_args_list)
+    assert all(c.kwargs["token"] == "current-job-key" for c in health.call_args_list)
 
 
 def test_ray_dashboard_uses_authenticated_head_proxy(monkeypatch, tmp_path):
@@ -66,6 +79,7 @@ def test_ray_dashboard_uses_authenticated_head_proxy(monkeypatch, tmp_path):
     assert 'os.environ["RAY_PROMETHEUS_HEADERS"]' in script
     assert 'os.environ["RAY_GRAFANA_HOST"]' in script
     assert 'os.environ["GRAFANA_PROXY_BEARER_TOKEN"]' in script
+    assert '_monitoring_token = os.environ.get("CDSW_APIV2_KEY") or os.environ.get("CML_API_KEY")' in script
 
 
 def test_nginx_grafana_proxy_keeps_token_on_local_private_disk(monkeypatch, tmp_path):
@@ -126,14 +140,16 @@ def test_readiness_checks_body_not_login_html(monkeypatch):
 
 def test_datasource_token_is_not_written_to_shared_file(monkeypatch, tmp_path):
     monkeypatch.setattr(grafana, "PROVISION_DIR", tmp_path)
-    monkeypatch.setenv("PROMETHEUS_BEARER_TOKEN", "sensitive-token")
+    monkeypatch.setenv("PROMETHEUS_BEARER_TOKEN", "expired-job-token")
+    monkeypatch.setenv("CDSW_APIV2_KEY", "current-application-token")
     monkeypatch.setenv("PROMETHEUS_AUTH_HEADER", "")
     grafana.provision_datasource()
     text = (tmp_path / "datasources/prometheus.yml").read_text()
     ds = yaml.safe_load(text)["datasources"][0]
     assert ds["jsonData"]["httpHeaderName1"] == "Authorization"
     assert ds["secureJsonData"]["httpHeaderValue1"] == "$PROMETHEUS_AUTH_HEADER"
-    assert "sensitive-token" not in text
+    assert "expired-job-token" not in text
+    assert grafana.os.environ["PROMETHEUS_AUTH_HEADER"] == "Bearer current-application-token"
 
 
 def test_provisioning_separates_ingress_and_grafana_credentials(monkeypatch):

@@ -43,7 +43,7 @@ def _post(path: str, payload: dict) -> dict:
     body = json.dumps(payload).encode()
     req = Request(url, data=body, method="POST")
     req.add_header("Content-Type", "application/json")
-    ingress_token = os.environ.get("CML_API_KEY") or os.environ.get("CDSW_APIV2_KEY")
+    ingress_token = os.environ.get("CDSW_APIV2_KEY") or os.environ.get("CML_API_KEY")
     req.add_header("X-Grafana-Authorization", _auth_header())
     if ingress_token:
         req.add_header("Authorization", f"Bearer {ingress_token}")

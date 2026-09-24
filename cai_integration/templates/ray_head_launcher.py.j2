@@ -54,7 +54,7 @@ if _venv_bin not in _path.split(":"):
     print(f"Prepended venv bin to PATH: {_venv_bin}")
 
 # ── [0/4] Ensure nginx is installed ──────────────────────────────────────────
-_nginx_bin = Path("/home/cdsw/.local/bin/nginx")
+_nginx_bin = Path("/home/cdsw/.local/bin/nginx-ssl")
 if not _nginx_bin.exists():
     print("\n[0/4] nginx not found — running setup_environment.py ...")
     _setup_script = PROJECT_DIR / "cai_integration" / "setup_environment.py"
@@ -84,7 +84,7 @@ print(f"GCS address     : {_gcs_address}  (written to {_gcs_file})")
 
 # ── Monitoring (Ray Dashboard metrics tab) ────────────────────────────────────
 # Set before ray start so the dashboard process inherits these env vars.
-_monitoring_token = os.environ.get("CML_API_KEY") or os.environ.get("CDSW_APIV2_KEY")
+_monitoring_token = os.environ.get("CDSW_APIV2_KEY") or os.environ.get("CML_API_KEY")
 {% if prometheus_host %}os.environ["RAY_PROMETHEUS_HOST"] = "{{ prometheus_host }}"
 if _monitoring_token:
     os.environ["RAY_PROMETHEUS_HEADERS"] = json.dumps({"Authorization": f"Bearer {_monitoring_token}"})

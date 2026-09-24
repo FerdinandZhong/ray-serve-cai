@@ -82,7 +82,7 @@ def main():
         if domain:
             cml_host = f"https://{domain}"
 
-    cml_api_key = os.environ.get("CML_API_KEY") or os.environ.get("CDSW_APIV2_KEY")
+    cml_api_key = os.environ.get("CDSW_APIV2_KEY") or os.environ.get("CML_API_KEY")
     project_id = os.environ.get("CDSW_PROJECT_ID") or os.environ.get("CML_PROJECT_ID")
     cdsw_domain = os.environ.get("CDSW_DOMAIN", "").strip()
 
@@ -138,13 +138,9 @@ def main():
     prom_env = {}
     if ray_head_url:
         prom_env["RAY_CLUSTER_HEAD_URL"] = ray_head_url
-    # Forward a Bearer token so Prometheus can scrape the head's ingress when
-    # the head app requires authentication. Default to the CML API key
-    # ($CDSW_APIV2_KEY / $CML_API_KEY), which the Management API accepts.
-    _metrics_token = (
-        os.environ.get("RAY_METRICS_BEARER_TOKEN", "").strip()
-        or (cml_api_key or "").strip()
-    )
+    # The application uses its own CDSW_APIV2_KEY by default. Never copy this
+    # job's ephemeral key into a long-running application.
+    _metrics_token = os.environ.get("RAY_METRICS_BEARER_TOKEN", "").strip()
     if _metrics_token:
         prom_env["RAY_METRICS_BEARER_TOKEN"] = _metrics_token
 
@@ -179,7 +175,9 @@ def main():
     grafana_env = {}
     if prom_url:
         grafana_env["PROMETHEUS_URL"] = prom_url
-    grafana_env["PROMETHEUS_BEARER_TOKEN"] = cml_api_key
+    _prometheus_token = os.environ.get("PROMETHEUS_BEARER_TOKEN", "").strip()
+    if _prometheus_token:
+        grafana_env["PROMETHEUS_BEARER_TOKEN"] = _prometheus_token
     if ray_head_url:
         grafana_env["GRAFANA_ROOT_URL"] = f"{ray_head_url.rstrip('/')}/grafana/"
 
