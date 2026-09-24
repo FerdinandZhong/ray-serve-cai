@@ -22,17 +22,6 @@ def _connection():
     return host.rstrip("/"), token.strip(), project_id
 
 
-def _shared_memory_mb():
-    raw = os.environ.get("RAY_SHARED_MEMORY_LIMIT_MB", str(DEFAULT_SHARED_MEMORY_MB)).strip()
-    try:
-        value = int(raw)
-    except ValueError:
-        raise ValueError("RAY_SHARED_MEMORY_LIMIT_MB must be an integer") from None
-    if value < 1024:
-        raise ValueError("RAY_SHARED_MEMORY_LIMIT_MB must be at least 1024")
-    return value
-
-
 def _request(url, token, *, method="GET", body=None):
     payload = json.dumps(body).encode() if body is not None else None
     request = Request(
@@ -59,7 +48,7 @@ def _request(url, token, *, method="GET", body=None):
 def configure_project_resources():
     """Set and verify the project-wide /dev/shm limit used by new CAI apps."""
     host, token, project_id = _connection()
-    shared_memory_mb = _shared_memory_mb()
+    shared_memory_mb = DEFAULT_SHARED_MEMORY_MB
     url = f"{host}/api/v2/projects/{project_id}"
 
     _request(url, token, method="PATCH", body={"shared_memory_limit": shared_memory_mb})

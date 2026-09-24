@@ -130,15 +130,7 @@ class ProjectSetup:
     def configure_project_resources(self, project_id: str) -> bool:
         """Set and verify project defaults before launching Ray applications."""
         print("⚙️  Configuring project resource defaults...")
-        raw_limit = os.environ.get("RAY_SHARED_MEMORY_LIMIT_MB", "40000")
-        try:
-            shared_memory_mb = int(raw_limit)
-        except ValueError:
-            print("❌ RAY_SHARED_MEMORY_LIMIT_MB must be an integer")
-            return False
-        if shared_memory_mb < 1024:
-            print("❌ RAY_SHARED_MEMORY_LIMIT_MB must be at least 1024")
-            return False
+        shared_memory_mb = 40000
         result = self.make_request(
             "PATCH",
             f"projects/{project_id}",

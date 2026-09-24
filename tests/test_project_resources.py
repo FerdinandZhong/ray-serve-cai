@@ -41,7 +41,7 @@ def test_configures_and_verifies_shared_memory(monkeypatch):
 
 def test_successful_job_script_finishes_without_system_exit(monkeypatch):
     _env(monkeypatch)
-    monkeypatch.setenv("RAY_SHARED_MEMORY_LIMIT_MB", "40000")
+    monkeypatch.setenv("RAY_SHARED_MEMORY_LIMIT_MB", '{"nativeEvent":{}}')
     opener = Mock(side_effect=[Response(b"{}"), Response(b'{"shared_memory_limit":40000}')])
     monkeypatch.setattr(urllib.request, "urlopen", opener)
 
@@ -58,16 +58,19 @@ def test_fails_when_server_does_not_apply_value(monkeypatch):
         resources.configure_project_resources()
 
 
-@pytest.mark.parametrize("value", ["", "abc", "1023", "1.5"])
-def test_rejects_invalid_shared_memory(monkeypatch, value):
+@pytest.mark.parametrize("value", ["", "abc", '{"nativeEvent":{}}'])
+def test_fixed_shared_memory_ignores_malformed_project_input(monkeypatch, value):
     _env(monkeypatch)
     monkeypatch.setenv("RAY_SHARED_MEMORY_LIMIT_MB", value)
-    with pytest.raises(ValueError):
-        resources.configure_project_resources()
+    opener = Mock(side_effect=[Response(b"{}"), Response(b'{"shared_memory_limit":40000}')])
+    monkeypatch.setattr(resources, "urlopen", opener)
+
+    resources.configure_project_resources()
+    assert json.loads(opener.call_args_list[0].args[0].data) == {"shared_memory_limit": 40000}
 
 
 def test_project_creation_verifies_shared_memory_before_jobs(monkeypatch):
-    monkeypatch.delenv("RAY_SHARED_MEMORY_LIMIT_MB", raising=False)
+    monkeypatch.setenv("RAY_SHARED_MEMORY_LIMIT_MB", '{"nativeEvent":{}}')
     setup = ProjectSetup.__new__(ProjectSetup)
     setup.make_request = Mock(side_effect=[{}, {"shared_memory_limit": 40000}])
 

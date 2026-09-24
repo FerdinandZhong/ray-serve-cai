@@ -64,12 +64,6 @@ environment_variables:
     default: "32"
     description: Memory in GB requested for the Ray head CML Application.
     required: false
-  RAY_SHARED_MEMORY_LIMIT_MB:
-    default: "40000"
-    description: >-
-      Project-wide /dev/shm limit in MB for newly created CAI applications.
-      Ray workers require this to hold the plasma object store in shared memory.
-    required: false
   RAY_WORKER_NODE_TYPE:
     default: "gpu-worker"
     description: >-
