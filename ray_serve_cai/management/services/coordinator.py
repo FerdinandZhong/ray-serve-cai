@@ -274,13 +274,14 @@ class CoordinatorService:
         labels: dict = None,
     ) -> Dict[str, Any]:
         """Add a new worker node, register it in the resource map, and track the mapping."""
-        result = self.cai_service.create_worker_node(
-            node_type=node_type, cpu=cpu, memory=memory, gpus=gpus,
-            runtime_identifier=runtime_identifier,
-            node_label=node_label,
-            ray_labels=ray_labels,
-            name=name, accelerator_type=accelerator_type, labels=labels,
-        )
+        with self.cai_service.worker_lifecycle_lock():
+            result = self.cai_service.create_worker_node(
+                node_type=node_type, cpu=cpu, memory=memory, gpus=gpus,
+                runtime_identifier=runtime_identifier,
+                node_label=node_label,
+                ray_labels=ray_labels,
+                name=name, accelerator_type=accelerator_type, labels=labels,
+            )
         self.resource_map.register_worker(
             app_id=result["app_id"],
             app_name=result["app_name"],
@@ -310,6 +311,25 @@ class CoordinatorService:
 
         Keep desired state if CML deletion fails, so the worker remains manageable.
         """
+        with self.cai_service.worker_lifecycle_lock():
+            return self._remove_worker_node(app_id)
+
+    def _remove_worker_node(self, app_id: str) -> Dict[str, Any]:
+        records = self.cai_service.worker_records()
+        if any(r.get("app_id") == app_id and r.get("autoscaling") for r in records.values()):
+            raise ValueError("Autoscaler-owned workers must retire through the idle-drain lifecycle")
+        record = next((r for r in records.values() if r.get("app_id") == app_id), None)
+        if record is None:
+            raise ValueError("Unknown worker ownership; deletion refused")
+        self.cai_service.prepare_worker_retirement(record)
+        try:
+            retirement = self.ray_service.retire_worker(record)
+        except ValueError:
+            self.cai_service.cancel_worker_retirement(record)
+            raise
+        if retirement != "stopped":
+            return {"status": "draining", "app_id": app_id,
+                    "message": "Ray accepted idle drain; repeat DELETE after the worker stops"}
         state = self.load_state()
         node_mapping = state.get("node_mapping", {})
 
@@ -322,6 +342,9 @@ class CoordinatorService:
         # Do not discard the only recorded identity on an unconfirmed delete.
         try:
             self.cai_service.delete_application(app_id)
+            if any(a.get("id") == app_id for a in self.cai_service.list_applications()):
+                return {"status": "terminating", "app_id": app_id,
+                        "message": "CAI deletion awaits confirmation; repeat DELETE"}
         except Exception as exc:
             cml_delete_warning = str(exc)
             logger.warning(
@@ -382,6 +405,8 @@ class CoordinatorService:
 
     def remove_cai_application(self, app_id: str) -> Dict[str, Any]:
         """Stop a CML application and release its resources from the map."""
+        if any(r.get("app_id") == app_id for r in self.cai_service.worker_records().values()):
+            return self.remove_worker_node(app_id)
         result = self.cai_service.delete_application(app_id)
         self.resource_map.release(app_id)
         return result

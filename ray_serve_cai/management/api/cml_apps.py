@@ -57,5 +57,7 @@ async def remove_cai_application(
     """Stop a CML application and release its resources back to the cluster pool."""
     try:
         return coordinator.remove_cai_application(app_id)
+    except ValueError as e:
+        raise HTTPException(status_code=409, detail=str(e))
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))

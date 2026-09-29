@@ -11,7 +11,7 @@
 #   Stage 2  setup_base_env       /home/cdsw/.venv        (ray + core, no engines)
 #   Stage 3  setup_vllm_env       /home/cdsw/.venv-vllm   (vllm + ninja)
 #   Stage 4  setup_litellm_env    /home/cdsw/.venv-litellm
-#   Stage 5  launch_ray_cluster   head only, Management API up
+#   Stage 5  launch_ray_cluster   head, scaling controller and optional initial pools
 #   Stage 6  launch_monitoring    Prometheus + Grafana CML apps
 #   Stage 7  amp_llm_demo         created for manual execution after a worker is added
 #
@@ -32,8 +32,8 @@ description: >-
   Multi-engine model inference on Cloudera AI Workbench: a Ray cluster
   (head + user-provisioned workers) behind a single Management REST API, with vLLM and
   LiteLLM engines in isolated virtualenvs, declarative GPU placement, and
-  Prometheus/Grafana monitoring. Import starts no workers; use the API to add
-  your own worker node type, then run the optional demo job.
+  Prometheus/Grafana monitoring. Autoscaling is available by default; choose
+  initial worker pools at import or add workers later through the API.
 author: Cloudera Engineering
 date: '2026-09-16'
 specification_version: "1.0"
@@ -46,6 +46,16 @@ runtimes:
     edition: Standard
 
 environment_variables:
+  RAY_INITIAL_WORKER_POOLS:
+    default: ""
+    description: >-
+      JSON array of worker pools. Each entry has id, initial_workers,
+      optional min_workers, and worker_spec with cpu, memory, gpus and optional
+      accelerator_type, node_type, runtime_identifier and node_label.
+      Example: [{"id":"l40s","initial_workers":2,"worker_spec":{"cpu":16,"memory":64,"gpus":1,"node_type":"gpu-worker","accelerator_type":"L40S"}}].
+      No maximum is required. Blank uses YAML configuration (no workers by
+      default); an explicit empty array overrides YAML and starts without workers.
+    required: false
   VLLM_MODEL_ID:
     default: "Qwen/Qwen3.8-27B-FP8"
     description: >-
@@ -67,8 +77,9 @@ environment_variables:
   RAY_WORKER_NODE_TYPE:
     default: "gpu-worker"
     description: >-
-      Demo deployment target label only. After the head starts, define this
-      node type and its resources through Swagger, then explicitly add workers.
+      Demo deployment target label only. After the head starts, add workers
+      directly through Swagger with CPU, memory, GPU count and this optional
+      node_type label. No node-type registration is required.
 
 tasks:
   # ── Stage 1: project shared memory ─────────────────────────────────────────

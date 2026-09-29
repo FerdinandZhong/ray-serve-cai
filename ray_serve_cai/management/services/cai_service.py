@@ -153,6 +153,29 @@ class CAIService:
                     del records[worker_id]
             self._save_cluster_info(info)
 
+    def worker_lifecycle_lock(self):
+        """Share mutation exclusion with recovery and the worker autoscaler."""
+        from ray_serve_cai.autoscaling.lifecycle import lifecycle_lock
+
+        return lifecycle_lock(_CLUSTER_INFO_PATH.parent)
+
+    def prepare_worker_retirement(self, record):
+        """Prevent this launch rejoining after a successful idle drain."""
+        if not record.get("supports_idle_retirement"):
+            raise ValueError("Worker predates safe retirement support; recreate it before managed draining")
+        launch_id = record["launch_id"]
+        if not re.fullmatch(r"[0-9a-f]{32}", launch_id):
+            raise ValueError("Invalid worker launch identity")
+        marker = _CLUSTER_INFO_PATH.parent / ".ray_worker_retire" / launch_id
+        marker.parent.mkdir(exist_ok=True)
+        marker.touch()
+
+    def cancel_worker_retirement(self, record):
+        launch_id = record["launch_id"]
+        if not re.fullmatch(r"[0-9a-f]{32}", launch_id):
+            raise ValueError("Invalid worker launch identity")
+        (_CLUSTER_INFO_PATH.parent / ".ray_worker_retire" / launch_id).unlink(missing_ok=True)
+
     def define_node_type(
         self,
         node_type: str,
@@ -250,6 +273,7 @@ class CAIService:
         accelerator_type: str = None,
         labels: dict = None,
         _worker_id: str = None,
+        _autoscaling: dict = None,
     ) -> Dict[str, Any]:
         """
         Launch a new worker node as a CML application.
@@ -366,6 +390,11 @@ class CAIService:
         _ray[f"worker_id:{worker_id}"] = 1
         _ray[f"worker_launch_id:{launch_id}"] = 1
         env["RAY_EXTRA_RESOURCES"] = json.dumps(_ray)
+        env["RAY_WORKER_LAUNCH_ID"] = launch_id
+        if _autoscaling:
+            env.update(RAY_CLOUD_INSTANCE_ID=_autoscaling["instance_id"],
+                       RAY_NODE_TYPE_NAME=_autoscaling["pool_id"],
+                       RAY_CAI_MANAGED_WORKER="1", RAY_WORKER_LAUNCH_ID=launch_id)
 
         spec = dict(name=display_name, node_type=node_type, cpu=group.cpu,
                     memory=group.memory, gpus=group.gpus,
@@ -373,16 +402,20 @@ class CAIService:
                     runtime_identifier=group.runtime_identifier, node_label=group.node_label,
                     ray_labels=ray_labels, labels=labels or {})
         record = dict(worker_id=worker_id, launch_id=launch_id, app_id=None, app_name=worker_name,
-                      ray_node_id=None, status="creating", spec=spec)
+                      ray_node_id=None, status="creating", spec=spec, supports_idle_retirement=True)
+        if _autoscaling:
+            record["autoscaling"] = dict(_autoscaling)
         self._record_worker(worker_id, record)
         try:
             app_info = self.manager.launch_worker(
                 group=group, name=worker_name, environment=env or None,
             )
-        except Exception:
+        except Exception as exc:
             # A timeout may follow a successful server-side create. Do not retry
             # automatically or claim that no application exists.
-            record["status"] = "launch_unknown"
+            from ray_serve_cai.autoscaling.lifecycle import creation_rejection
+
+            record["status"] = "launch_rejected" if creation_rejection(exc) else "launch_unknown"
             self._record_worker(worker_id, record)
             raise
         record.update(app_id=app_info["id"], status="starting")

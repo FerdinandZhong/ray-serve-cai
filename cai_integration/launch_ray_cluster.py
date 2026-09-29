@@ -115,6 +115,8 @@ def render_worker_launcher(
         "node_type":        group.node_type,
         "accelerator_type": group.accelerator_type,  # e.g. "L40", "T4", None
         "worker_memory_gb": group.memory,
+        "worker_cpu": group.cpu,
+        "worker_gpus": group.gpus,
     }
     # Sanitise group name for use as a filename component.
     safe_name = group.name.replace("-", "_").replace(" ", "_")
@@ -246,6 +248,8 @@ def load_config():
         'management_api_cpu':       None,
         'management_api_memory':    None,
         'worker_groups':            None,
+        'worker_pools':             [],
+        'autoscaling':              {'enabled': True, 'limits': None},
         'head_app_name':            'ray-cluster-head',
         'head_runtime_identifier':  _STD,
         'worker_runtime_identifier': _CUDA,
@@ -294,6 +298,11 @@ def load_config():
             print(f"Warning: could not load config file: {e}")
 
     # ── Step 3: env vars override everything (highest priority) ─────────────
+    pools_input = os.environ.get('RAY_INITIAL_WORKER_POOLS', '').strip()
+    if pools_input:
+        config['worker_pools'] = json.loads(pools_input)
+        if not isinstance(config['worker_pools'], list):
+            raise ValueError('RAY_INITIAL_WORKER_POOLS must be a JSON array')
     # Only apply non-blank values. AMP renders optional input fields as empty
     # strings when a user leaves them unset; treating that as an override would
     # either crash int()/float() or erase the YAML configuration.
@@ -563,6 +572,9 @@ def main():
     # ── Build worker groups ───────────────────────────────────────────────────
     # Explicit YAML groups are supported alongside a zero-worker AMP template.
     worker_groups = build_worker_groups(ray_config)
+    from cai_integration.autoscaling.bootstrap import bootstrap_policy, initialize_scaling
+    # Validate all initial shapes and budgets before creating any CAI apps.
+    initial_policy = bootstrap_policy(ray_config)
 
     print("\n🎯 Ray Cluster Configuration:")
     print(f"   Head Node     : {head_cpu} CPU, {head_memory} GB RAM  (no GPU)")
@@ -658,7 +670,21 @@ def main():
             except Exception as _exc:
                 print(f"⚠️  Could not fetch GCS address from Management API: {_exc}")
 
-        # ── Step 3: add worker nodes via Management API ────────────────────────
+        # Publish pool requests only after the worker launcher can resolve GCS.
+        # The head writes this file on shared project storage before starting
+        # the management API; use it when the authenticated API lookup failed.
+        gcs_file = info_file.parent / 'ray_gcs_address'
+        if not cluster_info.get('head_address') and gcs_file.exists():
+            cluster_info['head_address'] = gcs_file.read_text().strip()
+            save_cluster_info(info_file, cluster_info)
+        if initial_policy.pools and not cluster_info.get('head_address'):
+            raise RuntimeError('Cannot initialize worker pools before the head GCS address is available')
+        initialize_scaling(ray_config, info_file.parent / 'ray_autoscaling.json')
+        for pool in initial_policy.pools:
+            print(f"   Managed pool '{pool.id}': initial={pool.initial_workers}, "
+                  f"minimum={pool.min_workers}, maximum={pool.max_workers}")
+
+        # ── Step 3: add legacy manual workers via Management API ───────────────
         total_workers = sum(g.count for g in worker_groups)
         if total_workers > 0 and management_url:
             import urllib.request as _urlreq

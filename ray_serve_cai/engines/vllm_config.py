@@ -100,6 +100,10 @@ def build_vllm_engine_config(user_config: Dict[str, Any]) -> Dict[str, Any]:
     if user_config.get('enable_prefix_caching', False):
         engine_config['enable_prefix_caching'] = True
 
+    # Preserve the caller's execution-mode choice through the management API.
+    if user_config.get('enforce_eager') is not None:
+        engine_config['enforce_eager'] = user_config['enforce_eager']
+
     # vLLM FrontendArgs (serving-layer): tool calling + reasoning. Carried
     # through here (the whitelist would otherwise drop them) and consumed by
     # VLLMEngine.__init__, which pops them before AsyncEngineArgs and hands them
@@ -128,7 +132,7 @@ def build_vllm_engine_config(user_config: Dict[str, Any]) -> Dict[str, Any]:
     if user_config.get('attention_backend'):
         engine_config['attention_backend'] = user_config['attention_backend']
 
-    if user_config.get('autoscaling_config'):
+    if user_config.get('autoscaling_config') is not None:
         engine_config['autoscaling_config'] = user_config['autoscaling_config']
 
     logger.info(f"Built vLLM engine config: {engine_config}")

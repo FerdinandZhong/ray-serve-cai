@@ -99,6 +99,12 @@ os.environ["RAY_GRAFANA_HOST"] = f"http://127.0.0.1:{os.environ.get('CDSW_APP_PO
 {% endif %}
 # ── [1/4] Start Ray head ─────────────────────────────────────────────────────
 print("\n[1/4] Starting Ray head node...")
+_autoscaling_enabled = os.environ.get("RAY_CAI_AUTOSCALING", "1") != "0"
+if _autoscaling_enabled:
+    os.environ["RAY_CAI_AUTOSCALING"] = "1"
+    os.environ["RAY_enable_autoscaler_v2"] = "1"
+    os.environ["RAY_CLOUD_INSTANCE_ID"] = "cai-head"
+    os.environ["RAY_NODE_TYPE_NAME"] = "head"
 result = subprocess.run(
     [
         str(RAY_BIN),
@@ -113,7 +119,7 @@ result = subprocess.run(
         # visible in the dashboard between bursts of work.
         "--system-config",
         '{"idle_worker_killing_time_threshold_ms": 60000}',
-    ],
+    ] + (["--no-monitor"] if _autoscaling_enabled else []),
     capture_output=True,
     text=True,
 )
@@ -174,6 +180,13 @@ if result.returncode != 0:
     sys.exit(result.returncode)
 print("  Management API live at http://127.0.0.1:5000/api/*")
 
+_scaler = None
+if _autoscaling_enabled:
+    _scaler = subprocess.Popen(
+        [str(VENV_PYTHON), "-m", "cai_integration.autoscaling.supervisor"],
+        env={**os.environ, "PYTHONPATH": str(PROJECT_DIR)},
+    )
+
 
 # ── [4/4] Start nginx (foreground — keeps this application alive) ─────────────
 print("\n[4/4] Starting nginx reverse proxy (foreground)...")
@@ -194,9 +207,14 @@ print("\nHanding off to nginx — application stays alive as long as nginx runs.
 print("=" * 70)
 
 # exec into nginx via start_nginx.py --foreground; this call blocks until nginx exits.
-result = subprocess.run(
-    [str(VENV_PYTHON), str(nginx_script), "--foreground"],
-    env={**os.environ, "PYTHONPATH": str(PROJECT_DIR)},
-)
+try:
+    result = subprocess.run(
+        [str(VENV_PYTHON), str(nginx_script), "--foreground"],
+        env={**os.environ, "PYTHONPATH": str(PROJECT_DIR)},
+    )
+finally:
+    if _scaler is not None:
+        _scaler.terminate()
+        _scaler.wait(timeout=20)
 # If we reach here nginx has exited — propagate its exit code.
 sys.exit(result.returncode)
