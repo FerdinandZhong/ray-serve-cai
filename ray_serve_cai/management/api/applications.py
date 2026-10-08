@@ -81,6 +81,7 @@ async def deploy_application(
                 node_type=request.node_type,
                 multi_node=request.multi_node,
                 autoscaling_config=request.autoscaling_config,
+                max_ongoing_requests=request.max_ongoing_requests,
                 venv_name=request.venv_name,
                 scheduling=request.scheduling,
             )

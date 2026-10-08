@@ -179,17 +179,53 @@ class RecoveryOrchestrator:
             current = self.cai_service.worker_records().get(worker_id)
             if current is None:  # explicitly removed while recovery was interrupted
                 continue
+            if current.get("status") == "launch_rejected":
+                continue  # No application was created; the capacity controller may retry.
+            managed = current.get("autoscaling")
+            scaling_store = None
+            if managed:
+                from ray_serve_cai.autoscaling.store import ScalingStore
+
+                scaling_store = ScalingStore(self.cluster_info_path.parent / "ray_autoscaling.json")
+                journal = scaling_store.read()["workers"].get(managed["instance_id"])
+                if journal is None:
+                    raise RuntimeError("Managed worker is missing from the autoscaling journal")
+                if journal["state"] in {"drain_requested", "draining", "terminating", "terminated"}:
+                    # Retirement intent wins over a stale head-recovery snapshot.
+                    if current.get("app_id") in live_ids and not self.dry_run:
+                        if not self.cml.stop_application(current["app_id"]):
+                            raise RuntimeError("Could not retire worker during recovery")
+                        if any(a["id"] == current["app_id"] for a in self.cml.list_applications()):
+                            raise RuntimeError("Worker retirement awaits CAI deletion confirmation")
+                    if not self.dry_run:
+                        with scaling_store.transaction() as scaling:
+                            scaling["workers"][managed["instance_id"]]["state"] = "terminated"
+                        self.cai_service.forget_worker(current["app_id"])
+                    continue
             if current.get("status") in ("creating", "launch_unknown"):
                 raise RuntimeError(f"Worker {worker_id} has an unresolved launch; reconcile its application before recovery")
             if current.get("app_id") != original.get("app_id") and current.get("app_id") in live_ids:
+                if scaling_store and not self.dry_run:
+                    with scaling_store.transaction() as scaling:
+                        scaling["workers"][managed["instance_id"]].update(
+                            app_id=current["app_id"], state="starting", created_at=time.time())
                 continue
             app_id = current.get("app_id")
             if app_id in live_ids:
                 if not self.dry_run and not self.cml.stop_application(app_id):
                     raise RuntimeError(f"Could not delete worker application {app_id}; replacement not launched")
+                if managed and not self.dry_run and any(a["id"] == app_id for a in self.cml.list_applications()):
+                    raise RuntimeError("Managed worker deletion awaits confirmation before recovery replacement")
                 deleted += 1
             if not self.dry_run:
-                self.cai_service.create_worker_node(**original["spec"], _worker_id=worker_id)
+                replacement = self.cai_service.create_worker_node(
+                    **original["spec"], _worker_id=worker_id,
+                    **({"_autoscaling": managed} if managed else {}),
+                )
+                if scaling_store:
+                    with scaling_store.transaction() as journal:
+                        journal["workers"][managed["instance_id"]].update(
+                            app_id=replacement["app_id"], state="starting", created_at=time.time())
             created += 1
         return {"deleted": deleted, "created": created}
 
@@ -224,6 +260,12 @@ class RecoveryOrchestrator:
     # ── Driver ─────────────────────────────────────────────────────────────
 
     def run(self, owner: str = "recovery-job") -> dict[str, Any]:
+        from ray_serve_cai.autoscaling.lifecycle import lifecycle_lock
+
+        with lifecycle_lock(self.cluster_info_path.parent):
+            return self._run_exclusive(owner)
+
+    def _run_exclusive(self, owner: str) -> dict[str, Any]:
         if not self.state.acquire_lock(owner):
             return {"status": "skipped", "reason": "another recovery run holds the lock"}
         try:

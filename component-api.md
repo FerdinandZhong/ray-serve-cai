@@ -40,8 +40,8 @@ control over where and how its actors are placed:
 
 ```jsonc
 "scheduling": {
-  // Node affinity for this deployment's GPU work. Use 0.001 for soft affinity
-  // (a hint that consumes no capacity). Merged into GPU placement-group bundles
+  // Required affinity for this deployment's GPU work. A 0.001 request is still
+  // a hard match and consumes a small resource quantity. Merged into GPU bundles
   // when a placement group is used, else set on the actor directly.
   "resources": {"instance-group-id:ig-n4bsnv8r": 0.001},
 
@@ -111,7 +111,7 @@ cluster.
 | Method | Path | Description |
 |--------|------|-------------|
 | `POST` | `/resources/nodes` | Add a worker node (creates a CML App). Returns `201` with `app_id`. |
-| `DELETE` | `/resources/nodes/{app_id}` | Remove a worker node (stops the CML App). |
+| `DELETE` | `/resources/nodes/{app_id}` | Request idle drain; repeat after shutdown to confirm CAI deletion. Busy/unknown workers are retained. Autoscaler-owned workers retire through their policy. |
 | `GET` | `/resources/nodes` | List Ray nodes enriched with CML `app_id`, `app_name`, `cml_status`. |
 | `GET` | `/resources/worker-apps` | Persisted worker identities and resolved specs, including pending launches. |
 | `GET` | `/resources/workers` | **Deprecated** — use `/resources/nodes`. |
@@ -139,6 +139,19 @@ creation (`201`) is not proof that the worker has joined Ray.
 | `POST` | `/engines/register` | Dynamically register a custom engine (allowlist-gated). |
 
 ## Cluster & metrics
+
+Worker autoscaling policy is available at `GET/PUT /cluster/autoscaling`;
+`GET /cluster/autoscaling/status` and `/events` expose decisions and blockers.
+Writes require admin authorization. See [worker autoscaling](docs/AUTOSCALING.md)
+for head startup requirements, rollout modes and current limitations.
+New heads start the controller by default. New-cluster initial resources use
+`RAY_INITIAL_WORKER_POOLS`; API policies can add pools later. Pool/global maxima
+are optional (null or omitted means no extra cap), while CAI admission limits
+still apply. `initial_workers` is one-time and `min_workers` is a retained baseline.
+
+Legacy `/resources/node-types` registration/list/delete and `/resources/workers`
+remain callable for compatibility, but are hidden from OpenAPI. Direct
+`POST /resources/nodes` with CPU and memory requires no prior registration.
 
 | Method | Path | Description |
 |--------|------|-------------|

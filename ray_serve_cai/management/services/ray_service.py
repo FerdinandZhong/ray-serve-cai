@@ -58,6 +58,30 @@ class RayService:
         self.connect()
         return ray.cluster_resources()
 
+    def retire_worker(self, record):
+        """Request rejectable idle draining; never kill a busy worker."""
+        nodes = self.get_nodes()
+        matches = [n for n in nodes if n.get("NodeID") == record.get("ray_node_id") or (
+            n.get("Resources", {}).get(f"worker_id:{record['worker_id']}", 0) > 0
+            and n.get("Resources", {}).get(f"worker_launch_id:{record['launch_id']}", 0) > 0)]
+        if not matches:
+            raise ValueError("Cannot establish current Ray identity; worker retained")
+        alive = [n for n in matches if n.get("Alive")]
+        if not alive:
+            return "stopped"
+        if len(alive) != 1 or "node:__internal_head__" in alive[0].get("Resources", {}):
+            raise ValueError("Ambiguous or protected Ray identity; worker retained")
+        from ray.core.generated.autoscaler_pb2 import DrainNodeReason
+
+        client = ray._private.worker.global_worker.gcs_client
+        accepted, reason = client.drain_node(
+            alive[0]["NodeID"], DrainNodeReason.DRAIN_NODE_REASON_IDLE_TERMINATION,
+            "Manual CAI worker retirement", 0,
+        )
+        if not accepted:
+            raise ValueError(f"Ray rejected idle drain; worker retained: {reason}")
+        return "draining"
+
     def get_available_resources(self) -> Dict[str, float]:
         """
         Get currently available cluster resources.
@@ -120,6 +144,8 @@ class RayService:
             # obj may be an already-bound serve.Application or an unbound
             # @serve.deployment class — handle both.
             if isinstance(obj, serve.Application):
+                if num_replicas != 1 or ray_actor_options:
+                    raise ValueError("Options for an already-bound Application must be configured in its source")
                 app = obj
             else:
                 # Unbound deployment class: apply options then bind.
@@ -159,6 +185,7 @@ class RayService:
         autoscaling_config: Optional[Dict[str, Any]] = None,
         venv_name: Optional[str] = None,
         scheduling: Optional["SchedulingConfig"] = None,
+        max_ongoing_requests: Optional[int] = None,
     ) -> Dict[str, Any]:
         """
         Deploy a vLLM or SGLang model as a Ray Serve application.
@@ -203,7 +230,7 @@ class RayService:
         }
         if node_type:
             user_config["node_type"] = node_type
-        if autoscaling_config:
+        if autoscaling_config is not None:
             user_config["autoscaling_config"] = autoscaling_config
 
         config_builder = registry.get_config_builder(engine_type)
@@ -244,6 +271,7 @@ class RayService:
             placement_group_bundles=placement_group_bundles,
             placement_group_strategy=placement_group_strategy,
             multi_node=multi_node,
+            **({"max_ongoing_requests": max_ongoing_requests} if max_ongoing_requests is not None else {}),
         )
 
         # serve.run() blocks until the deployment is healthy, which can take

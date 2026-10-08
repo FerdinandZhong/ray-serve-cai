@@ -40,7 +40,8 @@ classifiers = [
 ]
 
 dependencies = [
-    "ray[serve]>=2.53.0",
+    # The CAI autoscaling adapter is validated against this exact Ray release.
+    "ray[serve]==2.56.1",
     "protobuf>=5.29.6,<7.0",
     "pyyaml>=6.0.3",
     "aiohttp>=3.13.3",

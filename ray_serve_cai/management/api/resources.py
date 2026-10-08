@@ -44,7 +44,7 @@ async def add_node(request: AddNodeRequest, coordinator: CoordinatorService = De
         raise HTTPException(status_code=500, detail=str(e))
 
 
-@router.post("/node-types", response_model=Dict[str, Any], status_code=201, dependencies=[Depends(require_admin)])
+@router.post("/node-types", response_model=Dict[str, Any], status_code=201, dependencies=[Depends(require_admin)], include_in_schema=False)
 async def define_node_type(request: DefineNodeTypeRequest, coordinator: CoordinatorService = Depends(get_coordinator)):
     """
     Define a new worker node_type at runtime (no cluster relaunch).
@@ -70,7 +70,7 @@ async def define_node_type(request: DefineNodeTypeRequest, coordinator: Coordina
         raise HTTPException(status_code=500, detail=str(e))
 
 
-@router.get("/node-types", response_model=Dict[str, Any])
+@router.get("/node-types", response_model=Dict[str, Any], include_in_schema=False)
 async def list_node_types(coordinator: CoordinatorService = Depends(get_coordinator)):
     """List worker groups (node_types) known to the running cluster."""
     try:
@@ -80,7 +80,7 @@ async def list_node_types(coordinator: CoordinatorService = Depends(get_coordina
         raise HTTPException(status_code=500, detail=str(e))
 
 
-@router.delete("/node-types/{node_type}", response_model=Dict[str, Any], dependencies=[Depends(require_admin)])
+@router.delete("/node-types/{node_type}", response_model=Dict[str, Any], dependencies=[Depends(require_admin)], include_in_schema=False)
 async def remove_node_type(node_type: str, coordinator: CoordinatorService = Depends(get_coordinator)):
     """
     Remove a worker node_type definition.
@@ -122,6 +122,8 @@ async def remove_node(app_id: str, coordinator: CoordinatorService = Depends(get
     try:
         result = coordinator.remove_worker_node(app_id)
         return result
+    except ValueError as e:
+        raise HTTPException(status_code=409, detail=str(e))
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
 
@@ -154,7 +156,7 @@ async def list_worker_records(coordinator: CoordinatorService = Depends(get_coor
     return {"workers": list(records.values()), "count": len(records)}
 
 
-@router.get("/workers", response_model=Dict[str, Any], deprecated=True)
+@router.get("/workers", response_model=Dict[str, Any], include_in_schema=False)
 async def list_workers(coordinator: CoordinatorService = Depends(get_coordinator)):
     """
     **Deprecated** — use ``GET /api/v1/resources/nodes`` instead.

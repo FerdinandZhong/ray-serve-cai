@@ -416,6 +416,10 @@ class DeployApplicationRequest(BaseModel):
         description="HTTP route prefix — all endpoints are served under this prefix",
     )
     num_replicas: int = Field(default=1, ge=1, description="Number of Ray Serve replicas")
+    max_ongoing_requests: Optional[int] = Field(
+        default=None, ge=1,
+        description="Maximum concurrent requests per replica; must exceed the autoscaling request target.",
+    )
     autoscaling_config: Optional[Dict[str, Any]] = Field(
         default=None,
         description=(
@@ -527,6 +531,19 @@ class DeployApplicationRequest(BaseModel):
             raise ValueError(
                 "Exactly one of 'engine_type' or 'import_path' must be provided"
             )
+        if self.autoscaling_config is not None or self.max_ongoing_requests is not None:
+            if self.engine_type != "vllm":
+                raise ValueError("Replica autoscaling and max_ongoing_requests are currently supported only for vllm")
+        if self.autoscaling_config is not None:
+            from ray.serve.config import AutoscalingConfig
+
+            policy = AutoscalingConfig(**self.autoscaling_config)
+            target = policy.target_ongoing_requests
+            if target >= (self.max_ongoing_requests or 100):
+                raise ValueError("target_ongoing_requests must be less than max_ongoing_requests (default 100)")
+        for field in ("autoscaling_config", "max_ongoing_requests"):
+            if field in (self.engine_config or {}):
+                raise ValueError(f"{field} is a deployment setting; put it at the top level")
         return self
 
     @field_validator("autoscaling_config")
@@ -535,6 +552,13 @@ class DeployApplicationRequest(BaseModel):
         cls, v: Optional[Dict[str, Any]], info
     ) -> Optional[Dict[str, Any]]:
         if v is not None:
+            from ray.serve.config import AutoscalingConfig
+
+            fields = getattr(AutoscalingConfig, "model_fields", None) or AutoscalingConfig.__fields__
+            unknown = set(v) - set(fields)
+            if unknown:
+                raise ValueError("Unknown autoscaling fields: " + ", ".join(sorted(unknown)))
+            AutoscalingConfig(**v)
             num_replicas = info.data.get("num_replicas", 1)
             if num_replicas > 1:
                 raise ValueError(

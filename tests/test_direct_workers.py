@@ -78,6 +78,44 @@ def test_uncertain_launch_preserves_record(svc):
     assert next(iter(svc.worker_records().values()))["status"] == "launch_unknown"
 
 
+def test_managed_launch_identity_and_retirement_marker(svc):
+    identity = "a" * 32
+    ownership = {"cluster_id": "cluster", "pool_id": "l40s", "instance_id": identity}
+    result = create(svc, _worker_id=identity, _autoscaling=ownership)
+    env = svc.manager.launch_worker.call_args.kwargs["environment"]
+    assert env["RAY_CLOUD_INSTANCE_ID"] == identity
+    assert env["RAY_NODE_TYPE_NAME"] == "l40s"
+    assert env["RAY_CAI_MANAGED_WORKER"] == "1"
+    record = svc.worker_records()[result["worker_id"]]
+    assert record["autoscaling"] == ownership
+    svc.prepare_worker_retirement(record)
+    marker = module._CLUSTER_INFO_PATH.parent / ".ray_worker_retire" / record["launch_id"]
+    assert marker.exists()
+    svc.cancel_worker_retirement(record)
+    assert not marker.exists()
+
+
+def test_recovery_does_not_resurrect_retiring_managed_worker(svc, tmp_path):
+    from ray_serve_cai.autoscaling.store import ScalingStore
+
+    identity = "b" * 32
+    ownership = {"cluster_id": "cluster", "pool_id": "l40s", "instance_id": identity}
+    create(svc, _worker_id=identity, _autoscaling=ownership)
+    scaling = ScalingStore(tmp_path / "ray_autoscaling.json")
+    with scaling.transaction() as data:
+        data["workers"][identity] = {"state": "draining", "pool_id": "l40s", "app_id": "app1"}
+    cml = Mock()
+    cml.list_applications.side_effect = [[{"id": "app1"}], []]
+    cml.stop_application.return_value = True
+    orch = RecoveryOrchestrator(cml=cml, cai_service=svc, deployment_store=Mock(),
+        cluster_info_path=module._CLUSTER_INFO_PATH, http=Mock(),
+        state=RecoveryState(path=tmp_path / "recovery.json", lock_path=tmp_path / "recovery.lock"))
+    orch.rebuild_workers(svc._load_cluster_info())
+    assert svc.manager.launch_worker.call_count == 1
+    assert scaling.read()["workers"][identity]["state"] == "terminated"
+    assert not svc.worker_records()
+
+
 def coordinator(svc, tmp_path):
     coord = CoordinatorService(Mock(), svc)
     coord.state_file = tmp_path / "state.json"
@@ -95,10 +133,12 @@ def test_identity_join_and_deletion(svc, tmp_path):
     assert node.app_id == "app1" and node.worker_id == result["worker_id"]
     assert svc.worker_records()[result["worker_id"]]["ray_node_id"] == "ray1"
     svc.manager.stop_application.return_value = False
+    coord.ray_service.retire_worker.return_value = "stopped"
     assert coord.remove_worker_node("app1")["status"] == "partial"
     assert svc.worker_records()
     coord.resource_map.unregister_worker.assert_not_called()
     svc.manager.stop_application.return_value = True
+    svc.manager.list_applications.return_value = []
     assert coord.remove_worker_node("app1")["status"] == "success"
     assert not svc.worker_records()
 

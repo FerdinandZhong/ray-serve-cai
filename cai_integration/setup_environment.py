@@ -809,7 +809,7 @@ def main():
 
         # Fallback: Install core dependencies manually (matches pyproject.toml)
         ray_packages = [
-            "ray[serve]>=2.53.0",
+            "ray[serve]==2.56.1",
             "protobuf>=5.29.6,<7.0",
             "pyyaml>=6.0.3",
             "aiohttp>=3.13.3",

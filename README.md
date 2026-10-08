@@ -83,20 +83,26 @@ Serving models on CAI/CML has three recurring pain points that this project solv
 
 ## Demo
 
+For built-in worker capacity scaling, initial pools and validation limits, see
+[CAI worker autoscaling](docs/AUTOSCALING.md). Replica scaling and CAI worker
+scaling have separate policies; occupied-worker consolidation is not enabled yet.
+
 The fastest way to see this running is a one-click AMP import:
 
 1. **Import as a prototype** — in CAI Workbench, create a project from this
    repository. The [`.project-metadata.yaml`](.project-metadata.yaml) manifest
    then runs the infrastructure chain automatically: base venv → vLLM venv →
    LiteLLM venv → a configurable Ray head → Prometheus/Grafana. It launches
-   **no workers**. At import, choose `RAY_HEAD_CPU`/`RAY_HEAD_MEMORY` for the
-   head resource pool and `RAY_WORKER_NODE_TYPE` (plus its CPU, memory, GPU,
-   and accelerator-type fields) for the zero-worker template.
-2. **Add your worker** — open Swagger and use `POST /api/v1/resources/nodes`
-   with the imported `RAY_WORKER_NODE_TYPE`; it uses the template defaults but
-   accepts per-node CPU, memory, GPU, runtime, and node-label overrides. For a
-   wholly new shape, first use `POST /api/v1/resources/node-types`, then add
-   nodes of that type. This is the point at which your worker quota is used.
+   the autoscaling controller by default. At import, choose
+   `RAY_HEAD_CPU`/`RAY_HEAD_MEMORY` and optionally `RAY_INITIAL_WORKER_POOLS`
+   for your initial worker shapes and counts. An empty array starts no workers;
+   worker-pool ceilings are optional and CAI admission limits still apply.
+2. **Optionally add manual workers** — open Swagger and use `POST /api/v1/resources/nodes`
+   with `cpu`, `memory` (GiB), and `gpus`, plus optional runtime, accelerator,
+   and node-selector settings. No node-type registration is required.
+   `node_type` remains an optional scheduling label. These workers use CAI quota
+   and are protected from automatic deletion. Legacy template routes remain callable for
+   compatibility but are hidden from Swagger.
 3. **Run the optional Qwen job** — run `amp_llm_demo` after a compatible GPU
    worker is ready. It deploys `VLLM_MODEL_ID` (default
    `Qwen/Qwen3.8-27B-FP8`, TP=2) and runs a sample query.

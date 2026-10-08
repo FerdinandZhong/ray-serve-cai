@@ -1171,12 +1171,13 @@ def create_vllm_deployment(
         ray_actor_options["runtime_env"] = rt_env
 
     # ── Build .options() kwargs ─────────────────────────────────────────────
-    autoscaling = engine_config.get("autoscaling_config")
+    engine_config = dict(engine_config)
+    autoscaling = engine_config.pop("autoscaling_config", None)
     opts: Dict[str, Any] = {
         "ray_actor_options": ray_actor_options,
         "max_ongoing_requests": max_ongoing_requests,
     }
-    if autoscaling:
+    if autoscaling is not None:
         opts["autoscaling_config"] = autoscaling
     else:
         opts["num_replicas"] = num_replicas

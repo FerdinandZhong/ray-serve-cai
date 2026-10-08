@@ -28,8 +28,8 @@ This validates inputs only; it does not create anything. The remote Git ref must
 contain the intended AMP changes before deploying; local edits are not uploaded.
 
 AMP inputs, including head resources, can be supplied in
-`--env-file inputs.json`, a JSON object whose values are strings. Worker resources
-are no longer AMP inputs; define them after startup. Unknown keys and object values are
+`--env-file inputs.json`, a JSON object whose values are strings. Use `RAY_INITIAL_WORKER_POOLS` as a string containing a JSON array to request
+initial managed workers, or add manual workers after startup. Unknown keys and object values are
 errors; omitted fields use manifest defaults. Input values are not printed.
 Keep secret files out of Git. The Hugging Face token is not an
 AMP form or `--env-file` input; set it on the project after import.
@@ -40,7 +40,9 @@ job chain first sets and verifies the project-wide `/dev/shm` limit, then runs
 environment setup, cluster launch, and monitoring. The setup stage sets the
 project limit to 40,000 MB without relying on an AMP form input. This applies to
 applications created after that setup stage. The shipped configuration has an explicit
-empty worker-group list: no worker templates or workers are created at startup.
+empty initial pool list: no workers are created unless requested. The head
+starts the capacity controller by default. See [autoscaling](AUTOSCALING.md) for
+initial pools, optional budgets and GPU network readiness.
 API acceptance does not prove job readiness.
 
 ## Add workers after startup — no type registration required

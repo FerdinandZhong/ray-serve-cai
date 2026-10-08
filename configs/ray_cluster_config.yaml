@@ -6,6 +6,21 @@
 
 ray_cluster:
 
+  # Controller starts by default. Optional limits are additional user budgets;
+  # null means CAI admission and available resources govern further growth.
+  autoscaling:
+    enabled: true
+    limits: null
+    max_launch_batch: 2
+  # Override at AMP import with RAY_INITIAL_WORKER_POOLS (a JSON array).
+  # initial_workers is one-time; min_workers is the retained idle baseline.
+  # Example entry:
+  # - id: l40s
+  #   initial_workers: 2
+  #   min_workers: 0
+  #   worker_spec: {cpu: 16, memory: 64, gpus: 1, node_type: gpu-worker, accelerator_type: L40S}
+  worker_pools: []
+
   # ── Head node resources ───────────────────────────────────────────────────
   # The head node runs Ray GCS, the Ray Dashboard, the Management API, and
   # nginx.  It is CPU-only — GPUs are reserved for worker nodes.
@@ -39,8 +54,8 @@ ray_cluster:
   # runtime_identifier: overrides cai.worker_runtime_identifier per group.
   #        Use the standard (non-CUDA) image for CPU-only groups.
   # Intentionally empty: no worker shapes or allocations during initialization.
-  # Define shapes via POST /api/v1/resources/node-types after the head is ready,
-  # then launch them with POST /api/v1/resources/nodes.
+  # Legacy worker_groups remain supported. New managed pools use worker_pools;
+  # manually added nodes use POST /api/v1/resources/nodes directly.
   worker_groups: []
 
   # ── Ray daemon ports ──────────────────────────────────────────────────────

@@ -12,6 +12,7 @@ from fastapi.middleware.cors import CORSMiddleware
 
 from .api import resources_router, applications_router, cluster_router, cml_apps_router, metrics_router, engines_router, environments_router
 from .auth import require_user
+from .api.autoscaling import router as autoscaling_router
 from .services import RayService, CAIService, CoordinatorService
 from ..utils.logging import setup_serve_logging
 
@@ -115,6 +116,7 @@ app.include_router(resources_router, dependencies=_authed)
 app.include_router(applications_router, dependencies=_authed)
 app.include_router(cml_apps_router, dependencies=_authed)
 app.include_router(cluster_router, dependencies=_authed)
+app.include_router(autoscaling_router, dependencies=_authed)
 app.include_router(metrics_router)
 app.include_router(engines_router, dependencies=_authed)
 app.include_router(environments_router, dependencies=_authed)
